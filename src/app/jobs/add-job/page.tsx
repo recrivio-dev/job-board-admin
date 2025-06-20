@@ -226,12 +226,11 @@ export default function AddJob() {
       });
       return;
     }
-
-    //check role
-    if (roles[0].role.name !== "admin" && roles[0].role.name !== "hr") {
-      setErrors({ general: "You do not have permission to create a job." });
-      return;
-    }
+    // //check role
+    // if (roles[0].role.name !== "admin" && roles[0].role.name !== "hr") {
+    //   setErrors({ general: "You do not have permission to create a job." });
+    //   return;
+    // }
 
     setIsSubmitting(true);
     setErrors({});

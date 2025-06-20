@@ -496,6 +496,25 @@ export const createJob = createAsyncThunk(
         return rejectWithValue(error.message);
       }
 
+      // Now add access control entry using the newly created job's id
+      const accessControl = {
+        job_id: data.id, // Use the id from the created job
+        user_id: jobData.created_by,
+        access_type: "granted" as const,
+        granted_by: jobData.created_by, // The creator grants access to themselves
+      };
+
+      const { error: accessError } = await supabase
+        .from("job_access_control")
+        .insert([accessControl]);
+
+      if (accessError) {
+        // If access control creation fails, you might want to delete the job
+        // to maintain data consistency, or handle this differently based on your needs
+        console.error("Failed to create access control:", accessError.message);
+        return rejectWithValue(accessError.message);
+      }
+
       return transformRawJob(data);
     } catch (error: unknown) {
       const errorMessage =
@@ -930,7 +949,7 @@ export const selectPaginatedJobs = createSelector(
     const { currentPage, pageSize } = pagination;
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
-    
+
     return jobs.slice(startIndex, endIndex);
   }
 );

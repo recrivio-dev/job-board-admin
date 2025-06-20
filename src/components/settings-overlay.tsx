@@ -121,7 +121,6 @@ const FormSection = memo(
     isEditing,
     handleInputChange,
     validateField,
-    firstFocusableRef,
   }: {
     formData: TeamMember;
     errors: FormErrors;
@@ -129,24 +128,9 @@ const FormSection = memo(
     isEditing: boolean;
     handleInputChange: (field: keyof TeamMember, value: string) => void;
     validateField: (field: keyof TeamMember) => void;
-    firstFocusableRef: React.RefObject<HTMLInputElement | null>;
   }) => (
     <div className="space-y-4 mb-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField
-          id="member-name"
-          label="Full Name"
-          value={formData.name}
-          field="name"
-          placeholder="Enter member's full name"
-          disabled={isEditing}
-          onChange={handleInputChange}
-          onBlur={validateField}
-          errors={errors}
-          isSubmitting={isSubmitting}
-          inputRef={firstFocusableRef}
-        />
-
         <InputField
           id="member-email"
           label="Email Address"
@@ -160,51 +144,84 @@ const FormSection = memo(
           errors={errors}
           isSubmitting={isSubmitting}
         />
-      </div>
-
-      <div>
-        <label
-          htmlFor="member-role"
-          className="block text-sm font-medium text-neutral-800 mb-2"
-        >
-          Role{" "}
-          <span className="text-red-500 ml-1" aria-label="required">
-            *
-          </span>
-        </label>
-        <select
-          id="member-role"
-          value={formData.role}
-          onChange={(e) => handleInputChange("role", e.target.value)}
-          onBlur={() => validateField("role")}
-          className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 appearance-none transition-all duration-200 ${
-            errors.role
-              ? "border-red-400 focus:ring-red-500 bg-red-50"
-              : "border-neutral-300 focus:ring-blue-500 hover:border-neutral-400"
-          } bg-white`}
-          aria-describedby={errors.role ? "role-error" : undefined}
-          aria-invalid={errors.role ? "true" : "false"}
-          disabled={isSubmitting}
-        >
-          <option value="" disabled>
-            Select a role for this team member
-          </option>
-          {ROLE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        {errors.role && (
-          <div
-            id="role-error"
-            className="flex items-center gap-1 text-red-600 text-sm mt-1"
-            role="alert"
+        <div>
+          <label
+            htmlFor="member-role"
+            className="block text-sm font-medium text-neutral-800 mb-2"
           >
-            <FaExclamationCircle className="w-3 h-3 flex-shrink-0" />
-            <span>{errors.role}</span>
-          </div>
-        )}
+            Role{" "}
+            <span className="text-red-500 ml-1" aria-label="required">
+              *
+            </span>
+          </label>
+          <select
+            id="member-role"
+            value={formData.role}
+            onChange={(e) => handleInputChange("role", e.target.value)}
+            onBlur={() => validateField("role")}
+            className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 appearance-none transition-all duration-200 ${
+              errors.role
+                ? "border-red-400 focus:ring-red-500 bg-red-50"
+                : "border-neutral-300 focus:ring-blue-500 hover:border-neutral-400"
+            } bg-white`}
+            aria-describedby={errors.role ? "role-error" : undefined}
+            aria-invalid={errors.role ? "true" : "false"}
+            disabled={isSubmitting}
+          >
+            <option value="" disabled>
+              Select a role for this team member
+            </option>
+            {ROLE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.role && (
+            <div
+              id="role-error"
+              className="flex items-center gap-1 text-red-600 text-sm mt-1"
+              role="alert"
+            >
+              <FaExclamationCircle className="w-3 h-3 flex-shrink-0" />
+              <span>{errors.role}</span>
+            </div>
+          )}
+        </div>
+        {// add assigned jobs field
+        // <div>
+        //   <label
+        //     htmlFor="member-assigned-jobs"
+        //     className="block text-sm font-medium text-neutral-800 mb-2"
+        //   >
+        //     Assigned Jobs
+        //   </label>
+        //   <textarea
+        //     id="member-assigned-jobs"
+        //     value={formData.assigned_jobs}
+        //     onChange={(e) => handleInputChange("assigned_jobs", e.target.value)}
+        //     onBlur={() => validateField("assigned_jobs")}
+        //     className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 ${
+        //       errors.assigned_jobs
+        //         ? "border-red-400 focus:ring-red-500 bg-red-50"
+        //         : "border-neutral-300 focus:ring-blue-500 hover:border-neutral-400"
+        //     } bg-white`}
+        //     aria-describedby={errors.assigned_jobs ? "assigned-jobs-error" : undefined}
+        //     aria-invalid={errors.assigned_jobs ? "true" : "false"}
+        //     disabled={isSubmitting}
+        //   />
+        //   {errors.assigned_jobs && (
+        //     <div
+        //       id="assigned-jobs-error"
+        //       className="flex items-center gap-1 text-red-600 text-sm mt-1"
+        //       role="alert"
+        //     >
+        //       <FaExclamationCircle className="w-3 h-3 flex-shrink-0" />
+        //       <span>{errors.assigned_jobs}</span>
+        //     </div>
+        //   )}
+        // </div>
+        }
       </div>
     </div>
   )
@@ -253,16 +270,6 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
   // Enhanced form validation
   const validateForm = useCallback((): boolean => {
     const newErrors: FormErrors = {};
-
-    // Name validation
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = "Name must be at least 2 characters long";
-    } else if (formData.name.trim().length > 50) {
-      newErrors.name = "Name must be less than 50 characters";
-    }
-
     // Email validation
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
@@ -292,17 +299,6 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
       const newErrors = { ...errors };
 
       switch (field) {
-        case "name":
-          if (!formData.name.trim()) {
-            newErrors.name = "Name is required";
-          } else if (formData.name.trim().length < 2) {
-            newErrors.name = "Name must be at least 2 characters long";
-          } else if (formData.name.trim().length > 50) {
-            newErrors.name = "Name must be less than 50 characters";
-          } else {
-            delete newErrors.name;
-          }
-          break;
         case "email":
           if (!formData.email.trim()) {
             newErrors.email = "Email is required";
@@ -430,7 +426,7 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
         email: formData.email.trim().toLowerCase(),
       };
 
-      await onSave(memberData);
+      onSave(memberData);
       // onSave should handle closing the overlay on success
     } catch (error) {
       console.error("Error saving team member:", error);
@@ -532,7 +528,6 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
                 isEditing={isEditing}
                 handleInputChange={handleInputChange}
                 validateField={validateField}
-                firstFocusableRef={firstFocusableRef}
               />
 
               {/* Action Buttons */}

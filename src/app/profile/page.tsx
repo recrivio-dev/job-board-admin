@@ -6,13 +6,13 @@ import Image from "next/image";
 import PhoneInput from "react-phone-number-input";
 import { parsePhoneNumber } from "react-phone-number-input";
 import "react-phone-number-input/style.css";
-import { createClient } from "@/utils/supabase/client";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import type { RootState } from "@/store/store";
 import { FiEdit3 } from "react-icons/fi";
 import { IoMdEye, IoMdEyeOff } from "react-icons/io";
 import { refreshUserData, updateProfile } from "@/store/features/userSlice";
 import { updateUserProfileAction } from "@/app/login/actions";
+import { updatePasswordAction } from "./actions"; // Add this import
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -102,6 +102,11 @@ export default function Profile() {
     }
   };
 
+  // Handle profile picture edit click
+  const handleProfilePictureEdit = () => {
+    alert("Profile picture update feature is coming soon!");
+  };
+
   // Initialize form with user data
   useEffect(() => {
     if (profile) {
@@ -110,6 +115,7 @@ export default function Profile() {
       setEmail(profile.email || "");
     } else if (user) {
       // Fallback to user email if no profile
+      setEmail(user.email || "");
     }
   }, [profile, user, setValue]);
 
@@ -148,8 +154,6 @@ export default function Profile() {
     setUpdateSuccess(null);
 
     try {
-      const supabase = createClient();
-
       // Update profile data
       if (profile) {
         const profileUpdateData = {
@@ -169,13 +173,21 @@ export default function Profile() {
       }
 
       // Update password if provided
-      if (data.currentPassword && data.newPassword) {
-        const { error: passwordError } = await supabase.auth.updateUser({
-          password: data.newPassword
-        });
+      if (data.currentPassword && data.newPassword && email) {
+        try {
+          const passwordResult = await updatePasswordAction(
+            email,
+            data.currentPassword,
+            data.newPassword
+          );
 
-        if (passwordError) {
-          setUpdateError(`Password update failed: ${passwordError.message}`);
+          if (!passwordResult.success) {
+            setUpdateError("Password update failed. Please check your current password.");
+            return;
+          }
+        } catch (passwordError: any) {
+          console.error("Password update error:", passwordError);
+          setUpdateError(passwordError.message || "Failed to update password. Please check your current password.");
           return;
         }
       }
@@ -260,28 +272,18 @@ export default function Profile() {
           <div className="flex justify-center md:justify-start">
             <div className="relative w-36 h-36 flex-shrink-0">
               <div className="rounded-full overflow-hidden w-36 h-36 flex items-center justify-center">
-                {profile?.avatar_url ? (
                   <Image
-                    src={profile.avatar_url}
+                    src={"/recrivio-profile.svg"}
                     alt="Profile Avatar"
                     fill
                     className="object-cover rounded-full"
                     sizes="9rem"
                     draggable={false}
-                  />
-                ) : (
-                  <Image
-                    src={"/logomark-white.svg"}
-                    alt="Profile Avatar"
-                    fill
-                    className="object-cover rounded-full"
-                    sizes="9rem"
-                    draggable={false}
-                  />
-                )}
+                  /> 
               </div>
               <button
                 type="button"
+                onClick={handleProfilePictureEdit}
                 className="absolute bottom-2 right-2 bg-neutral-200 rounded-full p-2 shadow hover:bg-neutral-300 transition cursor-pointer"
                 title="Edit Avatar"
                 tabIndex={-1}
@@ -347,12 +349,7 @@ export default function Profile() {
           </div>
           
           {/* Password Section */}
-          <div className="flex flex-col gap-4">
-            <h2 className="text-xl font-semibold text-neutral-900">Change Password</h2>
-            <p className="text-neutral-600 text-base">
-              Leave these fields empty if you don&apos;t want to change your password.
-            </p>
-            
+          <div className="flex flex-col gap-4">            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Current Password */}
               <div className="flex flex-col gap-2">
@@ -372,7 +369,7 @@ export default function Profile() {
                   <button
                     type="button"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-4 text-neutral-500 hover:text-neutral-700"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
                     tabIndex={-1}
                   >
                     {showCurrentPassword ? <IoMdEyeOff size={20} /> : <IoMdEye size={20} />}
@@ -401,7 +398,7 @@ export default function Profile() {
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-4 text-neutral-500 hover:text-neutral-700"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
                     tabIndex={-1}
                   >
                     {showNewPassword ? <IoMdEyeOff size={20} /> : <IoMdEye size={20} />}
@@ -415,7 +412,7 @@ export default function Profile() {
           </div>
 
           {/* Submit Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-start">
             <button
               type="submit"
               disabled={isSubmitting}
