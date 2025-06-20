@@ -46,13 +46,13 @@ const LoginForm = () => {
 
   const formMethods = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    mode: "onBlur",
+    mode: "onChange",
   });
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
     setError,
   } = formMethods;
 
@@ -65,30 +65,30 @@ const LoginForm = () => {
     return null;
   }, [errors, error]);
 
-  // Memoize form validity
-  const isFormValid = useMemo(() => !Object.keys(errors).length, [errors]);
-
   const togglePasswordVisibility = useCallback(() => {
-    setShowPassword(prev => !prev);
+    setShowPassword((prev) => !prev);
   }, []);
 
-  const onSubmit = useCallback(async (data: LoginFormData) => {
-    try {
-      await dispatch(
-        loginUser({
-          email: data.email.trim().toLowerCase(),
-          password: data.password,
-        })
-      ).unwrap();
-    } catch (err) {
-      console.log("Login failed:", err);
-      if (error) {
-        setError("root", { message: error });
+  const onSubmit = useCallback(
+    async (data: LoginFormData) => {
+      try {
+        await dispatch(
+          loginUser({
+            email: data.email.trim().toLowerCase(),
+            password: data.password,
+          })
+        ).unwrap();
+      } catch (err) {
+        console.log("Login failed:", err);
+        if (error) {
+          setError("root", { message: error });
+        }
+        // Reset the form state after a failed login attempt
+        formMethods.reset();
       }
-      // Reset the form state after a failed login attempt
-      formMethods.reset();
-    }
-  }, [dispatch, error, setError, formMethods]);
+    },
+    [dispatch, error, setError, formMethods]
+  );
 
   const handleFormSubmit = useMemo(
     () => handleSubmit(onSubmit),
@@ -96,37 +96,49 @@ const LoginForm = () => {
   );
 
   // Memoize input props
-  const emailInputProps = useMemo(() => ({
-    id: "email",
-    type: "email",
-    ...register("email"),
-    disabled: isSubmitting,
-    placeholder: "Enter your email",
-    autoComplete: "email",
-    className: `w-full p-4 border text-sm rounded-lg outline-hidden hover:border-neutral-400 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-      errors.email?.message
-        ? "border-red-300 focus:border-red-500"
-        : "border-neutral-300"
-    }`
-  }), [register, errors.email?.message, isSubmitting]);
-
-  const passwordInputProps = useMemo(() => ({
-    inputProps: {
-      id: "password",
-      type: showPassword ? "text" : "password",
-      ...register("password"),
+  const emailInputProps = useMemo(
+    () => ({
+      id: "email",
+      type: "email",
+      ...register("email"),
       disabled: isSubmitting,
-      placeholder: "Enter your password",
-      autoComplete: "current-password",
-      className: `w-full p-4 border text-sm rounded-lg pr-12 outline-hidden hover:border-neutral-400 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-        errors.password?.message
+      placeholder: "Enter your email",
+      autoComplete: "email",
+      className: `w-full p-4 border text-sm rounded-lg outline-hidden hover:border-neutral-400 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+        errors.email?.message
           ? "border-red-300 focus:border-red-500"
           : "border-neutral-300"
-      }`
-    },
-    showPassword,
-    onTogglePassword: togglePasswordVisibility
-  }), [register, errors.password?.message, isSubmitting, showPassword, togglePasswordVisibility]);
+      }`,
+    }),
+    [register, errors.email?.message, isSubmitting]
+  );
+
+  const passwordInputProps = useMemo(
+    () => ({
+      inputProps: {
+        id: "password",
+        type: showPassword ? "text" : "password",
+        ...register("password"),
+        disabled: isSubmitting,
+        placeholder: "Enter your password",
+        autoComplete: "current-password",
+        className: `w-full p-4 border text-sm rounded-lg pr-12 outline-hidden hover:border-neutral-400 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+          errors.password?.message
+            ? "border-red-300 focus:border-red-500"
+            : "border-neutral-300"
+        }`,
+      },
+      showPassword,
+      onTogglePassword: togglePasswordVisibility,
+    }),
+    [
+      register,
+      errors.password?.message,
+      isSubmitting,
+      showPassword,
+      togglePasswordVisibility,
+    ]
+  );
 
   // Handle URL parameters for messages
   useEffect(() => {
@@ -181,24 +193,30 @@ const LoginForm = () => {
 
   return (
     <div className="container mx-auto px-4">
-      <div className="flex flex-col justify-center items-center bg-white rounded-xl shadow-sm max-w-xl mx-auto p-6 sm:py-12 sm:px-18 my-12">
+      <div className="flex flex-col justify-center items-center bg-white rounded-xl shadow-sm max-w-md mx-auto p-6 sm:py-10 sm:px-12 my-12">
         <form
           className="w-full flex flex-col gap-2"
           onSubmit={handleFormSubmit}
         >
-          <h1 className="text-center text-neutral-800 font-semibold text-2xl sm:text-3xl mb-4">
+          <h1 className="text-center text-neutral-800 font-semibold text-2xl mb-4">
             Admin Login
           </h1>
 
           <div>
-            <label className="text-sm font-medium mt-4 mb-2 block" htmlFor={emailInputProps.id}>
+            <label
+              className="text-sm font-medium mt-4 mb-2 block"
+              htmlFor={emailInputProps.id}
+            >
               Email
             </label>
             <input {...emailInputProps} />
           </div>
 
           <div>
-            <label className="text-sm font-medium mt-4 mb-2 block" htmlFor={passwordInputProps.inputProps.id}>
+            <label
+              className="text-sm font-medium mt-4 mb-2 block"
+              htmlFor={passwordInputProps.inputProps.id}
+            >
               Password
             </label>
             <div className="relative flex items-center mb-2">
@@ -210,15 +228,15 @@ const LoginForm = () => {
                 tabIndex={-1}
               >
                 {passwordInputProps.showPassword ? (
-                  <IoMdEyeOff size={20} />
-                ) : (
                   <IoMdEye size={20} />
+                ) : (
+                  <IoMdEyeOff size={20} />
                 )}
               </button>
             </div>
             <Link
               href="/forgot-password"
-              className="text-blue-600 hover:text-blue-700 hover:underline text-sm font-medium block text-center mt-6 mb-2"
+              className="text-blue-500 hover:text-blue-600 hover:underline text-sm font-medium block text-center mt-6 mb-2"
             >
               Forgot Password?
             </Link>
@@ -238,12 +256,12 @@ const LoginForm = () => {
             </div>
           )}
 
-          <div className="flex flex-col items-center gap-16 mt-6">
+          <div className="flex flex-col items-center gap-8 mt-6">
             <button
               type="submit"
-              disabled={!isFormValid || isSubmitting}
+              disabled={!isValid || isSubmitting}
               className={`w-full py-3 text-lg font-semibold text-white rounded-lg transition-colors cursor-pointer ${
-                isFormValid && !isSubmitting
+                isValid && !isSubmitting
                   ? "bg-blue-600 hover:bg-blue-700"
                   : "bg-blue-400 cursor-not-allowed"
               }`}
@@ -253,7 +271,7 @@ const LoginForm = () => {
 
             <Link
               href="/register"
-              className="text-neutral-900 hover:underline text-lg font-semibold"
+              className="text-neutral-900 hover:underline text-sm font-medium"
             >
               Register here
             </Link>
@@ -269,6 +287,6 @@ const AdminLogin = memo(LoginForm, () => {
   return true; // Since we have no props, always return true to prevent re-renders
 });
 
-AdminLogin.displayName = 'AdminLogin';
+AdminLogin.displayName = "AdminLogin";
 
 export default AdminLogin;

@@ -18,50 +18,65 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 // Define the form schema using zod
-const profileSchema = z.object({
-  name: z.string()
-    .min(1, "Name is required")
-    .min(2, "Name must be at least 2 characters"),
-  phone: z.string()
-    .optional()
-    .refine((val) => {
-      if (!val) return true; // Optional field
-      try {
-        const parsed = parsePhoneNumber(val);
-        return parsed?.isValid() || false;
-      } catch {
-        return false;
-      }
-    }, "Please enter a valid phone number"),
-  currentPassword: z.string()
-    .optional()
-    .refine((val) => {
-      if (!val) return true; // Optional field
-      return val.length >= 6;
-    }, "Current password must be at least 6 characters long"),
-  newPassword: z.string()
-    .optional()
-    .refine((val) => {
-      if (!val) return true; // Optional field
-      return val.length >= 6;
-    }, "New password must be at least 6 characters long")
-}).refine((data) => {
-  // If one password is provided, both must be provided
-  if (data.currentPassword && !data.newPassword) return false;
-  if (!data.currentPassword && data.newPassword) return false;
-  return true;
-}, {
-  message: "Both current and new passwords are required to change password",
-  path: ["newPassword"] // This will show the error on the new password field
-});
+const profileSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, "Name is required")
+      .min(2, "Name must be at least 2 characters"),
+    phone: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (!val) return true; // Optional field
+        try {
+          const parsed = parsePhoneNumber(val);
+          return parsed?.isValid() || false;
+        } catch {
+          return false;
+        }
+      }, "Please enter a valid phone number"),
+    currentPassword: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (!val) return true; // Optional field
+        return val.length >= 6;
+      }, "Current password must be at least 6 characters long"),
+    newPassword: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (!val) return true; // Optional field
+        return val.length >= 6;
+      }, "New password must be at least 6 characters long"),
+  })
+  .refine(
+    (data) => {
+      // If one password is provided, both must be provided
+      if (data.currentPassword && !data.newPassword) return false;
+      if (!data.currentPassword && data.newPassword) return false;
+      return true;
+    },
+    {
+      message: "Both current and new passwords are required to change password",
+      path: ["newPassword"], // This will show the error on the new password field
+    }
+  );
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 export default function Profile() {
   const dispatch = useAppDispatch();
-  const collapsed = useAppSelector((state: RootState) => state.ui.sidebar.collapsed);
-  const { profile, user, loading: userLoading } = useAppSelector((state) => state.user);
-  
+  const collapsed = useAppSelector(
+    (state: RootState) => state.ui.sidebar.collapsed
+  );
+  const {
+    profile,
+    user,
+    loading: userLoading,
+  } = useAppSelector((state) => state.user);
+
   const [email, setEmail] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -74,31 +89,33 @@ export default function Profile() {
     formState: { errors, isSubmitting },
     setValue,
     watch,
-    reset
+    reset,
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
-    mode: "onBlur"
+    mode: "onBlur",
   });
 
   // Helper function to normalize phone number to E.164 format
-  const normalizePhoneNumber = (phoneNumber: string | null | undefined): string | undefined => {
+  const normalizePhoneNumber = (
+    phoneNumber: string | null | undefined
+  ): string | undefined => {
     if (!phoneNumber) return undefined;
-    
+
     try {
-      // Remove all spaces and non-digit characters except + 
-      const cleaned = phoneNumber.replace(/\s+/g, '');
-      
+      // Remove all spaces and non-digit characters except +
+      const cleaned = phoneNumber.replace(/\s+/g, "");
+
       // Try to parse the phone number
       const parsed = parsePhoneNumber(cleaned);
       if (parsed && parsed.isValid()) {
         return parsed.number; // Returns E.164 format
       }
-      
+
       // If parsing fails, return the cleaned version
       return cleaned;
     } catch (error) {
-      console.warn('Phone number parsing error:', error);
-      return phoneNumber.replace(/\s+/g, '');
+      console.warn("Phone number parsing error:", error);
+      return phoneNumber.replace(/\s+/g, "");
     }
   };
 
@@ -144,7 +161,7 @@ export default function Profile() {
         name: watch("name"),
         phone: watch("phone"),
         currentPassword: "",
-        newPassword: ""
+        newPassword: "",
       });
     }
   }, [updateSuccess, reset, watch]);
@@ -182,18 +199,28 @@ export default function Profile() {
           );
 
           if (!passwordResult.success) {
-            setUpdateError("Password update failed. Please check your current password.");
+            setUpdateError(
+              "Password update failed. Please check your current password."
+            );
             return;
           }
-        } catch (passwordError: any) {
+        } catch (passwordError) {
           console.error("Password update error:", passwordError);
-          setUpdateError(passwordError.message || "Failed to update password. Please check your current password.");
+          if (passwordError instanceof Error) {
+            setUpdateError(
+              passwordError.message ||
+                "Failed to update password. Please check your current password."
+            );
+          } else {
+            setUpdateError(
+              "Failed to update password. Please check your current password."
+            );
+          }
           return;
         }
       }
 
       setUpdateSuccess("Profile updated successfully!");
-
     } catch (error) {
       console.error("Profile update error:", error);
       setUpdateError("An unexpected error occurred. Please try again.");
@@ -238,7 +265,7 @@ export default function Profile() {
             Edit Profile
           </span>
         </div>
-        
+
         {/* Title & Description */}
         <div className="mb-4">
           <h1 className="text-3xl font-semibold text-neutral-900 mb-2">
@@ -256,13 +283,13 @@ export default function Profile() {
             <p className="text-green-800 font-medium">{updateSuccess}</p>
           </div>
         )}
-        
+
         {updateError && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-red-800 font-medium">{updateError}</p>
           </div>
         )}
-        
+
         {/* Profile Form */}
         <form
           className="max-w-6xl p-4 flex flex-col gap-8"
@@ -272,14 +299,14 @@ export default function Profile() {
           <div className="flex justify-center md:justify-start">
             <div className="relative w-36 h-36 flex-shrink-0">
               <div className="rounded-full overflow-hidden w-36 h-36 flex items-center justify-center">
-                  <Image
-                    src={"/recrivio-profile.svg"}
-                    alt="Profile Avatar"
-                    fill
-                    className="object-cover rounded-full"
-                    sizes="9rem"
-                    draggable={false}
-                  /> 
+                <Image
+                  src={"/recrivio-profile.svg"}
+                  alt="Profile Avatar"
+                  fill
+                  className="object-cover rounded-full"
+                  sizes="9rem"
+                  draggable={false}
+                />
               </div>
               <button
                 type="button"
@@ -292,7 +319,7 @@ export default function Profile() {
               </button>
             </div>
           </div>
-          
+
           {/* Name & Email Row */}
           <div className="flex flex-col md:flex-row gap-6 w-full">
             <div className="flex-1 flex flex-col gap-2">
@@ -302,13 +329,15 @@ export default function Profile() {
                 {...register("name")}
                 className={`rounded-lg border px-4 py-3 text-base focus:outline-none focus:ring-1 ${
                   errors.name
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 bg-red-50'
-                    : 'border-neutral-200 focus:border-neutral-300 focus:ring-neutral-300 bg-neutral-50'
+                    ? "border-red-300 focus:border-red-500 focus:ring-red-500 bg-red-50"
+                    : "border-neutral-200 focus:border-neutral-300 focus:ring-neutral-300 bg-neutral-50"
                 }`}
                 disabled={isSubmitting}
               />
               {errors.name && (
-                <span className="text-red-500 text-sm">{errors.name.message}</span>
+                <span className="text-red-500 text-sm">
+                  {errors.name.message}
+                </span>
               )}
             </div>
             <div className="flex-1 flex flex-col gap-2">
@@ -322,16 +351,18 @@ export default function Profile() {
               />
             </div>
           </div>
-          
+
           {/* Phone Row */}
           <div className="flex flex-col md:flex-row gap-6 w-full">
             <div className="md:w-1/2 flex flex-col gap-2 pr-3">
               <label className="text-neutral-700 font-medium">Phone</label>
-              <div className={`rounded-lg border ${
-                errors.phone
-                  ? 'border-red-300 focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 bg-red-50'
-                  : 'border-neutral-200 focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300 bg-neutral-50'
-              }`}>
+              <div
+                className={`rounded-lg border ${
+                  errors.phone
+                    ? "border-red-300 focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 bg-red-50"
+                    : "border-neutral-200 focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300 bg-neutral-50"
+                }`}
+              >
                 <PhoneInput
                   international
                   defaultCountry="IN"
@@ -343,25 +374,29 @@ export default function Profile() {
                 />
               </div>
               {errors.phone && (
-                <span className="text-red-500 text-sm">{errors.phone.message}</span>
+                <span className="text-red-500 text-sm">
+                  {errors.phone.message}
+                </span>
               )}
             </div>
           </div>
-          
+
           {/* Password Section */}
-          <div className="flex flex-col gap-4">            
+          <div className="flex flex-col gap-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Current Password */}
               <div className="flex flex-col gap-2">
-                <label className="text-neutral-700 font-medium">Current Password</label>
+                <label className="text-neutral-700 font-medium">
+                  Current Password
+                </label>
                 <div className="relative">
                   <input
                     type={showCurrentPassword ? "text" : "password"}
                     {...register("currentPassword")}
                     className={`w-full rounded-lg border px-4 py-3 text-base focus:outline-none focus:ring-1 ${
                       errors.currentPassword
-                        ? 'border-red-300 focus:border-red-500 focus:ring-red-500 bg-red-50'
-                        : 'border-neutral-200 focus:border-neutral-300 focus:ring-neutral-300 bg-neutral-50'
+                        ? "border-red-300 focus:border-red-500 focus:ring-red-500 bg-red-50"
+                        : "border-neutral-200 focus:border-neutral-300 focus:ring-neutral-300 bg-neutral-50"
                     }`}
                     placeholder="Enter current password"
                     disabled={isSubmitting}
@@ -372,25 +407,33 @@ export default function Profile() {
                     className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
                     tabIndex={-1}
                   >
-                    {showCurrentPassword ? <IoMdEyeOff size={20} /> : <IoMdEye size={20} />}
+                    {showCurrentPassword ? (
+                      <IoMdEyeOff size={20} />
+                    ) : (
+                      <IoMdEye size={20} />
+                    )}
                   </button>
                 </div>
                 {errors.currentPassword && (
-                  <span className="text-red-500 text-sm">{errors.currentPassword.message}</span>
+                  <span className="text-red-500 text-sm">
+                    {errors.currentPassword.message}
+                  </span>
                 )}
               </div>
 
               {/* New Password */}
               <div className="flex flex-col gap-2">
-                <label className="text-neutral-700 font-medium">New Password</label>
+                <label className="text-neutral-700 font-medium">
+                  New Password
+                </label>
                 <div className="relative">
                   <input
                     type={showNewPassword ? "text" : "password"}
                     {...register("newPassword")}
                     className={`w-full rounded-lg border px-4 py-3 text-base focus:outline-none focus:ring-1 ${
                       errors.newPassword
-                        ? 'border-red-300 focus:border-red-500 focus:ring-red-500 bg-red-50'
-                        : 'border-neutral-200 focus:border-neutral-300 focus:ring-neutral-300 bg-neutral-50'
+                        ? "border-red-300 focus:border-red-500 focus:ring-red-500 bg-red-50"
+                        : "border-neutral-200 focus:border-neutral-300 focus:ring-neutral-300 bg-neutral-50"
                     }`}
                     placeholder="Enter new password"
                     disabled={isSubmitting}
@@ -401,11 +444,17 @@ export default function Profile() {
                     className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
                     tabIndex={-1}
                   >
-                    {showNewPassword ? <IoMdEyeOff size={20} /> : <IoMdEye size={20} />}
+                    {showNewPassword ? (
+                      <IoMdEyeOff size={20} />
+                    ) : (
+                      <IoMdEye size={20} />
+                    )}
                   </button>
                 </div>
                 {errors.newPassword && (
-                  <span className="text-red-500 text-sm">{errors.newPassword.message}</span>
+                  <span className="text-red-500 text-sm">
+                    {errors.newPassword.message}
+                  </span>
                 )}
               </div>
             </div>
@@ -418,11 +467,11 @@ export default function Profile() {
               disabled={isSubmitting}
               className={`px-6 py-3 text-base font-medium text-white rounded-lg transition-colors ${
                 !isSubmitting
-                  ? 'bg-blue-600 hover:bg-blue-700'
-                  : 'bg-blue-400 cursor-not-allowed'
+                  ? "bg-blue-600 hover:bg-blue-700"
+                  : "bg-blue-400 cursor-not-allowed"
               }`}
             >
-              {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
+              {isSubmitting ? "Saving Changes..." : "Save Changes"}
             </button>
           </div>
         </form>
