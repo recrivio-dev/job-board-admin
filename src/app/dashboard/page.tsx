@@ -162,10 +162,13 @@ const DashboardContent = ({
   }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 rounded-lg shadow-lg border">
-          <p className="text-sm text-blue-600">
-            Applications: {payload[0].value}
-          </p>
+        <div className="flex flex-col items-center">
+          <div className="bg-blue-600 px-8 rounded-xs shadow-lg">
+            <p className="text-sm text-white">
+              {payload[0].value}
+            </p>
+          </div>
+          <div className="w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-blue-600" />
         </div>
       );
     }

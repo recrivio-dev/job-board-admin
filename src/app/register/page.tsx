@@ -196,7 +196,7 @@ const FormFields = React.memo(
     </div>
   )
 );
-FormFields.displayName = 'FormFields';
+FormFields.displayName = "FormFields";
 
 // Separate form messages component
 const FormMessages = React.memo(
@@ -228,7 +228,7 @@ const FormMessages = React.memo(
     </>
   )
 );
-FormMessages.displayName = 'FormMessages';
+FormMessages.displayName = "FormMessages";
 
 const AdminRegister = () => {
   const searchParams = useSearchParams();
@@ -335,7 +335,7 @@ const AdminRegister = () => {
         className="w-full flex flex-col gap-2"
         onSubmit={handleSubmit(onSubmit)}
       >
-        <h1 className="text-center text-neutral-800 font-semibold text-2xl sm:text-3xl mb-8">
+        <h1 className="text-center text-neutral-800 font-semibold text-2xl mb-8">
           Register
         </h1>
 
@@ -354,7 +354,7 @@ const AdminRegister = () => {
         <button
           type="submit"
           disabled={isSubmitting}
-          className={`w-full my-6 p-4 text-lg font-semibold text-white rounded-lg transition-colors cursor-pointer ${
+          className={`w-full my-6 p-3 text-lg font-semibold text-white rounded-lg transition-colors cursor-pointer ${
             !isSubmitting
               ? "bg-blue-600 hover:bg-blue-700"
               : "bg-blue-400 cursor-not-allowed"
@@ -366,7 +366,7 @@ const AdminRegister = () => {
         <div className="text-center mt-4">
           <Link
             href="/login"
-            className="text-neutral-900 hover:underline text-lg font-semibold"
+            className="text-neutral-900 hover:underline text-sm font-medium"
           >
             Login here
           </Link>
@@ -390,7 +390,7 @@ const AdminRegister = () => {
 
   return (
     <div className="container mx-auto px-4">
-      <div className="flex flex-col justify-center items-center bg-white rounded-xl shadow-sm max-w-5xl mx-auto p-6 sm:py-12 sm:px-18 my-10">
+      <div className="flex flex-col justify-center items-center bg-white rounded-xl shadow-sm max-w-5xl mx-auto p-6 sm:py-12 sm:px-12 my-10">
         {formContent}
       </div>
     </div>
