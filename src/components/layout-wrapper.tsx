@@ -3,10 +3,10 @@
 import { usePathname } from "next/navigation";
 import LogoHeader from "@/components/logo-header";
 import Sidebar from "@/components/sidebar";
-import SearchComponent from "@/components/search-component";
 import BottomNav from "@/components/bottom-nav";
 import { Suspense } from "react";
 import { useAppSelector } from "@/store/hooks";
+import UserButton from "@/components/UserButton";
 
 interface LayoutWrapperProps {
   children: React.ReactNode;
@@ -49,8 +49,12 @@ export default function LayoutWrapper({
       }
     >
       <Sidebar />
-      <div className={`md:ml-20 ${collapsed ? 'md:ml-20' : 'md:ml-60'} transition-all duration-300`}>
-        <SearchComponent />
+      <div
+        className={`md:ml-20 ${
+          collapsed ? "md:ml-20" : "md:ml-60"
+        } transition-all duration-300`}
+      >
+        <UserButton />
       </div>
       <main className="pb-32 md:pb-0">{children}</main>
       {!hideBottomNav && <BottomNav />}
