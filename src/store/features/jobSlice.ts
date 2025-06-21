@@ -2,6 +2,35 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { createClient } from "@/utils/supabase/client";
 import { createSelector } from "@reduxjs/toolkit";
 
+// Types for the filter options
+export interface FilterOption {
+  value: string;
+  label: string;
+  logo_url?: string;
+  job_location_type?: string;
+}
+
+export interface CompaniesResponse {
+  companies: FilterOption[];
+  success: boolean;
+  error?: string;
+}
+
+export interface LocationsResponse {
+  locations: FilterOption[];
+  success: boolean;
+  error?: string;
+}
+
+export interface FilterOptionsResponse {
+  companies: FilterOption[];
+  locations: FilterOption[];
+  statuses: string[];
+  cached?: boolean;
+  success: boolean;
+  error?: string;
+}
+
 // Enhanced type definitions based on your database schema
 export interface Job {
   id: string;
@@ -86,22 +115,30 @@ export interface JobFilters {
   accessibleOnly?: boolean;
 }
 
-// Job state interface
 interface JobState {
   jobs: Job[];
   filteredJobs: Job[];
   selectedJob: Job | null;
-  filters: JobFilters;
   loading: boolean;
   error: string | null;
+  viewMode: "board" | "list";
+  filters: JobFilters;
   pagination: {
     currentPage: number;
     totalPages: number;
     totalCount: number;
     pageSize: number;
   };
-  viewMode: "board" | "list";
   userAccess: JobAccessControl[];
+  // New filter options state
+  filterOptions: {
+    companies: string[];
+    locations: string[];
+    statuses: string[];
+    loading: boolean;
+    error: string | null;
+    lastFetched: number | null;
+  };
 }
 
 // Initial state
@@ -117,6 +154,14 @@ const initialState: JobState = {
     totalPages: 1,
     totalCount: 0,
     pageSize: 18,
+  },
+  filterOptions: {
+    companies: [],
+    locations: [],
+    statuses: ["active, paused, closed"],
+    loading: false,
+    error: null,
+    lastFetched: null,
   },
   viewMode: "board",
   userAccess: [],
@@ -145,7 +190,29 @@ const transformRawJob = (rawJob: RawJob): Job => ({
   updated_at: rawJob.updated_at,
 });
 
-// Enhanced fetch jobs with role-based access control
+// Type definition for RPC response
+interface FetchJobsRPCResponse {
+  jobs: Job[];
+  total_count: number;
+  current_page: number;
+  total_pages: number;
+  success: boolean;
+  error?: string;
+}
+
+// Type guard to check if the response is a valid RPC response
+const isFetchJobsRPCResponse = (data: any): data is FetchJobsRPCResponse => {
+  return (
+    data &&
+    typeof data === 'object' &&
+    typeof data.success === 'boolean' &&
+    typeof data.total_count === 'number' &&
+    typeof data.current_page === 'number' &&
+    typeof data.total_pages === 'number' &&
+    Array.isArray(data.jobs)
+  );
+};
+
 export const fetchJobs = createAsyncThunk(
   "jobs/fetchJobs",
   async (
@@ -170,116 +237,147 @@ export const fetchJobs = createAsyncThunk(
         organizationId,
       } = params;
 
-      let jobsQuery;
-      let accessibleJobIds: string[] = [];
-
-      // Role-based query logic
-      if (userRole === "admin" && organizationId) {
-        // Admin can see all jobs in their organization
-        jobsQuery = supabase
-          .from("jobs")
-          .select("*", { count: "exact" })
-          .eq("organization_id", organizationId);
-      } else if (userRole === "hr" && organizationId) {
-        // HR can see all jobs in their organization
-        jobsQuery = supabase
-          .from("jobs")
-          .select("*", { count: "exact" })
-          .eq("organization_id", organizationId);
-      } else if (userRole === "ta" && userId) {
-        // TA can only see jobs they have access to
-        // First, get job IDs they have access to
-        const { data: accessData, error: accessError } = await supabase
-          .from("job_access_control")
-          .select("job_id")
-          .eq("user_id", userId)
-          .eq("access_type", "granted");
-
-        if (accessError) {
-          return rejectWithValue(accessError.message);
-        }
-
-        accessibleJobIds =
-          accessData
-            ?.map((item) => item.job_id)
-            .filter((id): id is string => id !== null) || [];
-
-        if (accessibleJobIds.length === 0) {
-          // No accessible jobs for TA
-          return {
-            jobs: [],
-            totalCount: 0,
-            currentPage: page,
-            totalPages: 0,
-          };
-        }
-
-        jobsQuery = supabase
-          .from("jobs")
-          .select("*", { count: "exact" })
-          .in("id", accessibleJobIds);
-      } else {
-        // Default: no access
-        return {
-          jobs: [],
-          totalCount: 0,
-          currentPage: page,
-          totalPages: 0,
-        };
+      // Validate required parameters
+      if (!userRole || !userId) {
+        return rejectWithValue("User role and user ID are required");
       }
 
-      // Apply filters
-      if (filters.status) {
-        jobsQuery = jobsQuery.eq("status", filters.status);
-      }
-      if (filters.location) {
-        jobsQuery = jobsQuery.ilike("location", `%${filters.location}%`);
-      }
-      if (filters.company) {
-        jobsQuery = jobsQuery.ilike("company_name", `%${filters.company}%`);
-      }
-      if (filters.jobType) {
-        jobsQuery = jobsQuery.eq("job_type", filters.jobType);
-      }
-      if (filters.salaryRange) {
-        jobsQuery = jobsQuery
-          .gte("salary_min", filters.salaryRange.min)
-          .lte("salary_max", filters.salaryRange.max);
+      // For admin/hr roles, organization ID is required
+      if ((userRole === "admin" || userRole === "hr") && !organizationId) {
+        return rejectWithValue("Organization ID is required for admin/hr roles");
       }
 
-      // Apply pagination and ordering
-      const from = (page - 1) * limit;
-      const to = from + limit - 1;
-
-      jobsQuery = jobsQuery
-        .order("created_at", { ascending: false })
-        .range(from, to);
-
-      const { data, error, count } = await jobsQuery;
+      // Call the RPC function
+      const { data, error } = await supabase.rpc("fetch_jobs_with_access", {
+        p_user_id: userId,
+        p_user_role: userRole,
+        p_organization_id: organizationId,
+        p_page: page,
+        p_limit: limit,
+        p_status: filters.status || undefined,
+        p_location: filters.location || undefined,
+        p_company: filters.company || undefined,
+        p_job_type: filters.jobType || undefined,
+        p_salary_min: filters.salaryRange?.min || undefined,
+        p_salary_max: filters.salaryRange?.max || undefined,
+        p_experience_min: filters.experienceLevel ? parseInt(filters.experienceLevel.split('-')[0]) : undefined,
+        p_experience_max: filters.experienceLevel ? parseInt(filters.experienceLevel.split('-')[1]) : undefined,
+      });
 
       if (error) {
         return rejectWithValue(error.message);
       }
 
-      const transformedJobs = data?.map(transformRawJob) || [];
+      // Type guard check
+      if (!isFetchJobsRPCResponse(data)) {
+        return rejectWithValue("Invalid response format from server");
+      }
 
-      // For TA users, mark which jobs they have access to
-      if (userRole === "ta" && userId) {
-        transformedJobs.forEach((job) => {
-          job.has_access = accessibleJobIds.includes(job.id);
-          job.access_type = "granted";
-        });
+      // Check if the RPC function returned an error
+      if (!data.success) {
+        return rejectWithValue(data.error || "Failed to fetch jobs");
       }
 
       return {
-        jobs: transformedJobs,
-        totalCount: count || 0,
-        currentPage: page,
-        totalPages: Math.ceil((count || 0) / limit),
+        jobs: data.jobs || [],
+        totalCount: data.total_count || 0,
+        currentPage: data.current_page || page,
+        totalPages: data.total_pages || 0,
       };
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to fetch jobs";
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+const isFilterOptionsRPCResponse = (data: any): data is FilterOptionsResponse => {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'companies' in data &&
+    'locations' in data &&
+    'success' in data &&
+    Array.isArray(data.companies) &&
+    Array.isArray(data.locations)
+  );
+};
+// Combined thunk for fetching both companies and locations
+export const fetchFilterOptions = createAsyncThunk(
+  "jobs/fetchFilterOptions",
+  async (
+    params: {
+      userRole: string;
+      userId: string;
+      organizationId?: string;
+      forceRefresh?: boolean;
+    },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const state = getState() as { jobs: JobState };
+      const { filterOptions } = state.jobs;
+
+      // Check if we should skip fetching (cache for 5 minutes)
+      const cacheValid = filterOptions.lastFetched &&
+        Date.now() - filterOptions.lastFetched < 5 * 60 * 1000;
+
+      if (!params.forceRefresh && cacheValid && filterOptions.companies.length > 0) {
+        return {
+          companies: filterOptions.companies,
+          locations: filterOptions.locations,
+          statuses: filterOptions.statuses,
+          cached: true,
+        };
+      }
+
+      const supabase = createClient();
+      const { userRole, userId, organizationId } = params;
+
+      // Validate required parameters
+      if (!userRole || !userId) {
+        return rejectWithValue("User role and user ID are required");
+      }
+
+      // For admin/hr roles, organization ID is required
+      if ((userRole === "admin" || userRole === "hr") && !organizationId) {
+        return rejectWithValue("Organization ID is required for admin/hr roles");
+      }
+
+      // Call the RPC function
+      const { data, error } = await supabase.rpc("fetch_filter_options", {
+        p_user_id: userId,
+        p_user_role: userRole,
+        p_organization_id: organizationId,
+      });
+
+      if (error) {
+        return rejectWithValue(error.message);
+      }
+
+      // Type guard check
+      if (!isFilterOptionsRPCResponse(data)) {
+        return rejectWithValue("Invalid response format from server");
+      }
+
+      // Check if the RPC function returned an error
+      if (!data.success) {
+        return rejectWithValue(data.error || "Failed to fetch filter options");
+      }
+
+      // Define default statuses if not provided by server
+      const defaultStatuses = ["active", "paused", "closed"];
+
+      return {
+        companies: (data.companies || []).sort(),
+        locations: (data.locations || []).sort(),
+        statuses: defaultStatuses,
+        cached: false,
+      };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to fetch filter options";
       return rejectWithValue(errorMessage);
     }
   }
@@ -416,6 +514,76 @@ export const fetchJobAccessControl = createAsyncThunk(
           : "Failed to fetch job access control";
       return rejectWithValue(errorMessage);
     }
+  }
+);
+
+// Enhanced thunk for applying filters with server-side filtering
+export const applyFilters = createAsyncThunk(
+  "jobs/applyFilters",
+  async (
+    params: {
+      filters: JobFilters;
+      userRole: string;
+      userId: string;
+      organizationId?: string;
+      page?: number;
+      preservePageSize?: boolean;
+    },
+    { dispatch, getState }
+  ) => {
+    const state = getState() as { jobs: JobState };
+    const currentPageSize = state.jobs.pagination.pageSize;
+    const targetPage = params.page || 1;
+
+    // Update filters in state first
+    dispatch(setFilters(params.filters));
+
+    // If page is not specified and filters changed, reset to page 1
+    if (!params.page) {
+      dispatch(setCurrentPage(1));
+    }
+
+    // Then fetch jobs with new filters
+    const result = await dispatch(fetchJobs({
+      page: targetPage,
+      limit: currentPageSize,
+      filters: params.filters,
+      userRole: params.userRole,
+      userId: params.userId,
+      organizationId: params.organizationId,
+    }));
+
+    return result;
+  }
+);
+
+// Enhanced thunk for pagination that respects current filters
+export const goToPage = createAsyncThunk(
+  "jobs/goToPage",
+  async (
+    params: {
+      page: number;
+      userRole: string;
+      userId: string;
+      organizationId?: string;
+    },
+    { dispatch, getState }
+  ) => {
+    const state = getState() as { jobs: JobState };
+    const { filters, pagination } = state.jobs;
+
+    // Update current page
+    dispatch(setCurrentPage(params.page));
+
+    // Fetch jobs for the new page with current filters
+    return dispatch(fetchJobs({
+      page: params.page,
+      limit: pagination.pageSize,
+      filters,
+      userRole: params.userRole,
+      userId: params.userId,
+      organizationId: params.organizationId,
+    }));
   }
 );
 
@@ -594,34 +762,30 @@ const jobSlice = createSlice({
       state.viewMode = action.payload;
     },
 
+    // Modified setFilters - now only updates filter state, actual filtering happens via fetchJobs
     setFilters: (state, action: PayloadAction<JobFilters>) => {
-      state.filters = action.payload;
-      // Apply filters to jobs
-      state.filteredJobs = state.jobs.filter((job) => {
-        const { status, location, company, jobType, accessibleOnly } =
-          action.payload;
+      const oldFilters = state.filters;
+      const newFilters = action.payload;
 
-        if (status && job.status !== status) return false;
-        if (
-          location &&
-          !job.location?.toLowerCase().includes(location.toLowerCase())
-        )
-          return false;
-        if (
-          company &&
-          !job.company_name?.toLowerCase().includes(company.toLowerCase())
-        )
-          return false;
-        if (jobType && job.job_type !== jobType) return false;
-        if (accessibleOnly && !job.has_access) return false;
+      // Check if filters actually changed
+      const filtersChanged = JSON.stringify(oldFilters) !== JSON.stringify(newFilters);
 
-        return true;
-      });
+      state.filters = newFilters;
+
+      // Reset to first page only if filters actually changed
+      if (filtersChanged) {
+        state.pagination.currentPage = 1;
+      }
     },
 
     clearFilters: (state) => {
       state.filters = {};
-      state.filteredJobs = state.jobs;
+      state.pagination.currentPage = 1;
+    },
+
+    // New action to clear filter options cache
+    clearFilterOptionsCache: (state) => {
+      state.filterOptions.lastFetched = null;
     },
 
     clearError: (state) => {
@@ -677,20 +841,21 @@ const jobSlice = createSlice({
 
   extraReducers: (builder) => {
     builder
-      // Fetch Jobs
+      // Fetch Jobs - now properly handles filtered results from server
       .addCase(fetchJobs.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchJobs.fulfilled, (state, action) => {
         state.loading = false;
+        // Server returns filtered results, so we don't need separate filteredJobs
         state.jobs = action.payload.jobs;
         state.filteredJobs = action.payload.jobs;
         state.pagination = {
+          ...state.pagination,
           currentPage: action.payload.currentPage,
           totalPages: action.payload.totalPages,
           totalCount: action.payload.totalCount,
-          pageSize: state.pagination.pageSize,
         };
         state.error = null;
       })
@@ -727,8 +892,8 @@ const jobSlice = createSlice({
       })
       .addCase(createJob.fulfilled, (state, action) => {
         state.loading = false;
-        state.jobs.unshift(action.payload);
-        state.filteredJobs.unshift(action.payload);
+        // Only add to current view if it matches current filters
+        // For simplicity, we'll just refresh the job list after creation
         state.error = null;
       })
       .addCase(createJob.rejected, (state, action) => {
@@ -802,6 +967,13 @@ const jobSlice = createSlice({
           state.jobs[jobIndex].has_access = true;
           state.jobs[jobIndex].access_type = "granted";
         }
+        const filteredJobIndex = state.filteredJobs.findIndex(
+          (job) => job.id === accessControl.job_id
+        );
+        if (filteredJobIndex !== -1) {
+          state.filteredJobs[filteredJobIndex].has_access = true;
+          state.filteredJobs[filteredJobIndex].access_type = "granted";
+        }
       })
 
       // Revoke Job Access
@@ -823,6 +995,13 @@ const jobSlice = createSlice({
           state.jobs[jobIndex].has_access = false;
           state.jobs[jobIndex].access_type = "revoked";
         }
+        const filteredJobIndex = state.filteredJobs.findIndex(
+          (job) => job.id === accessControl.job_id
+        );
+        if (filteredJobIndex !== -1) {
+          state.filteredJobs[filteredJobIndex].has_access = false;
+          state.filteredJobs[filteredJobIndex].access_type = "revoked";
+        }
       })
 
       // Fetch Job Access Control
@@ -842,6 +1021,54 @@ const jobSlice = createSlice({
             created_at: access.created_at!,
             access_type: access.access_type as "granted" | "revoked",
           }));
+
+      })
+      .addCase(fetchFilterOptions.pending, (state) => {
+        state.filterOptions.loading = true;
+        state.filterOptions.error = null;
+      })
+      .addCase(fetchFilterOptions.fulfilled, (state, action) => {
+        state.filterOptions.loading = false;
+        state.filterOptions.companies = Array.isArray(action.payload.companies)
+          ? action.payload.companies.map(company =>
+            typeof company === 'string' ? company : company.value
+          )
+          : action.payload.companies;
+        state.filterOptions.locations = Array.isArray(action.payload.locations)
+          ? action.payload.locations.map(location =>
+            typeof location === 'string' ? location : location.value
+          )
+          : action.payload.locations;
+        state.filterOptions.statuses = action.payload.statuses;
+        state.filterOptions.error = null;
+
+        // Only update timestamp if not from cache
+        if (!action.payload.cached) {
+          state.filterOptions.lastFetched = Date.now();
+        }
+      })
+      .addCase(fetchFilterOptions.rejected, (state, action) => {
+        state.filterOptions.loading = false;
+        state.filterOptions.error =
+          typeof action.payload === "string"
+            ? action.payload
+            : "Failed to fetch filter options";
+      })
+
+      // Apply Filters cases
+      .addCase(applyFilters.pending, (state) => {
+        // Don't set main loading to true for filter applications
+        // This prevents UI flicker
+      })
+      .addCase(applyFilters.fulfilled, (state) => {
+        // Filter application completed successfully
+        // The actual job data update is handled by fetchJobs.fulfilled
+      })
+      .addCase(applyFilters.rejected, (state, action) => {
+        state.error =
+          typeof action.payload === "string"
+            ? action.payload
+            : "Failed to apply filters";
       });
   },
 });
@@ -856,6 +1083,7 @@ export const {
   clearSelectedJob,
   updateJobAccess,
   setCurrentPage,
+  clearFilterOptionsCache,
   setPageSize,
   updatePaginationInfo,
 } = jobSlice.actions;
@@ -952,4 +1180,24 @@ export const selectPaginatedJobs = createSelector(
 
     return jobs.slice(startIndex, endIndex);
   }
+);
+
+export const selectFilterOptions = (state: { jobs: JobState }) => state.jobs.filterOptions;
+export const selectFilterOptionsLoading = (state: { jobs: JobState }) => state.jobs.filterOptions.loading;
+export const selectFilterOptionsError = (state: { jobs: JobState }) => state.jobs.filterOptions.error;
+
+// Memoized selectors for better performance
+export const selectAvailableCompanies = createSelector(
+  [selectFilterOptions],
+  (filterOptions) => filterOptions.companies
+);
+
+export const selectAvailableLocations = createSelector(
+  [selectFilterOptions],
+  (filterOptions) => filterOptions.locations
+);
+
+export const selectAvailableStatuses = createSelector(
+  [selectFilterOptions],
+  (filterOptions) => filterOptions.statuses
 );

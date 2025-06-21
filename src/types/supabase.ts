@@ -525,6 +525,32 @@ export type Database = {
         }
         Returns: boolean
       }
+      fetch_filter_options: {
+        Args: {
+          p_user_id: string
+          p_user_role: string
+          p_organization_id?: string
+        }
+        Returns: Json
+      }
+      fetch_jobs_with_access: {
+        Args: {
+          p_user_id: string
+          p_user_role: string
+          p_organization_id?: string
+          p_page?: number
+          p_limit?: number
+          p_status?: string
+          p_location?: string
+          p_company?: string
+          p_job_type?: string
+          p_salary_min?: number
+          p_salary_max?: number
+          p_experience_min?: number
+          p_experience_max?: number
+        }
+        Returns: Json
+      }
       get_applications_over_time: {
         Args: { user_uuid: string; org_uuid: string; weeks_back?: number }
         Returns: Json
