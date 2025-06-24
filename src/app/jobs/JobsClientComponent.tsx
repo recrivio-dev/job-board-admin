@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import type { RootState } from "@/store/store";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { GoPlus } from "react-icons/go";
@@ -9,19 +10,20 @@ import { CiFilter } from "react-icons/ci";
 import { HiOutlineArrowCircleLeft } from "react-icons/hi";
 import {
   selectJobs,
-  selectPaginatedJobs,
+  fetchFilterOptions,
   selectJobPagination,
   selectJobsLoading,
   selectJobsError,
+  selectFilterOptions,
+  selectFilterOptionsLoading,
+  updatePaginationInfo,
   selectJobViewMode,
   selectJobFilters,
   setViewMode,
-  setFilters,
   clearError,
+  applyFilters,
   fetchJobs,
-  setCurrentPage,
   setPageSize,
-  updatePaginationInfo,
 } from "@/store/features/jobSlice";
 import {
   JobListComponent,
@@ -40,11 +42,32 @@ import Pagination from "@/components/pagination";
 const INITIAL_PAGE_SIZE = 18;
 const SKELETON_COUNT = 6;
 
-// Types for better type safety
-interface FilterOptions {
-  statuses: string[];
-  locations: string[];
-  companies: string[];
+export interface JobFilters {
+  status?: string;
+  location?: string;
+  company?: string;
+  jobType?: string;
+  experienceLevel?: string;
+  salaryRange?: {
+    min: number;
+    max: number;
+  };
+  accessibleOnly?: boolean;
+}
+
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  return function executedFunction(...args: Parameters<T>) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
 }
 
 interface InitializationState {
@@ -59,16 +82,19 @@ export default function JobsClientComponent({
 }: JobsClientComponentProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
-
   // Redux selectors
-  const collapsed = useAppSelector((state) => state.ui.sidebar.collapsed);
-  const jobs = useAppSelector(selectJobs);
-  const paginatedJobs = useAppSelector(selectPaginatedJobs);
+  const collapsed = useAppSelector((state: RootState) => state.ui.sidebar.collapsed);
+  // const jobs = useAppSelector(selectJobs);
+  const paginatedJobs = useAppSelector(selectJobs);
   const pagination = useAppSelector(selectJobPagination);
   const loading = useAppSelector(selectJobsLoading);
   const error = useAppSelector(selectJobsError);
   const viewMode = useAppSelector(selectJobViewMode);
   const filters = useAppSelector(selectJobFilters);
+
+   // New filter options selectors
+  const filterOptions = useAppSelector(selectFilterOptions);
+  const filterOptionsLoading = useAppSelector(selectFilterOptionsLoading);
 
   // Local state
   const [initState, setInitState] = useState<InitializationState>({
@@ -76,7 +102,7 @@ export default function JobsClientComponent({
     error: null,
   });
 
-  const [filterDropdowns, setFilterDropdowns] = useState<FilterState>({
+const [filterDropdowns, setFilterDropdowns] = useState<FilterState>({
     status: "",
     location: "",
     company: "",
@@ -88,62 +114,45 @@ export default function JobsClientComponent({
     return Boolean(userRole && userId && organizationId);
   }, [userRole, userId, organizationId]);
 
-  // Memoized filter options with better performance
-  const filterOptions = useMemo<FilterOptions>(() => {
-    const statuses = new Set<string>();
-    const locations = new Set<string>();
-    const companies = new Set<string>();
-
-    jobs.forEach((job) => {
-      if (job.status) statuses.add(job.status);
-      if (job.location) locations.add(job.location);
-      if (job.company_name) companies.add(job.company_name);
-    });
-
-    return {
-      statuses: Array.from(statuses).sort(),
-      locations: Array.from(locations).sort(),
-      companies: Array.from(companies).sort(),
-    };
-  }, [jobs]);
-
   // Initialize data with better error handling
-  useEffect(() => {
-    const initializeJobs = async () => {
-      if (initState.initialized) return;
+ useEffect(() => {
+    const initializeData = async () => {
+      if (initState.initialized || !isValidProps || !userRole || !userId || !organizationId) return;
+
+      // Type guard to ensure required values are strings
+      if (typeof userRole !== 'string' || typeof userId !== 'string' || typeof organizationId !== 'string') return;
 
       try {
-        if (!userRole || !userId || !organizationId) {
-          throw new Error(
-            "Missing required authentication data. Please ensure you are logged in and part of an organization."
-          );
-        }
-
         setInitState((prev) => ({ ...prev, error: null }));
 
-        await dispatch(
-          fetchJobs({
-            page: 1,
-            limit: INITIAL_PAGE_SIZE,
-            userRole,
-            userId,
-            organizationId,
-          })
-        ).unwrap();
+        // Fetch filter options first (they're cached, so this is efficient)
+        await dispatch(fetchFilterOptions({
+          userRole: userRole!,
+          userId: userId!,
+          organizationId: organizationId!,
+        })).unwrap();
+
+        // Then fetch jobs
+        await dispatch(fetchJobs({
+          page: 1,
+          limit: pagination.pageSize,
+          userRole: userRole!,
+          userId: userId!,
+          organizationId: organizationId!,
+        })).unwrap();
 
         setInitState({ initialized: true, error: null });
       } catch (err) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to load jobs";
-        console.error("Failed to initialize jobs:", err);
+          err instanceof Error ? err.message : "Failed to load data";
+        console.error("Failed to initialize:", err);
         setInitState({ initialized: true, error: errorMessage });
       }
     };
 
-    if (!initState.initialized && userRole && userId && organizationId) {
-      initializeJobs();
-    }
-  }, [dispatch, userRole, userId, organizationId, initState.initialized]);
+    initializeData();
+  }, [dispatch, userRole, userId, organizationId, initState.initialized, isValidProps]);
+
 
   // Optimized handlers with better error handling
   const handleAddJob = useCallback(() => {
@@ -166,28 +175,46 @@ export default function JobsClientComponent({
   );
 
   const handleFilterChange = useCallback(
-    (filterType: string, value: string) => {
+    debounce(async (filterType: string, value: string) => {
+      if (!isValidProps) return;
+
       try {
         const newFilters = {
           ...filters,
           [filterType]: value || undefined,
         };
 
-        dispatch(setFilters(newFilters));
+        // Remove undefined values
+        Object.keys(newFilters).forEach(key => {
+          if (newFilters[key as keyof JobFilters] === undefined) {
+            delete newFilters[key as keyof JobFilters];
+          }
+        });
+
+        // Apply filters with server-side filtering
+        await dispatch(applyFilters({
+          filters: newFilters,
+          userRole: userRole!,
+          userId: userId!,
+          organizationId: organizationId!,
+          page: 1, // Reset to first page on filter change
+        })).unwrap();
+
+        // Update local dropdown state
         setFilterDropdowns((prev) => ({
           ...prev,
           [filterType]: value,
           isOpen: false,
         }));
       } catch (err) {
-        console.log("Failed to apply filter:", err);
+        console.error("Failed to apply filter:", err);
       }
-    },
-    [dispatch, filters]
+    }, 300), // 300ms debounce
+    [dispatch, filters, userRole, userId, organizationId, isValidProps]
   );
 
   const handleRetry = useCallback(async () => {
-    if (!isValidProps) return;
+    if (!isValidProps || !userRole || !userId || !organizationId) return;
 
     try {
       dispatch(clearError());
@@ -197,9 +224,9 @@ export default function JobsClientComponent({
         fetchJobs({
           page: 1,
           limit: INITIAL_PAGE_SIZE,
-          userRole,
-          userId,
-          organizationId,
+          userRole: userRole!,
+          userId: userId!,
+          organizationId: organizationId!,
         })
       ).unwrap();
     } catch (err) {
@@ -209,30 +236,51 @@ export default function JobsClientComponent({
 
   // Pagination handlers
   const handlePageChange = useCallback(
-    (page: number) => {
-      dispatch(setCurrentPage(page));
-    },
-    [dispatch]
-  );
+  (page: number) => {
+    dispatch(fetchJobs({
+      page,
+      limit: pagination.pageSize,
+      filters,
+      userRole: userRole!,
+      userId: userId!,
+      organizationId: organizationId!,
+    }));
+  },
+  [dispatch, pagination.pageSize, filters, userRole, userId, organizationId]
+);
 
-  const handlePageSizeChange = useCallback(
-    (pageSize: number) => {
-      dispatch(setPageSize(pageSize));
-    },
-    [dispatch]
-  );
+// Let's add comprehensive debugging to understand the exact flow
 
-  // Update pagination info when jobs change
-  useEffect(() => {
-    if (jobs.length > 0 || !loading) {
-      dispatch(
-        updatePaginationInfo({
-          totalCount: jobs.length,
-          pageSize: pagination.pageSize,
-        })
-      );
+const handlePageSizeChange = useCallback(
+  async (pageSize: number) => {
+    if (!isValidProps || !userRole || !userId || !organizationId) {
+      console.log('Invalid props, returning early');
+      return;
     }
-  }, [jobs.length, pagination.pageSize, dispatch, loading]);
+
+    try {
+      // Step 1: Update page size in Redux
+      dispatch(setPageSize(pageSize));
+      
+      // Step 2: Log what we're about to send to fetchJobs
+      const fetchJobsParams = {
+        page: 1,
+        limit: pageSize, // This should be the new pageSize
+        filters,
+        userRole: userRole!,
+        userId: userId!,
+        organizationId: organizationId!,
+      };
+      
+      // Step 3: Fetch jobs
+      const result = await dispatch(fetchJobs(fetchJobsParams)).unwrap();
+      
+    } catch (err) {
+      console.error("Failed to change page size:", err);
+    }
+  },
+  [dispatch, filters, userRole, userId, organizationId, isValidProps, pagination] // Added pagination to deps
+);
 
   const toggleFilterDropdown = useCallback(
     (filterType: "status" | "location" | "company") => {
@@ -244,21 +292,22 @@ export default function JobsClientComponent({
     []
   );
 
-  const handleClearAllFilters = useCallback(() => {
-    try {
-      dispatch(setFilters({}));
-      setFilterDropdowns({
-        status: "",
-        location: "",
-        company: "",
-        isOpen: false,
-      });
-    } catch (err) {
-      console.log("Failed to clear filters:", err);
-    }
-  }, [dispatch]);
+  // const handleClearAllFilters = useCallback(() => {
+  //   try {
+  //     dispatch(setFilters({}));
+  //     setFilterDropdowns({
+  //       status: "",
+  //       location: "",
+  //       company: "",
+  //       isOpen: false,
+  //     });
+  //   } catch (err) {
+  //     console.log("Failed to clear filters:", err);
+  //   }
+  // }, [dispatch]);
 
   // Optimized job transformations - now using paginated jobs
+  
   const transformedJobs = useMemo(() => {
     const forCards = paginatedJobs.map((job) => ({
       id: job.id,
@@ -387,9 +436,9 @@ export default function JobsClientComponent({
             </h1>
             <p className="text-sm text-neutral-500 mb-2">
               Manage your job listings and applications with ease.
-              {jobs.length > 0 && (
+              {pagination.totalCount > 0 && (
                 <span className="ml-1 font-medium">
-                  ({jobs.length} job{jobs.length !== 1 ? "s" : ""} found)
+                  ({pagination.totalCount} job{pagination.totalCount !== 1 ? "s" : ""} found)
                 </span>
               )}
             </p>
@@ -464,12 +513,17 @@ export default function JobsClientComponent({
                 onToggle={() => toggleFilterDropdown("status")}
               />
               <FilterDropdown
-                label="Job Location"
+                label="Location"
                 value={filterDropdowns.location}
                 options={filterOptions.locations}
                 onChange={(value) => handleFilterChange("location", value)}
                 isOpen={filterDropdowns.isOpen === "location"}
                 onToggle={() => toggleFilterDropdown("location")}
+                loading={filterOptionsLoading}
+                searchable={filterOptions.locations.length > 10} // Enable search for long lists
+                showCount={true}
+                placeholder="Job location"
+                error={filterOptions.error}
               />
               <FilterDropdown
                 label="Company"
@@ -478,6 +532,11 @@ export default function JobsClientComponent({
                 onChange={(value) => handleFilterChange("company", value)}
                 isOpen={filterDropdowns.isOpen === "company"}
                 onToggle={() => toggleFilterDropdown("company")}
+                loading={filterOptionsLoading}
+                searchable={filterOptions.companies.length > 10} // Enable search for long lists
+                showCount={true}
+                placeholder="Company"
+                error={filterOptions.error}
               />
             </div>
 
@@ -496,7 +555,7 @@ export default function JobsClientComponent({
                 )}
               </button>
 
-              {activeFiltersCount > 0 && (
+              {/* {activeFiltersCount > 0 && (
                 <button
                   onClick={handleClearAllFilters}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded px-2 py-1"
@@ -504,7 +563,7 @@ export default function JobsClientComponent({
                 >
                   Clear all
                 </button>
-              )}
+              )} */}
             </div>
           </div>
         </div>
@@ -512,7 +571,7 @@ export default function JobsClientComponent({
         {/* Content */}
         {error ? (
           <ErrorState error={error} onRetry={handleRetry} />
-        ) : jobs.length === 0 ? (
+        ) : pagination.totalCount === 0 ? (
           <EmptyState onAddJob={handleAddJob} />
         ) : (
           <>
@@ -527,7 +586,7 @@ export default function JobsClientComponent({
             )}
 
             {/* Pagination */}
-            {jobs.length > 0 && (
+            {pagination.totalCount > 0 && (
               <Pagination
                 currentPage={pagination.currentPage}
                 totalPages={pagination.totalPages}
