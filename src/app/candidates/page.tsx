@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import { useRouter } from "next/navigation";
 import { IoSearchSharp } from "react-icons/io5";
 import { HiOutlineArrowCircleLeft } from "react-icons/hi";
 import Link from "next/link";
