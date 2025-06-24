@@ -29,7 +29,7 @@ import { TiArrowSortedDown } from "react-icons/ti";
 import GlobalStickyTable from "@/components/GlobalStickyTable";
 import CandidatesDetailsOverlay from "./candidates-details-overlay"; // Import the overlay component
 import Pagination from "./pagination";
-
+import { FaPlus } from "react-icons/fa";
 // Types for component props
 interface CandidatesListProps {
   showHeader?: boolean;
@@ -366,14 +366,11 @@ export default function CandidatesList({
     }
 
     try {
-      await dispatch(
-        deleteCandidateApplication(application_id)
-      ).unwrap();
+      await dispatch(deleteCandidateApplication(application_id)).unwrap();
 
       // Optionally, close the overlay if it was open for this candidate
       if (
-        candidatesDetailsOverlay.candidate?.application_id ===
-        application_id
+        candidatesDetailsOverlay.candidate?.application_id === application_id
       ) {
         setCandidatesDetailsOverlay({ candidate: null, show: false });
       }
@@ -594,40 +591,43 @@ export default function CandidatesList({
             <div className="flex items-center gap-4">
               {showSorting && (
                 <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <select
-                      value={sortBy}
-                      onChange={(e) =>
-                        dispatch(setSortBy(e.target.value as SortOption))
-                      }
-                      className="bg-blue-600 text-white text-sm border border-blue-600 rounded-full px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:bg-blue-700 transition-colors cursor-pointer appearance-none"
-                    >
-                      <option
-                        value="date_desc"
-                        className="bg-white text-neutral-900"
+                  <div className="flex items-center bg-blue-600 text-white text-xs border border-blue-600 rounded-full px-2 py-2 cursor-pointer">
+                    <span className="font-medium mr-2">Sort by</span>
+                    <div className="relative">
+                      <select
+                        value={sortBy}
+                        onChange={(e) =>
+                          dispatch(setSortBy(e.target.value as SortOption))
+                        }
+                        className="bg-blue-600 text-white text-xs border-none outline-none focus:ring-0 appearance-none pr-4 cursor-pointer hover:underline"
                       >
-                        Newest First
-                      </option>
-                      <option
-                        value="date_asc"
-                        className="bg-white text-neutral-900"
-                      >
-                        Oldest First
-                      </option>
-                      <option
-                        value="name_asc"
-                        className="bg-white text-neutral-900"
-                      >
-                        Name (A-Z)
-                      </option>
-                      <option
-                        value="name_desc"
-                        className="bg-white text-neutral-900"
-                      >
-                        Name (Z-A)
-                      </option>
-                    </select>
-                    <TiArrowSortedDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white pointer-events-none" />
+                        <option
+                          value="date_desc"
+                          className="bg-white text-neutral-900"
+                        >
+                          Newest First
+                        </option>
+                        <option
+                          value="date_asc"
+                          className="bg-white text-neutral-900"
+                        >
+                          Oldest First
+                        </option>
+                        <option
+                          value="name_asc"
+                          className="bg-white text-neutral-900"
+                        >
+                          Name (A-Z)
+                        </option>
+                        <option
+                          value="name_desc"
+                          className="bg-white text-neutral-900"
+                        >
+                          Name (Z-A)
+                        </option>
+                      </select>
+                      <TiArrowSortedDown className="absolute right-0 top-1/2 transform -translate-y-1/2 text-white pointer-events-none" />
+                    </div>
                   </div>
 
                   <div className="relative">
@@ -646,7 +646,7 @@ export default function CandidatesList({
                           })
                         )
                       }
-                      className="bg-transparent text-neutral-600 text-sm border border-neutral-300 rounded-full px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-400 transition-colors cursor-pointer appearance-none"
+                      className="bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer appearance-none"
                     >
                       <option value="All">App. Status</option>
                       <option value="accepted">Accepted</option>
@@ -654,7 +654,7 @@ export default function CandidatesList({
                       <option value="rejected">Rejected</option>
                       <option value="on hold">On Hold</option>
                     </select>
-                    <TiArrowSortedDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                    <TiArrowSortedDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
                   </div>
                 </div>
               )}
@@ -664,13 +664,13 @@ export default function CandidatesList({
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <select className="bg-transparent text-neutral-600 text-sm border border-neutral-300 rounded-full px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-400 transition-colors cursor-pointer appearance-none">
+                  <select className="bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer appearance-none">
                     <option>Years of Exp.</option>
                     <option>0-2</option>
                     <option>3-5</option>
                     <option>5+</option>
                   </select>
-                  <TiArrowSortedDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                  <TiArrowSortedDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
                 </div>
 
                 <div className="relative">
@@ -681,7 +681,7 @@ export default function CandidatesList({
                         setFilters({ ...filters, company: e.target.value })
                       )
                     }
-                    className="bg-transparent text-neutral-600 text-sm border border-neutral-300 rounded-full px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-400 transition-colors cursor-pointer appearance-none"
+                    className="bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer appearance-none"
                   >
                     <option value="">Company</option>
                     {Array.from(
@@ -696,16 +696,24 @@ export default function CandidatesList({
                       </option>
                     ))}
                   </select>
-                  <TiArrowSortedDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                  <TiArrowSortedDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
                 </div>
-              </div>
 
-              {showFilters && (
-                <button className="flex items-center gap-2 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-full border border-neutral-300 text-sm text-neutral-600 transition-colors">
-                  <CiFilter className="w-4 h-4" />
-                  All Filters
-                </button>
-              )}
+                {/* Separator */}
+                <div className="h-8 w-px bg-neutral-500" />
+
+                {showFilters && (
+                  <>
+                    <button className="flex items-center gap-2 px-4 py-2 bg-neutral-200 hover:bg-neutral-200 rounded-full text-xs font-medium text-neutral-600 transition-colors">
+                      <CiFilter className="w-4 h-4" />
+                      All Filters
+                    </button>
+                    <button className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-neutral-700">
+                      <FaPlus className="w-3 h-3" />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -744,7 +752,7 @@ export default function CandidatesList({
         candidatesDetailsOverlay={candidatesDetailsOverlay}
         setCandidatesDetailsOverlay={setCandidatesDetailsOverlay}
         onStatusUpdate={handleStatusUpdate}
-        onDelete= {handleDeleteCandidate}
+        onDelete={handleDeleteCandidate}
         calculateExperience={calculateExperience}
       />
     </>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { useRouter } from "next/navigation";
-import { GoPlus } from "react-icons/go";
+import { IoSearchSharp } from "react-icons/io5";
 import { HiOutlineArrowCircleLeft } from "react-icons/hi";
 import Link from "next/link";
 import CandidatesList from "@/components/candidates_list_component";
@@ -143,7 +143,7 @@ const CandidatesContent = ({
         collapsed ? "md:ml-20" : "md:ml-60"
       } pt-18`}
     >
-      <div className="w-full mx-auto px-0 md:px-4 py-6 md:py-4">
+      <div className="w-full mx-auto px-0 md:px-4 py-4 md:py-2">
         {/* Back Navigation and Title */}
         <div className="flex items-center gap-1 mb-2">
           <Link
@@ -182,7 +182,6 @@ const CandidatesContent = ({
               )} */}
             </div>
 
-            <div className="mt-2">
               <p className="text-sm text-neutral-500">
                 {isTAOnly
                   ? "Manage candidates for jobs you have access to."
@@ -196,10 +195,8 @@ const CandidatesContent = ({
                 </span>
                 <span>Role: {primaryRole}</span>
               </div> */}
-            </div>
           </div>
-
-          {/* Add Job Button - Show based on permissions */}
+          {/* Add Job Button - Show based on permissions
           {(hasFullAccess ||
             roles?.some(
               (role) =>
@@ -216,7 +213,22 @@ const CandidatesContent = ({
                 Add Job
               </button>
             </div>
-          )}
+          )} */}
+        </div>
+
+        {/* Search Bar */}
+        <div className="w-full md:w-125 mb-8">
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <IoSearchSharp className="w-5 h-5 text-neutral-500" />
+            </span>
+            <input
+              type="text"
+              placeholder="Search"
+              className="block w-full pl-10 pr-4 py-2 rounded-lg bg-neutral-200 text-neutral-700 text-sm font-medium placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
+              aria-label="Search candidates"
+            />
+          </div>
         </div>
 
         {/* Error Display */}

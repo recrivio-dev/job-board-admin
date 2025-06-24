@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BiHomeAlt } from "react-icons/bi";
 import { BsBriefcase } from "react-icons/bs";
-import { GoPeople, GoGear } from "react-icons/go";
+import { GoPeople, GoGear, GoPerson } from "react-icons/go";
 import { HiOutlineChatAlt2 } from "react-icons/hi";
 import { FiSidebar } from "react-icons/fi";
 import { MdMenu } from "react-icons/md";
@@ -84,6 +84,12 @@ export default function Sidebar() {
       <div className="mb-6 px-2">
         <SidebarLink
           collapsed={collapsed}
+          icon={<GoPerson className="w-5 h-5" />}
+          label="User Management"
+          to="/user-management"
+        />
+        <SidebarLink
+          collapsed={collapsed}
           icon={<GoGear className="w-5 h-5" />}
           label="Settings"
           to="/settings"
@@ -108,6 +114,7 @@ function SidebarLink({ icon, label, to, collapsed }: SidebarLinkProps) {
     (to === "/candidates" && pathname.startsWith("/candidates")) ||
     (to === "/inbox" && pathname.startsWith("/inbox")) ||
     (to === "/dashboard" && pathname.startsWith("/dashboard")) ||
+    (to === "/user-management" && pathname.startsWith("/user-management")) ||
     (to === "/settings" && pathname.startsWith("/settings"));
 
   return (
