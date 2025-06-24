@@ -15,7 +15,6 @@ import {
   selectCandidatesError,
   selectCandidatesLoading,
   selectUserContext,
-  selectHasFullAccess,
   selectIsTAOnly,
   UserContext,
 } from "@/store/features/candidatesSlice";
@@ -65,7 +64,6 @@ const CandidatesContent = ({
   collapsed: boolean;
 }) => {
   const dispatch = useAppDispatch();
-  const router = useRouter();
 
   // Candidates selectors
   const error = useAppSelector((state) =>

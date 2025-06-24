@@ -1,10 +1,9 @@
 import { GoPlus } from "react-icons/go";
 import { IoList } from "react-icons/io5";
 import { FaCaretDown } from "react-icons/fa";
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import { BiCheck } from 'react-icons/bi';
-import { IoClose } from 'react-icons/io5';
 
 // Loading skeleton component
 export const JobCardSkeleton: React.FC = () => (
@@ -100,12 +99,12 @@ export const FilterDropdown: React.FC<FilterDropdownProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
-  const handleOptionSelect = (selectedValue: string) => {
-    onChange(selectedValue);
-    onToggle();
-    setSearchTerm('');
-    setFocusedIndex(-1);
-  };
+const handleOptionSelect = useCallback((selectedValue: string) => {
+  onChange(selectedValue);
+  onToggle();
+  setSearchTerm('');
+  setFocusedIndex(-1);
+}, [onChange, onToggle]);
 
   // Filter options based on search term
   const filteredOptions = searchable
@@ -131,44 +130,45 @@ export const FilterDropdown: React.FC<FilterDropdownProps> = ({
   }, [isOpen, onToggle]);
 
   // Handle keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isOpen) return;
+useEffect(() => {
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (!isOpen) return;
 
-      switch (event.key) {
-        case 'ArrowDown':
-          event.preventDefault();
-          setFocusedIndex(prev => 
-            prev < filteredOptions.length - 1 ? prev + 1 : prev
-          );
-          break;
-        case 'ArrowUp':
-          event.preventDefault();
-          setFocusedIndex(prev => prev > -1 ? prev - 1 : prev);
-          break;
-        case 'Enter':
-          event.preventDefault();
-          if (focusedIndex === -1) {
-            // Clear selection
-            handleOptionSelect('');
-          } else if (focusedIndex >= 0 && focusedIndex < filteredOptions.length) {
-            handleOptionSelect(filteredOptions[focusedIndex]);
-          }
-          break;
-        case 'Escape':
-          event.preventDefault();
-          onToggle();
-          setSearchTerm('');
-          setFocusedIndex(-1);
-          break;
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        setFocusedIndex(prev =>
+          prev < filteredOptions.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setFocusedIndex(prev => prev > -1 ? prev - 1 : prev);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (focusedIndex === -1) {
+          // Clear selection
+          handleOptionSelect('');
+        } else if (focusedIndex >= 0 && focusedIndex < filteredOptions.length) {
+          handleOptionSelect(filteredOptions[focusedIndex]);
+        }
+        break;
+      case 'Escape':
+        event.preventDefault();
+        onToggle();
+        setSearchTerm('');
+        setFocusedIndex(-1);
+        break;
     }
-  }, [isOpen, filteredOptions, focusedIndex, handleOptionSelect, onToggle]);
+  };
+
+  if (isOpen) {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }
+}, [isOpen, filteredOptions, focusedIndex, handleOptionSelect, onToggle]);
+
 
   // Reset search and focus when dropdown closes
   useEffect(() => {
