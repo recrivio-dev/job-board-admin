@@ -77,9 +77,6 @@ const CandidatesContent = ({
   const userContext = useAppSelector((state) =>
     selectUserContext(state as RootState)
   );
-  const hasFullAccess = useAppSelector((state) =>
-    selectHasFullAccess(state as RootState)
-  );
   const isTAOnly = useAppSelector((state) =>
     selectIsTAOnly(state as RootState)
   );
@@ -132,10 +129,6 @@ const CandidatesContent = ({
       }
     };
   }, [dispatch, error]);
-
-  const handleAddJob = () => {
-    router.push("/jobs/add-job");
-  };
 
   return (
     <div

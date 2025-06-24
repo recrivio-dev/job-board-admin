@@ -201,15 +201,19 @@ interface FetchJobsRPCResponse {
 }
 
 // Type guard to check if the response is a valid RPC response
-const isFetchJobsRPCResponse = (data: any): data is FetchJobsRPCResponse => {
+const isFetchJobsRPCResponse = (data: unknown): data is FetchJobsRPCResponse => {
+  if (!data || typeof data !== 'object' || data === null) {
+    return false;
+  }
+
+  const obj = data as Record<string, unknown>;
+
   return (
-    data &&
-    typeof data === 'object' &&
-    typeof data.success === 'boolean' &&
-    typeof data.total_count === 'number' &&
-    typeof data.current_page === 'number' &&
-    typeof data.total_pages === 'number' &&
-    Array.isArray(data.jobs)
+    typeof obj.success === 'boolean' &&
+    typeof obj.total_count === 'number' &&
+    typeof obj.current_page === 'number' &&
+    typeof obj.total_pages === 'number' &&
+    Array.isArray(obj.jobs)
   );
 };
 
@@ -292,17 +296,22 @@ export const fetchJobs = createAsyncThunk(
   }
 );
 
-const isFilterOptionsRPCResponse = (data: any): data is FilterOptionsResponse => {
+const isFilterOptionsRPCResponse = (data: unknown): data is FilterOptionsResponse => {
+  if (typeof data !== 'object' || data === null) {
+    return false;
+  }
+
+  const obj = data as Record<string, unknown>;
+
   return (
-    typeof data === 'object' &&
-    data !== null &&
-    'companies' in data &&
-    'locations' in data &&
-    'success' in data &&
-    Array.isArray(data.companies) &&
-    Array.isArray(data.locations)
+    'companies' in obj &&
+    'locations' in obj &&
+    'success' in obj &&
+    Array.isArray(obj.companies) &&
+    Array.isArray(obj.locations)
   );
 };
+
 // Combined thunk for fetching both companies and locations
 export const fetchFilterOptions = createAsyncThunk(
   "jobs/fetchFilterOptions",
@@ -890,10 +899,8 @@ const jobSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(createJob.fulfilled, (state, action) => {
+      .addCase(createJob.fulfilled, (state) => {
         state.loading = false;
-        // Only add to current view if it matches current filters
-        // For simplicity, we'll just refresh the job list after creation
         state.error = null;
       })
       .addCase(createJob.rejected, (state, action) => {
@@ -1056,11 +1063,11 @@ const jobSlice = createSlice({
       })
 
       // Apply Filters cases
-      .addCase(applyFilters.pending, (state) => {
+      .addCase(applyFilters.pending, () => {
         // Don't set main loading to true for filter applications
         // This prevents UI flicker
       })
-      .addCase(applyFilters.fulfilled, (state) => {
+      .addCase(applyFilters.fulfilled, () => {
         // Filter application completed successfully
         // The actual job data update is handled by fetchJobs.fulfilled
       })

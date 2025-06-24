@@ -16,7 +16,6 @@ import {
   selectJobsError,
   selectFilterOptions,
   selectFilterOptionsLoading,
-  updatePaginationInfo,
   selectJobViewMode,
   selectJobFilters,
   setViewMode,
@@ -55,7 +54,7 @@ export interface JobFilters {
   accessibleOnly?: boolean;
 }
 
-function debounce<T extends (...args: any[]) => any>(
+function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -151,7 +150,7 @@ const [filterDropdowns, setFilterDropdowns] = useState<FilterState>({
     };
 
     initializeData();
-  }, [dispatch, userRole, userId, organizationId, initState.initialized, isValidProps]);
+  }, [dispatch, userRole, userId, organizationId, initState.initialized, isValidProps, pagination.pageSize]);
 
 
   // Optimized handlers with better error handling
@@ -174,44 +173,44 @@ const [filterDropdowns, setFilterDropdowns] = useState<FilterState>({
     [dispatch]
   );
 
-  const handleFilterChange = useCallback(
-    debounce(async (filterType: string, value: string) => {
-      if (!isValidProps) return;
+const handleFilterChange = useMemo(
+  () => debounce(async (filterType: string, value: string) => {
+    if (!isValidProps) return;
 
-      try {
-        const newFilters = {
-          ...filters,
-          [filterType]: value || undefined,
-        };
+    try {
+      const newFilters = {
+        ...filters,
+        [filterType]: value || undefined,
+      };
 
-        // Remove undefined values
-        Object.keys(newFilters).forEach(key => {
-          if (newFilters[key as keyof JobFilters] === undefined) {
-            delete newFilters[key as keyof JobFilters];
-          }
-        });
+      // Remove undefined values
+      Object.keys(newFilters).forEach(key => {
+        if (newFilters[key as keyof JobFilters] === undefined) {
+          delete newFilters[key as keyof JobFilters];
+        }
+      });
 
-        // Apply filters with server-side filtering
-        await dispatch(applyFilters({
-          filters: newFilters,
-          userRole: userRole!,
-          userId: userId!,
-          organizationId: organizationId!,
-          page: 1, // Reset to first page on filter change
-        })).unwrap();
+      // Apply filters with server-side filtering
+      await dispatch(applyFilters({
+        filters: newFilters,
+        userRole: userRole!,
+        userId: userId!,
+        organizationId: organizationId!,
+        page: 1, // Reset to first page on filter change
+      })).unwrap();
 
-        // Update local dropdown state
-        setFilterDropdowns((prev) => ({
-          ...prev,
-          [filterType]: value,
-          isOpen: false,
-        }));
-      } catch (err) {
-        console.error("Failed to apply filter:", err);
-      }
-    }, 300), // 300ms debounce
-    [dispatch, filters, userRole, userId, organizationId, isValidProps]
-  );
+      // Update local dropdown state
+      setFilterDropdowns((prev) => ({
+        ...prev,
+        [filterType]: value,
+        isOpen: false,
+      }));
+    } catch (err) {
+      console.error("Failed to apply filter:", err);
+    }
+  }, 300),
+  [dispatch, filters, userRole, userId, organizationId, isValidProps] // Dependencies
+);
 
   const handleRetry = useCallback(async () => {
     if (!isValidProps || !userRole || !userId || !organizationId) return;
@@ -273,13 +272,13 @@ const handlePageSizeChange = useCallback(
       };
       
       // Step 3: Fetch jobs
-      const result = await dispatch(fetchJobs(fetchJobsParams)).unwrap();
+      await dispatch(fetchJobs(fetchJobsParams)).unwrap();
       
     } catch (err) {
       console.error("Failed to change page size:", err);
     }
   },
-  [dispatch, filters, userRole, userId, organizationId, isValidProps, pagination] // Added pagination to deps
+  [dispatch, filters, userRole, userId, organizationId, isValidProps] // Added pagination to deps
 );
 
   const toggleFilterDropdown = useCallback(

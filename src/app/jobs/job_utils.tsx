@@ -100,6 +100,13 @@ export const FilterDropdown: React.FC<FilterDropdownProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
+  const handleOptionSelect = (selectedValue: string) => {
+    onChange(selectedValue);
+    onToggle();
+    setSearchTerm('');
+    setFocusedIndex(-1);
+  };
+
   // Filter options based on search term
   const filteredOptions = searchable
     ? options.filter(option =>
@@ -161,7 +168,7 @@ export const FilterDropdown: React.FC<FilterDropdownProps> = ({
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen, filteredOptions, focusedIndex]);
+  }, [isOpen, filteredOptions, focusedIndex, handleOptionSelect, onToggle]);
 
   // Reset search and focus when dropdown closes
   useEffect(() => {
@@ -170,18 +177,6 @@ export const FilterDropdown: React.FC<FilterDropdownProps> = ({
       setFocusedIndex(-1);
     }
   }, [isOpen]);
-
-  const handleOptionSelect = (selectedValue: string) => {
-    onChange(selectedValue);
-    onToggle();
-    setSearchTerm('');
-    setFocusedIndex(-1);
-  };
-
-  const handleClearSelection = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onChange('');
-  };
 
   // Get display text for the button
   const getDisplayText = () => {
