@@ -14,7 +14,6 @@ import {
   selectCandidatesError,
   selectCandidatesLoading,
   selectUserContext,
-  selectIsTAOnly,
   UserContext,
 } from "@/store/features/candidatesSlice";
 
@@ -65,18 +64,9 @@ const CandidatesContent = ({
   const dispatch = useAppDispatch();
 
   // Candidates selectors
-  const error = useAppSelector((state) =>
-    selectCandidatesError(state as RootState)
-  );
-  const loading = useAppSelector((state) =>
-    selectCandidatesLoading(state as RootState)
-  );
-  const userContext = useAppSelector((state) =>
-    selectUserContext(state as RootState)
-  );
-  const isTAOnly = useAppSelector((state) =>
-    selectIsTAOnly(state as RootState)
-  );
+  const error = useAppSelector(selectCandidatesError);
+  const loading = useAppSelector(selectCandidatesLoading);
+  const userContext = useAppSelector(selectUserContext);
 
   // Memoize user context to prevent unnecessary re-renders
   const memoizedUserContext = useMemo((): UserContext | null => {
@@ -86,16 +76,14 @@ const CandidatesContent = ({
       roles: roles,
     });
 
-    if (!user?.id || !organization?.id || !roles || roles.length === 0) {
+    if (!user?.id || !organization?.id || !roles) {
       return null;
     }
 
     return {
       userId: user.id,
       organizationId: organization.id,
-      roles: roles.map((role) =>
-        typeof role === "string" ? role : role?.role?.name || role.toString()
-      ),
+      roles: roles.map(role => role.role.name).join(', '),
     };
   }, [user?.id, organization?.id, roles]);
 
@@ -158,24 +146,10 @@ const CandidatesContent = ({
               <h1 className="text-xl font-semibold text-neutral-900">
                 All Candidates
               </h1>
-
-              {/* Role indicator badge */}
-              {/* {isTAOnly && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  TA Access
-                </span>
-              )}
-              {hasFullAccess && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Full Access
-                </span>
-              )} */}
             </div>
 
               <p className="text-sm text-neutral-500">
-                {isTAOnly
-                  ? "Manage candidates for jobs you have access to."
-                  : "Manage all candidates and their applications with ease."}
+                Manage all candidates and their applications with ease.
               </p>
 
               {/* Organization and role info */}
@@ -186,24 +160,6 @@ const CandidatesContent = ({
                 <span>Role: {primaryRole}</span>
               </div> */}
           </div>
-          {/* Add Job Button - Show based on permissions
-          {(hasFullAccess ||
-            roles?.some(
-              (role) =>
-                (typeof role === "string" ? role : role?.role?.name) === "admin"
-            )) && (
-            <div className="w-full hidden md:block md:w-auto mt-4 md:mt-0">
-              <button
-                type="button"
-                onClick={handleAddJob}
-                aria-label="Add Job"
-                className="bg-blue-600 w-full md:w-auto hover:bg-blue-700 text-white sm:font-medium sm:text-xl rounded-lg py-2 transition-colors cursor-pointer px-5 flex items-center justify-center md:justify-start gap-2"
-              >
-                <GoPlus className="h-8 w-8" />
-                Add Job
-              </button>
-            </div>
-          )} */}
         </div>
 
         {/* Search Bar */}
@@ -266,42 +222,11 @@ const CandidatesContent = ({
           </div>
         )}
 
-        {/* Access Control Info for TA users */}
-        {/* {isTAOnly && !loading && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-amber-400 mt-0.5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-amber-800">
-                  Limited Access
-                </h3>
-                <p className="text-sm text-amber-700 mt-1">
-                  You can only view and manage candidates for jobs you have been
-                  granted access to.
-                </p>
-              </div>
-            </div>
-          </div>
-        )} */}
-
         {/* Candidates List Component */}
         <CandidatesList
-          showHeader={false} // We're showing our own header above
+          showHeader={false}
           showFilters={true}
           showSorting={true}
-          // Removed maxItems to enable pagination
         />
       </div>
     </div>

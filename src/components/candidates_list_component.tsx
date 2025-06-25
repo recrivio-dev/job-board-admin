@@ -1,41 +1,69 @@
 "use client";
 
-import { useMemo, useEffect, useRef, useState, memo } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { CiFilter } from "react-icons/ci";
 import {
   fetchJobApplicationsWithAccess,
   updateApplicationStatusWithAccess,
-  setFilters,
-  setSortBy,
+  fetchFilterOptions,
   selectCandidatesLoading,
   selectCandidatesError,
   selectFilters,
-  selectSortBy,
   selectUserContext,
-  selectFilteredCandidatesWithAccess,
-  selectPaginatedCandidatesWithAccess,
+  setPageSize,
+  setFilters,
   selectPagination,
   setCurrentPage,
+  selectFilterOptions,
   setCandidatesPerPage,
-  updatePaginationInfo,
   CandidateWithApplication,
-  SortOption,
-  CandidateFilters,
   deleteCandidateApplication,
 } from "@/store/features/candidatesSlice";
-import type { AppDispatch } from "@/store/store";
 import { TiArrowSortedDown } from "react-icons/ti";
 import GlobalStickyTable from "@/components/GlobalStickyTable";
-import CandidatesDetailsOverlay from "./candidates-details-overlay"; // Import the overlay component
+import CandidatesDetailsOverlay from "./candidates-details-overlay";
 import Pagination from "./pagination";
 import { FaPlus } from "react-icons/fa";
+
+interface InitializationState {
+  initialized: boolean;
+  error: string | null;
+}
+
+// Improved debounce function with proper typing and cleanup
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  
+  const debouncedFunction = (...args: Parameters<T>) => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    timeout = setTimeout(() => {
+      timeout = null;
+      func(...args);
+    }, wait);
+  };
+
+  // Add cleanup method
+  debouncedFunction.cancel = () => {
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+  };
+
+  return debouncedFunction;
+}
+
 // Types for component props
 interface CandidatesListProps {
   showHeader?: boolean;
   showFilters?: boolean;
   showSorting?: boolean;
-  maxItems?: number;
   className?: string;
   jobId?: string | null;
   onCandidateClick?: (candidate: CandidateWithApplication) => void;
@@ -118,110 +146,23 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// Memoize the filter select component
-const FilterSelect = memo(
-  ({
-    value,
-    onChange,
-    options,
-    placeholder,
-    className = "",
-  }: {
-    value: string;
-    onChange: (value: string) => void;
-    options: string[];
-    placeholder: string;
-    className?: string;
-  }) => (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`bg-transparent text-neutral-600 text-sm border border-neutral-300 rounded-full px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-400 transition-colors cursor-pointer appearance-none ${className}`}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <TiArrowSortedDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
-    </div>
-  )
-);
-
-FilterSelect.displayName = "FilterSelect";
-
-// Memoize the filters section component
-const FiltersSection = memo(
-  ({
-    filters,
-    filteredCandidates,
-    dispatch,
-  }: {
-    filters: CandidateFilters;
-    filteredCandidates: CandidateWithApplication[];
-    dispatch: AppDispatch;
-  }) => {
-    const companyOptions = useMemo(
-      () =>
-        Array.from(
-          new Set(filteredCandidates.map((c) => c.company_name).filter(Boolean))
-        ),
-      [filteredCandidates]
-    );
-
-    return (
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <FilterSelect
-            value={filters.company ?? ""}
-            onChange={(value) =>
-              dispatch(setFilters({ ...filters, company: value }))
-            }
-            options={companyOptions.filter(
-              (option): option is string => option !== null
-            )}
-            placeholder="Company"
-          />
-
-          <FilterSelect
-            value=""
-            onChange={() => {}}
-            options={["0-2", "3-5", "5+"]}
-            placeholder="Years of Exp."
-          />
-        </div>
-      </div>
-    );
-  }
-);
-
-FiltersSection.displayName = "FiltersSection";
-
 export default function CandidatesList({
   showHeader = true,
   showFilters = true,
   showSorting = true,
-  maxItems,
   className = "",
-  jobId,
   onCandidateClick,
 }: CandidatesListProps) {
   const dispatch = useAppDispatch();
 
   // Redux selectors
-  const filteredCandidates = useAppSelector(selectFilteredCandidatesWithAccess);
-  const paginatedCandidates = useAppSelector(
-    selectPaginatedCandidatesWithAccess
-  );
   const pagination = useAppSelector(selectPagination);
   const loading = useAppSelector(selectCandidatesLoading);
   const error = useAppSelector(selectCandidatesError);
   const filters = useAppSelector(selectFilters);
-  const sortBy = useAppSelector(selectSortBy);
   const userContext = useAppSelector(selectUserContext);
+  const filterOptions = useAppSelector(selectFilterOptions);
+  const candidates = useAppSelector(state => state.candidates.candidates) || [];
 
   // Local state for overlay
   const [candidatesDetailsOverlay, setCandidatesDetailsOverlay] = useState<{
@@ -232,78 +173,206 @@ export default function CandidatesList({
     show: false,
   });
 
-  // Get candidates to display with jobId filtering
-  const candidatesToDisplay = useMemo(() => {
-    // If maxItems is specified, we use the filtered candidates without pagination
-    if (maxItems && maxItems > 0) {
-      let candidatesSource = filteredCandidates;
-      if (jobId) {
-        candidatesSource = candidatesSource.filter((c) => c.job_id === jobId);
+  // Local state
+  const [initState, setInitState] = useState<InitializationState>({
+    initialized: false,
+    error: null,
+  });
+
+  // Refs for cleanup
+  const debouncedFetchRef = useRef<any>(null);
+
+  useEffect(() => {
+    const initializeData = async () => {
+      if (initState.initialized || !userContext) return;
+
+      try {
+        setInitState((prev) => ({ ...prev, error: null }));
+
+        // Fetch filter options first (they're cached, so this is efficient)
+        await dispatch(fetchFilterOptions({
+          userContext,
+        })).unwrap();
+
+        // Then fetch candidates
+        console.log("Fetching job applications with access...");
+        await dispatch(fetchJobApplicationsWithAccess({
+          page: 1,
+          limit: 50,
+          userContext,
+        })).unwrap();
+
+        setInitState({ initialized: true, error: null });
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to load data";
+        console.error("Failed to initialize:", err);
+        setInitState({ initialized: true, error: errorMessage });
       }
-      return candidatesSource.slice(0, maxItems);
+    };
+
+    initializeData();
+  }, [dispatch, userContext, initState.initialized]);
+
+  // Improved experience range parsing with validation
+  const parseExperienceRange = useCallback((experienceValue: string) => {
+    if (!experienceValue || experienceValue === "") {
+      return { min: undefined, max: undefined };
     }
 
-    // Otherwise, use paginated candidates
-    let candidatesSource = paginatedCandidates;
-    if (jobId) {
-      candidatesSource = candidatesSource.filter((c) => c.job_id === jobId);
-    }
-    return candidatesSource;
-  }, [filteredCandidates, paginatedCandidates, jobId, maxItems]);
+    const ranges: Record<string, { min?: number; max?: number }> = {
+      '0-2': { min: 0, max: 2 },
+      '3-5': { min: 3, max: 5 },
+      '6-8': { min: 6, max: 8 },
+      '9+': { min: 9, max: undefined }
+    };
+    
+    return ranges[experienceValue] || { min: undefined, max: undefined };
+  }, []);
 
-  // Update pagination info when filtered candidates change
+  // Get current experience range display value
+  const getCurrentExperienceValue = useCallback(() => {
+    const { minExperience, maxExperience } = filters;
+    
+    if (minExperience === undefined && maxExperience === undefined) {
+      return "";
+    }
+    
+    // Find matching range
+    if (minExperience === 0 && maxExperience === 2) return "0-2";
+    if (minExperience === 3 && maxExperience === 5) return "3-5";
+    if (minExperience === 6 && maxExperience === 8) return "6-8";
+    if (minExperience === 9 && maxExperience === undefined) return "9+";
+    
+    return "";
+  }, [filters.minExperience, filters.maxExperience]);
+
+  // Improved sort value getter
+  const getCurrentSortValue = useCallback(() => {
+    const { sortBy, sortOrder } = filters;
+    
+    if (!sortBy || !sortOrder) {
+      return "date_desc"; // default
+    }
+    
+    // Map current sort state back to select value
+    if (sortBy === 'applied_date' && sortOrder === 'desc') return 'date_desc';
+    if (sortBy === 'applied_date' && sortOrder === 'asc') return 'date_asc';
+    if (sortBy === 'name' && sortOrder === 'asc') return 'name_asc';
+    if (sortBy === 'name' && sortOrder === 'desc') return 'name_desc';
+    
+    return "date_desc"; // fallback
+  }, [filters.sortBy, filters.sortOrder]);
+
+  // Create a stable debounced function
+  const debouncedFetch = useMemo(() => {
+    const fetchWithFilters = async (newFilters: any) => {
+      if (!userContext) {
+        console.error("User context not available for filtering");
+        return;
+      }
+
+      try {
+        // Clean filters - remove undefined/null values
+        const cleanFilters = Object.entries(newFilters).reduce((acc, [key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            acc[key] = value;
+          }
+          return acc;
+        }, {} as any);
+
+        await dispatch(fetchJobApplicationsWithAccess({
+          filters: cleanFilters,
+          userContext,
+          page: 1, // Reset to first page when filtering
+        })).unwrap();
+
+        // Reset pagination to first page
+        dispatch(setCurrentPage(1));
+        
+      } catch (err) {
+        console.error("Failed to apply filter:", err);
+      }
+    };
+
+    return debounce(fetchWithFilters, 300);
+  }, [dispatch, userContext]);
+
+  // Store ref for cleanup
   useEffect(() => {
-    if (filteredCandidates.length > 0 || !loading) {
-      dispatch(
-        updatePaginationInfo({
-          totalCandidates: filteredCandidates.length,
-          candidatesPerPage: pagination.candidatesPerPage,
-        })
-      );
+    debouncedFetchRef.current = debouncedFetch;
+    return () => {
+      if (debouncedFetchRef.current?.cancel) {
+        debouncedFetchRef.current.cancel();
+      }
+    };
+  }, [debouncedFetch]);
+
+  // Improved filter change handler
+  const handleFilterChange = useCallback((filterType: string, value: string) => {
+    try {
+      const currentFilters = { ...filters };
+      let newFilters = { ...currentFilters };
+
+      // Handle different filter types
+      switch (filterType) {
+        case "experience":
+          const { min, max } = parseExperienceRange(value);
+          newFilters.minExperience = min;
+          newFilters.maxExperience = max;
+          break;
+
+        case "sortBy":
+          const sortMappings: Record<string, { 
+            sortBy: "name" | "application_status" | "experience_years" | "company_name" | "applied_date" | "created_at" | "updated_at" | "current_ctc" | "expected_ctc"; 
+            sortOrder: 'asc' | 'desc' 
+          }> = {
+            'date_desc': { sortBy: 'applied_date', sortOrder: 'desc' },
+            'date_asc': { sortBy: 'applied_date', sortOrder: 'asc' },
+            'name_asc': { sortBy: 'name', sortOrder: 'asc' },
+            'name_desc': { sortBy: 'name', sortOrder: 'desc' }
+          };
+
+          const sortOption = sortMappings[value];
+          if (sortOption) {
+            newFilters.sortBy = sortOption.sortBy;
+            newFilters.sortOrder = sortOption.sortOrder;
+          }
+          break;
+
+        case "status":
+          newFilters.status = value || undefined;
+          break;
+
+        case "companyName":
+          newFilters.companyName = value || undefined;
+          break;
+
+        default:
+          // Handle any other filter types
+          (newFilters as any)[filterType] = value || undefined;
+          break;
+      }
+
+      // Update Redux state first (immediate UI feedback)
+      dispatch(setFilters(newFilters));
+
+      // Then trigger debounced API call
+      debouncedFetch(newFilters);
+
+    } catch (err) {
+      console.error("Failed to handle filter change:", err);
     }
-  }, [
-    filteredCandidates.length,
-    pagination.candidatesPerPage,
-    dispatch,
-    loading,
-  ]);
+  }, [filters, dispatch, parseExperienceRange, debouncedFetch]);
 
-  // Prevent infinite fetch loop
-  const hasFetched = useRef(false);
-
-  useEffect(() => {
-    if (
-      userContext &&
-      !loading &&
-      !hasFetched.current &&
-      candidatesToDisplay.length === 0 &&
-      !error
-    ) {
-      hasFetched.current = true;
-      dispatch(
-        fetchJobApplicationsWithAccess({
-          filters,
-          userContext: userContext,
-        })
-      );
-    }
-  }, [
-    userContext,
-    loading,
-    candidatesToDisplay.length,
-    error,
-    dispatch,
-    filters,
-  ]);
-
-  // Handlers
+  // Handle status updates 
   const handleStatusUpdate = async (applicationId: string, status: string) => {
     if (!userContext) {
       console.log("User context not available");
       return;
     }
 
-    //confirm status change
+    // Confirm status change
     const confirmed = window.confirm(
       `Are you sure you want to change the status to "${status}"?`
     );
@@ -407,13 +476,50 @@ export default function CandidatesList({
   };
 
   // Pagination handlers
-  const handlePageChange = (page: number) => {
-    dispatch(setCurrentPage(page));
-  };
+  const handlePageChange = useCallback(
+    (page: number) => {
+      if (!userContext) {
+        console.error("User context not available for pagination");
+        return;
+      }
+      dispatch(fetchJobApplicationsWithAccess({
+        page,
+        limit: pagination.candidatesPerPage,
+        filters,
+        userContext,
+      }));
+    },
+    [dispatch, pagination.candidatesPerPage, filters, userContext]
+  );
+  
 
-  const handleItemsPerPageChange = (itemsPerPage: number) => {
-    dispatch(setCandidatesPerPage(itemsPerPage));
-  };
+  const handlePageSizeChange = useCallback(
+    async (pageSize: number) => {
+      if (!userContext) {
+        console.error("User context not available for page size change");
+        return;
+      }
+      try {
+        // Step 1: Update page size in Redux
+        dispatch(setPageSize(pageSize));
+        
+        // Step 2: Log what we're about to send to fetchJobs
+        const fetchJobsParams = {
+          page: 1,
+          limit: pageSize, // This should be the new pageSize
+          filters,
+          userContext,
+        };
+        
+        // Step 3: Fetch jobs
+        await dispatch(fetchJobApplicationsWithAccess(fetchJobsParams)).unwrap();
+        
+      } catch (err) {
+        console.error("Failed to change page size:", err);
+      }
+    },
+    [dispatch, filters, userContext] // Fixed dependency array
+  );
 
   const generateShortId = (applicationId: string) => {
     // Generate a shorter, more readable ID from the application ID
@@ -594,16 +700,14 @@ export default function CandidatesList({
                   <div className="flex items-center bg-blue-600 text-white text-xs border border-blue-600 rounded-full px-2 py-2 cursor-pointer">
                     <span className="font-medium mr-2">Sort by</span>
                     <div className="relative">
-                      <select
-                        value={sortBy}
-                        onChange={(e) =>
-                          dispatch(setSortBy(e.target.value as SortOption))
-                        }
+                      <select 
+                        value={getCurrentSortValue()}
+                        onChange={(e) => handleFilterChange("sortBy", e.target.value)}
                         className="bg-blue-600 text-white text-xs border-none outline-none focus:ring-0 appearance-none pr-4 cursor-pointer hover:underline"
                       >
                         <option
                           value="date_desc"
-                          className="bg-white text-neutral-900"
+                          className="bg-white text-neutral-900" 
                         >
                           Newest First
                         </option>
@@ -632,27 +736,14 @@ export default function CandidatesList({
 
                   <div className="relative">
                     <select
-                      value={filters.status}
-                      onChange={(e) =>
-                        dispatch(
-                          setFilters({
-                            ...filters,
-                            status: e.target.value as
-                              | "accepted"
-                              | "rejected"
-                              | "pending"
-                              | "on hold"
-                              | "All",
-                          })
-                        )
-                      }
+                      value={filters.status || ""}
+                      onChange={(e) => handleFilterChange("status", e.target.value)}
                       className="bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer appearance-none"
                     >
-                      <option value="All">App. Status</option>
+                      <option value="">App. Status</option>
                       <option value="accepted">Accepted</option>
                       <option value="pending">Pending</option>
                       <option value="rejected">Rejected</option>
-                      <option value="on hold">On Hold</option>
                     </select>
                     <TiArrowSortedDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
                   </div>
@@ -664,35 +755,30 @@ export default function CandidatesList({
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <select className="bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer appearance-none">
-                    <option>Years of Exp.</option>
-                    <option>0-2</option>
-                    <option>3-5</option>
-                    <option>5+</option>
+                  <select 
+                    className="bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer appearance-none"
+                    value={getCurrentExperienceValue()}
+                    onChange={(e) => handleFilterChange("experience", e.target.value)}
+                  >
+                    <option value="">Years of Exp.</option>
+                    <option value="0-2">0-2</option>
+                    <option value="3-5">3-5</option>
+                    <option value="6-8">6-8</option>
+                    <option value="9+">9+</option>
                   </select>
                   <TiArrowSortedDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
                 </div>
 
                 <div className="relative">
                   <select
-                    value={filters.company ?? ""}
-                    onChange={(e) =>
-                      dispatch(
-                        setFilters({ ...filters, company: e.target.value })
-                      )
-                    }
+                    value={filters.companyName || ""}
+                    onChange={(e) => handleFilterChange("companyName", e.target.value)}
                     className="bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer appearance-none"
                   >
                     <option value="">Company</option>
-                    {Array.from(
-                      new Set(
-                        filteredCandidates
-                          .map((c) => c.company_name)
-                          .filter(Boolean)
-                      )
-                    ).map((company) => (
-                      <option key={company} value={company ?? ""}>
-                        {company}
+                    {filterOptions.companies?.map((company, index) => (
+                      <option key={index} value={company.value}>
+                        {company.value}
                       </option>
                     ))}
                   </select>
@@ -720,26 +806,26 @@ export default function CandidatesList({
 
         {/* Loading State */}
         {loading && <LoadingSpinner />}
-
+        
         {/* Table */}
         {!loading && (
           <GlobalStickyTable
             columns={columns}
-            data={candidatesToDisplay}
+            data={candidates}
             stickyFirst
             stickyLastTwo
           />
         )}
 
         {/* Pagination - Only show if not using maxItems limit */}
-        {!loading && !maxItems && candidatesToDisplay.length > 0 && (
+        {!loading && (
           <Pagination
             currentPage={pagination.currentPage}
             totalPages={pagination.totalPages}
             totalItems={pagination.totalCandidates}
             itemsPerPage={pagination.candidatesPerPage}
             onPageChange={handlePageChange}
-            onItemsPerPageChange={handleItemsPerPageChange}
+            onItemsPerPageChange={handlePageSizeChange}
             showItemsPerPage={true}
             itemsPerPageOptions={[10, 20, 50, 100]}
             className="mt-6"

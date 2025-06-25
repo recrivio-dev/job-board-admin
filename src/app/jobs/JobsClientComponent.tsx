@@ -83,8 +83,7 @@ export default function JobsClientComponent({
   const router = useRouter();
   // Redux selectors
   const collapsed = useAppSelector((state: RootState) => state.ui.sidebar.collapsed);
-  // const jobs = useAppSelector(selectJobs);
-  const paginatedJobs = useAppSelector(selectJobs);
+  const jobs = useAppSelector(selectJobs);
   const pagination = useAppSelector(selectJobPagination);
   const loading = useAppSelector(selectJobsLoading);
   const error = useAppSelector(selectJobsError);
@@ -248,7 +247,6 @@ const handleFilterChange = useMemo(
   [dispatch, pagination.pageSize, filters, userRole, userId, organizationId]
 );
 
-// Let's add comprehensive debugging to understand the exact flow
 
 const handlePageSizeChange = useCallback(
   async (pageSize: number) => {
@@ -306,9 +304,8 @@ const handlePageSizeChange = useCallback(
   // }, [dispatch]);
 
   // Optimized job transformations - now using paginated jobs
-  
   const transformedJobs = useMemo(() => {
-    const forCards = paginatedJobs.map((job) => ({
+    const forCards = jobs.map((job) => ({
       id: job.id,
       title: job.title,
       company_name: job.company_name ?? "",
@@ -318,7 +315,7 @@ const handlePageSizeChange = useCallback(
       company_logo_url: job.company_logo_url || "/demo.png",
     }));
 
-    const forList = paginatedJobs.map((job) => ({
+    const forList = jobs.map((job) => ({
       job_id: job.id,
       job_title: job.title,
       company_name: job.company_name || "",
@@ -342,7 +339,7 @@ const handlePageSizeChange = useCallback(
     }));
 
     return { forCards, forList };
-  }, [paginatedJobs]);
+  }, [jobs]);
 
   // Enhanced loading component
   const LoadingView = () => (
