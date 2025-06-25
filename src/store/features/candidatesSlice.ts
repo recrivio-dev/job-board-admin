@@ -15,6 +15,50 @@ export type Job = Tables<"jobs">;
 export type Education = Tables<"education">;
 export type Experience = Tables<"experience">;
 
+// First, define the type for the raw candidate data from the database function
+interface RawCandidateData {
+  application_id: string;
+  applied_date: string;
+  application_status: string;
+  created_at: string;
+  updated_at: string;
+  candidate_id: string;
+  auth_id: string;
+  candidate_name: string;
+  candidate_email: string;
+  mobile_number: string;
+  address: string;
+  gender: string;
+  disability: boolean;
+  resume_link: string;
+  portfolio_url: string;
+  linkedin_url: string;
+  additional_doc_link: string;
+  current_ctc: number;
+  expected_ctc: number;
+  notice_period: string;
+  dob: string;
+  job_id: string;
+  job_title: string;
+  company_name: string;
+  job_location: string;
+  job_location_type: string;
+  job_type: string;
+  working_type: string;
+  min_experience_needed: number;
+  max_experience_needed: number;
+  min_salary: number;
+  max_salary: number;
+  company_logo_url: string;
+  job_description: string;
+  application_deadline: string;
+  job_status: string;
+  experience_years: number;
+  education: Education[];
+  experience: Experience[];
+  hasAccess: boolean;
+}
+
 export interface FilterOption {
   value: string;
   label: string;
@@ -38,7 +82,7 @@ export interface UserContext {
 }
 
 interface DatabaseFunctionResponse {
-  candidates: any[];
+  candidates: RawCandidateData[];
   total_count: number;
   current_page: number;
   total_pages: number;
@@ -98,8 +142,8 @@ export type CandidateWithApplication = {
   hasAccess?: boolean;
 };
 
-function isDatabaseFunctionResponse(data: any): data is DatabaseFunctionResponse {
-  return (
+function isDatabaseFunctionResponse(data: unknown): data is DatabaseFunctionResponse {
+  return !!(
     data &&
     typeof data === 'object' &&
     'success' in data &&
@@ -215,7 +259,7 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
       }
 
       // Transform the data from the function to match your expected format
-      const transformedCandidates: CandidateWithApplication[] = functionResponse.candidates.map((candidate: any) => ({
+      const transformedCandidates: CandidateWithApplication[] = (functionResponse.candidates as RawCandidateData[]).map((candidate: RawCandidateData) => ({
         // Application fields
         application_id: candidate.application_id,
         applied_date: candidate.applied_date,

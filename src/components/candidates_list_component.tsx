@@ -16,7 +16,6 @@ import {
   selectPagination,
   setCurrentPage,
   selectFilterOptions,
-  setCandidatesPerPage,
   CandidateWithApplication,
   deleteCandidateApplication,
 } from "@/store/features/candidatesSlice";
@@ -31,11 +30,11 @@ interface InitializationState {
   error: string | null;
 }
 
-// Improved debounce function with proper typing and cleanup
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
-): (...args: Parameters<T>) => void {
+): ((...args: Parameters<T>) => void) & { cancel: () => void } {
   let timeout: NodeJS.Timeout | null = null;
   
   const debouncedFunction = (...args: Parameters<T>) => {
@@ -47,7 +46,7 @@ function debounce<T extends (...args: any[]) => any>(
       func(...args);
     }, wait);
   };
-
+  
   // Add cleanup method
   debouncedFunction.cancel = () => {
     if (timeout) {
@@ -55,7 +54,7 @@ function debounce<T extends (...args: any[]) => any>(
       timeout = null;
     }
   };
-
+  
   return debouncedFunction;
 }
 
@@ -180,7 +179,7 @@ export default function CandidatesList({
   });
 
   // Refs for cleanup
-  const debouncedFetchRef = useRef<any>(null);
+const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void) & { cancel: () => void } | null>(null);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -231,72 +230,72 @@ export default function CandidatesList({
   }, []);
 
   // Get current experience range display value
-  const getCurrentExperienceValue = useCallback(() => {
-    const { minExperience, maxExperience } = filters;
-    
-    if (minExperience === undefined && maxExperience === undefined) {
-      return "";
-    }
-    
-    // Find matching range
-    if (minExperience === 0 && maxExperience === 2) return "0-2";
-    if (minExperience === 3 && maxExperience === 5) return "3-5";
-    if (minExperience === 6 && maxExperience === 8) return "6-8";
-    if (minExperience === 9 && maxExperience === undefined) return "9+";
-    
+const { minExperience, maxExperience } = filters;
+
+const getCurrentExperienceValue = useCallback(() => {
+  if (minExperience === undefined && maxExperience === undefined) {
     return "";
-  }, [filters.minExperience, filters.maxExperience]);
+  }
+  
+  // Find matching range
+  if (minExperience === 0 && maxExperience === 2) return "0-2";
+  if (minExperience === 3 && maxExperience === 5) return "3-5";
+  if (minExperience === 6 && maxExperience === 8) return "6-8";
+  if (minExperience === 9 && maxExperience === undefined) return "9+";
+  
+  return "";
+}, [minExperience, maxExperience]);
 
   // Improved sort value getter
-  const getCurrentSortValue = useCallback(() => {
-    const { sortBy, sortOrder } = filters;
-    
-    if (!sortBy || !sortOrder) {
-      return "date_desc"; // default
-    }
-    
-    // Map current sort state back to select value
-    if (sortBy === 'applied_date' && sortOrder === 'desc') return 'date_desc';
-    if (sortBy === 'applied_date' && sortOrder === 'asc') return 'date_asc';
-    if (sortBy === 'name' && sortOrder === 'asc') return 'name_asc';
-    if (sortBy === 'name' && sortOrder === 'desc') return 'name_desc';
-    
-    return "date_desc"; // fallback
-  }, [filters.sortBy, filters.sortOrder]);
+const { sortBy, sortOrder } = filters;
+
+const getCurrentSortValue = useCallback(() => {
+  if (!sortBy || !sortOrder) {
+    return "date_desc"; // default
+  }
+  
+  // Map current sort state back to select value
+  if (sortBy === 'applied_date' && sortOrder === 'desc') return 'date_desc';
+  if (sortBy === 'applied_date' && sortOrder === 'asc') return 'date_asc';
+  if (sortBy === 'name' && sortOrder === 'asc') return 'name_asc';
+  if (sortBy === 'name' && sortOrder === 'desc') return 'name_desc';
+  
+  return "date_desc"; // fallback
+}, [sortBy, sortOrder]);
 
   // Create a stable debounced function
-  const debouncedFetch = useMemo(() => {
-    const fetchWithFilters = async (newFilters: any) => {
-      if (!userContext) {
-        console.error("User context not available for filtering");
-        return;
-      }
+const debouncedFetch = useMemo(() => {
+  const fetchWithFilters = async (newFilters: Record<string, unknown>) => {
+    if (!userContext) {
+      console.error("User context not available for filtering");
+      return;
+    }
 
-      try {
-        // Clean filters - remove undefined/null values
-        const cleanFilters = Object.entries(newFilters).reduce((acc, [key, value]) => {
-          if (value !== undefined && value !== null && value !== "") {
-            acc[key] = value;
-          }
-          return acc;
-        }, {} as any);
+    try {
+      // Clean filters - remove undefined/null values
+      const cleanFilters = Object.entries(newFilters).reduce((acc, [key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Record<string, unknown>);
 
-        await dispatch(fetchJobApplicationsWithAccess({
-          filters: cleanFilters,
-          userContext,
-          page: 1, // Reset to first page when filtering
-        })).unwrap();
+      await dispatch(fetchJobApplicationsWithAccess({
+        filters: cleanFilters,
+        userContext,
+        page: 1, // Reset to first page when filtering
+      })).unwrap();
 
-        // Reset pagination to first page
-        dispatch(setCurrentPage(1));
-        
-      } catch (err) {
-        console.error("Failed to apply filter:", err);
-      }
-    };
+      // Reset pagination to first page
+      dispatch(setCurrentPage(1));
+            
+    } catch (err) {
+      console.error("Failed to apply filter:", err);
+    }
+  };
 
-    return debounce(fetchWithFilters, 300);
-  }, [dispatch, userContext]);
+  return debounce(fetchWithFilters, 300);
+}, [dispatch, userContext]);
 
   // Store ref for cleanup
   useEffect(() => {
@@ -308,62 +307,67 @@ export default function CandidatesList({
     };
   }, [debouncedFetch]);
 
-  // Improved filter change handler
-  const handleFilterChange = useCallback((filterType: string, value: string) => {
-    try {
-      const currentFilters = { ...filters };
-      let newFilters = { ...currentFilters };
+// Improved filter change handler with proper TypeScript
+const handleFilterChange = useCallback((filterType: string, value: string) => {
+  try {
+    const currentFilters = { ...filters };
+    const newFilters = { ...currentFilters };
 
-      // Handle different filter types
-      switch (filterType) {
-        case "experience":
-          const { min, max } = parseExperienceRange(value);
-          newFilters.minExperience = min;
-          newFilters.maxExperience = max;
-          break;
+    // Handle different filter types
+    switch (filterType) {
+      case "experience":
+        const { min, max } = parseExperienceRange(value);
+        newFilters.minExperience = min;
+        newFilters.maxExperience = max;
+        break;
 
-        case "sortBy":
-          const sortMappings: Record<string, { 
-            sortBy: "name" | "application_status" | "experience_years" | "company_name" | "applied_date" | "created_at" | "updated_at" | "current_ctc" | "expected_ctc"; 
-            sortOrder: 'asc' | 'desc' 
-          }> = {
-            'date_desc': { sortBy: 'applied_date', sortOrder: 'desc' },
-            'date_asc': { sortBy: 'applied_date', sortOrder: 'asc' },
-            'name_asc': { sortBy: 'name', sortOrder: 'asc' },
-            'name_desc': { sortBy: 'name', sortOrder: 'desc' }
-          };
+      case "sortBy":
+        const sortMappings: Record<string, {
+          sortBy: "name" | "application_status" | "experience_years" | "company_name" | "applied_date" | "created_at" | "updated_at" | "current_ctc" | "expected_ctc";
+          sortOrder: 'asc' | 'desc'
+        }> = {
+          'date_desc': { sortBy: 'applied_date', sortOrder: 'desc' },
+          'date_asc': { sortBy: 'applied_date', sortOrder: 'asc' },
+          'name_asc': { sortBy: 'name', sortOrder: 'asc' },
+          'name_desc': { sortBy: 'name', sortOrder: 'desc' }
+        };
 
-          const sortOption = sortMappings[value];
-          if (sortOption) {
-            newFilters.sortBy = sortOption.sortBy;
-            newFilters.sortOrder = sortOption.sortOrder;
-          }
-          break;
+        const sortOption = sortMappings[value];
+        if (sortOption) {
+          newFilters.sortBy = sortOption.sortBy;
+          newFilters.sortOrder = sortOption.sortOrder;
+        }
+        break;
 
-        case "status":
-          newFilters.status = value || undefined;
-          break;
+      case "status":
+        newFilters.status = value || undefined;
+        break;
 
-        case "companyName":
-          newFilters.companyName = value || undefined;
-          break;
+      case "companyName":
+        newFilters.companyName = value || undefined;
+        break;
 
-        default:
-          // Handle any other filter types
-          (newFilters as any)[filterType] = value || undefined;
-          break;
-      }
-
-      // Update Redux state first (immediate UI feedback)
-      dispatch(setFilters(newFilters));
-
-      // Then trigger debounced API call
-      debouncedFetch(newFilters);
-
-    } catch (err) {
-      console.error("Failed to handle filter change:", err);
+      default:
+        // Handle other filter types with proper typing
+        if (filterType in newFilters) {
+          // Type assertion with proper check
+          (newFilters as Record<string, string | undefined>)[filterType] = value || undefined;
+        } else {
+          console.warn(`Unknown filter type: ${filterType}`);
+        }
+        break;
     }
-  }, [filters, dispatch, parseExperienceRange, debouncedFetch]);
+
+    // Update Redux state first (immediate UI feedback)
+    dispatch(setFilters(newFilters));
+
+    // Then trigger debounced API call
+    debouncedFetch(newFilters);
+
+  } catch (err) {
+    console.error("Failed to handle filter change:", err);
+  }
+}, [filters, dispatch, parseExperienceRange, debouncedFetch]);
 
   // Handle status updates 
   const handleStatusUpdate = async (applicationId: string, status: string) => {
