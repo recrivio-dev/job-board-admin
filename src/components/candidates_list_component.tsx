@@ -150,6 +150,7 @@ export default function CandidatesList({
   showFilters = true,
   showSorting = true,
   className = "",
+  jobId = null,
   onCandidateClick,
 }: CandidatesListProps) {
   const dispatch = useAppDispatch();
@@ -199,6 +200,9 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
           page: 1,
           limit: 50,
           userContext,
+          filters: {
+            jobId: jobId || undefined, // Ensure jobId is handled correctly
+          },
         })).unwrap();
 
         setInitState({ initialized: true, error: null });
@@ -211,7 +215,7 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
     };
 
     initializeData();
-  }, [dispatch, userContext, initState.initialized]);
+  }, [dispatch, userContext, initState.initialized, jobId]);
 
   // Improved experience range parsing with validation
   const parseExperienceRange = useCallback((experienceValue: string) => {
@@ -313,6 +317,11 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
     const currentFilters = { ...filters };
     const newFilters = { ...currentFilters };
 
+    //if the jobId is provided, always include it in the filters
+    if (jobId) {
+      newFilters.jobId = jobId;
+    }
+
     // Handle different filter types
     switch (filterType) {
       case "experience":
@@ -367,7 +376,7 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
   } catch (err) {
     console.error("Failed to handle filter change:", err);
   }
-}, [filters, dispatch, parseExperienceRange, debouncedFetch]);
+}, [filters, dispatch, parseExperienceRange, debouncedFetch, jobId]);
 
   // Handle status updates 
   const handleStatusUpdate = async (applicationId: string, status: string) => {
@@ -773,7 +782,9 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
                   <TiArrowSortedDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
                 </div>
 
-                <div className="relative">
+                {
+                  !jobId && (
+                     <div className="relative">
                   <select
                     value={filters.companyName || ""}
                     onChange={(e) => handleFilterChange("companyName", e.target.value)}
@@ -788,6 +799,8 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
                   </select>
                   <TiArrowSortedDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
                 </div>
+                  )
+                }          
 
                 {/* Separator */}
                 <div className="h-8 w-px bg-neutral-500" />

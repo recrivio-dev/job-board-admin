@@ -116,16 +116,18 @@ export default function JobDetailsComponent() {
   const memoizedUserContext = useMemo((): UserContext | null => {
     if (!isAuthReady) return null;
 
+    const mappedRoles = roles
+      .map((role) => {
+        if (typeof role === "string") return role;
+        if (role?.role?.name) return role.role.name;
+        return role?.toString() || "";
+      })
+      .filter(Boolean);
+
     return {
       userId: user?.id ?? "",
       organizationId: organization?.id ?? "",
-      roles: roles
-        .map((role) => {
-          if (typeof role === "string") return role;
-          if (role?.role?.name) return role.role.name;
-          return role?.toString() || "";
-        })
-        .filter(Boolean),
+      roles: mappedRoles[0] || "", // Take the first role as a string
     };
   }, [isAuthReady, user?.id, organization?.id, roles]);
 
@@ -468,7 +470,6 @@ export default function JobDetailsComponent() {
                   <CandidatesList
                     jobId={jobId}
                     showHeader={false}
-                    maxItems={10}
                     onCandidateClick={(candidate) => {
                       console.log("Candidate clicked:", candidate);
                     }}
