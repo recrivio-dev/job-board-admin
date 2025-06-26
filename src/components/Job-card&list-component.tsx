@@ -24,7 +24,6 @@ const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
   
   // Table customization state
   const [tableColumns, setTableColumns] = useState<TableColumn[]>([
-    { key: "checkbox", label: "Select", visible: true },
     { key: "job_title", label: "Job", visible: true },
     { key: "company_name", label: "Company", visible: true },
     { key: "salary", label: "Salary", visible: true },
@@ -56,20 +55,26 @@ const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
     localStorage.setItem('jobs-table-columns', JSON.stringify(updatedColumns));
   }, [tableColumns]);
 
-  const handleResetColumns = useCallback(() => {
-    const defaultColumns: TableColumn[] = [
-      { key: "checkbox", label: "Select", visible: true },
-      { key: "job_title", label: "Job", visible: true },
-      { key: "company_name", label: "Company", visible: true },
-      { key: "salary", label: "Salary", visible: true },
-      { key: "location", label: "Location", visible: true },
-      { key: "deadline", label: "Deadline", visible: true },
-      { key: "status", label: "Status", visible: true },
-      { key: "actions", label: "Actions", visible: true },
-    ];
-    setTableColumns(defaultColumns);
-    localStorage.setItem('jobs-table-columns', JSON.stringify(defaultColumns));
+  const handleColumnsUpdate = useCallback((updatedColumns: TableColumn[]) => {
+    setTableColumns(updatedColumns);
+    localStorage.setItem('candidates-table-columns', JSON.stringify(updatedColumns));
   }, []);
+
+
+  // const handleResetColumns = useCallback(() => {
+  //   const defaultColumns: TableColumn[] = [
+  //     { key: "checkbox", label: "Select", visible: true },
+  //     { key: "job_title", label: "Job", visible: true },
+  //     { key: "company_name", label: "Company", visible: true },
+  //     { key: "salary", label: "Salary", visible: true },
+  //     { key: "location", label: "Location", visible: true },
+  //     { key: "deadline", label: "Deadline", visible: true },
+  //     { key: "status", label: "Status", visible: true },
+  //     { key: "actions", label: "Actions", visible: true },
+  //   ];
+  //   setTableColumns(defaultColumns);
+  //   localStorage.setItem('jobs-table-columns', JSON.stringify(defaultColumns));
+  // }, []);
 
   const formatSalary = useCallback((min: number | null, max: number | null) => {
     if ((min === 0 || min === null) && (max === 0 || max === null))
@@ -194,13 +199,15 @@ const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
   return (
     <div className="space-y-4">
       {/* Table Customization Controls */}
-      <div className="flex justify-end">
+
+      {/* Uncomment this section if you want to enable column customization */}
+      {/* <div className="flex justify-end">
         <TableCustomization
           columns={tableColumns}
           onColumnToggle={handleColumnToggle}
-          onResetToDefault={handleResetColumns}
+          onColumnsUpdate={handleColumnsUpdate}
         />
-      </div>
+      </div> */}
 
       {/* Table */}
       <div className="overflow-x-auto rounded-lg border border-neutral-200">
