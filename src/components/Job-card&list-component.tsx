@@ -6,7 +6,8 @@ import { IoLocationOutline } from "react-icons/io5";
 import { FaChevronRight } from "react-icons/fa";
 import Image from "next/image";
 import GlobalStickyTable from "@/components/GlobalStickyTable";
-import TableCustomization, { TableColumn } from "./table-customization";
+import { TableColumn } from "./table-customization";
+// import TableCustomization from "./table-customization";
 
 interface Job {
   job_id: string;
@@ -47,18 +48,18 @@ const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
   }, []);
 
   // Save column preferences to localStorage when changed
-  const handleColumnToggle = useCallback((columnKey: string) => {
-    const updatedColumns = tableColumns.map(col =>
-      col.key === columnKey ? { ...col, visible: !col.visible } : col
-    );
-    setTableColumns(updatedColumns);
-    localStorage.setItem('jobs-table-columns', JSON.stringify(updatedColumns));
-  }, [tableColumns]);
+  // const handleColumnToggle = useCallback((columnKey: string) => {
+  //   const updatedColumns = tableColumns.map(col =>
+  //     col.key === columnKey ? { ...col, visible: !col.visible } : col
+  //   );
+  //   setTableColumns(updatedColumns);
+  //   localStorage.setItem('jobs-table-columns', JSON.stringify(updatedColumns));
+  // }, [tableColumns]);
 
-  const handleColumnsUpdate = useCallback((updatedColumns: TableColumn[]) => {
-    setTableColumns(updatedColumns);
-    localStorage.setItem('candidates-table-columns', JSON.stringify(updatedColumns));
-  }, []);
+  // const handleColumnsUpdate = useCallback((updatedColumns: TableColumn[]) => {
+  //   setTableColumns(updatedColumns);
+  //   localStorage.setItem('candidates-table-columns', JSON.stringify(updatedColumns));
+  // }, []);
 
 
   // const handleResetColumns = useCallback(() => {
