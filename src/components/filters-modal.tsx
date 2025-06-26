@@ -20,7 +20,7 @@ interface FiltersModalProps {
   onApply: () => void;
 }
 
-// Memoized filter option component
+// Simple filter option component
 const FilterOptionItem = memo(
   ({
     option,
@@ -33,21 +33,21 @@ const FilterOptionItem = memo(
     isSelected: boolean;
     onChange: () => void;
   }) => (
-    <label className="flex items-center gap-2 cursor-pointer">
+    <label className="flex items-center gap-2 cursor-pointer py-1">
       <input
         type={type}
         checked={isSelected}
         onChange={onChange}
-        className="accent-green-600 w-5 h-5"
+        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
       />
-      <span>{option}</span>
+      <span className="text-sm text-gray-700">{option}</span>
     </label>
   )
 );
 
 FilterOptionItem.displayName = "FilterOptionItem";
 
-// Memoized filter section component
+// Simple filter section
 const FilterSection = memo(
   ({
     filter,
@@ -55,35 +55,29 @@ const FilterSection = memo(
   }: {
     filter: FilterOption;
     onOptionChange: (option: string) => void;
-  }) => (
-    <div className="mt-4 py-4 border-b border-neutral-200">
-      <div className="font-semibold text-lg mb-2">{filter.label}</div>
-      <div
-        className={`flex gap-8 flex-wrap ${
-          ["jobs", "company", "currentCtc", "expectedCtc", "location"].includes(
-            filter.id
-          )
-            ? "grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2"
-            : "flex flex-col md:flex-row gap-4 md:gap-8"
-        }`}
-      >
-        {filter.options.map((option) => (
-          <FilterOptionItem
-            key={option}
-            option={option}
-            type={filter.type}
-            isSelected={filter.selected.includes(option)}
-            onChange={() => onOptionChange(option)}
-          />
-        ))}
+  }) => {
+    return (
+      <div className="mb-6">
+        <h3 className="font-semibold text-lg mb-3 text-gray-900">{filter.label}</h3>
+        <div className="space-y-2">
+          {filter.options.map((option) => (
+            <FilterOptionItem
+              key={option}
+              option={option}
+              type={filter.type}
+              isSelected={filter.selected.includes(option)}
+              onChange={() => onOptionChange(option)}
+            />
+          ))}
+        </div>
       </div>
-    </div>
-  )
+    );
+  }
 );
 
 FilterSection.displayName = "FilterSection";
 
-// Memoized sort options component
+// Simple sort options
 const SortOptions = memo(
   ({
     sortBy,
@@ -91,31 +85,32 @@ const SortOptions = memo(
   }: {
     sortBy: string;
     setSortBy: (v: string) => void;
-  }) => (
-    <div className="mb-4 py-4 border-b border-neutral-200">
-      <div className="font-semibold text-lg mb-2">Sort By</div>
-      <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-        {[
-          { value: "az", label: "Name (A-Z)" },
-          { value: "za", label: "Name (Z-A)" },
-          { value: "recent", label: "Most Recent" },
-        ].map((option) => (
-          <label
-            key={option.value}
-            className="flex items-center gap-2 cursor-pointer"
-          >
-            <input
-              type="radio"
-              checked={sortBy === option.value}
-              onChange={() => setSortBy(option.value)}
-              className="accent-green-600 w-5 h-5"
-            />
-            <span>{option.label}</span>
-          </label>
-        ))}
+  }) => {
+    const sortOptions = [
+      { value: "az", label: "Name (A-Z)" },
+      { value: "za", label: "Name (Z-A)" },
+      { value: "recent", label: "Most Recent" },
+    ];
+
+    return (
+      <div className="mb-6">
+        <h3 className="font-semibold text-lg mb-3 text-gray-900">Sort By</h3>
+        <div className="space-y-2">
+          {sortOptions.map((option) => (
+            <label key={option.value} className="flex items-center gap-2 cursor-pointer py-1">
+              <input
+                type="radio"
+                checked={sortBy === option.value}
+                onChange={() => setSortBy(option.value)}
+                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">{option.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
-    </div>
-  )
+    );
+  }
 );
 
 SortOptions.displayName = "SortOptions";
@@ -142,22 +137,27 @@ const FiltersModal: React.FC<FiltersModalProps> = memo(
     useEffect(() => {
       if (show) {
         document.addEventListener("keydown", handleEscapeKey);
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = 'unset';
       }
+      
       return () => {
         document.removeEventListener("keydown", handleEscapeKey);
+        document.body.style.overflow = 'unset';
       };
     }, [show, handleEscapeKey]);
 
     if (!show) return null;
 
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
-        <div className="bg-white md:rounded-2xl p-0 border border-neutral-200 max-w-2xl w-full h-full md:h-9/10 relative animate-fadeIn flex flex-col">
-          {/* Fixed Header */}
-          <div className="flex items-center justify-between rounded-t-2xl px-6 py-4 border-b border-neutral-200 sticky top-0 bg-white z-10">
-            <div className="font-semibold text-2xl">All Filters</div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">All Filters</h2>
             <button
-              className="text-2xl text-neutral-400 hover:text-neutral-700 cursor-pointer"
+              className="text-gray-400 hover:text-gray-600 transition-colors"
               onClick={onClose}
               aria-label="Close"
             >
@@ -165,32 +165,47 @@ const FiltersModal: React.FC<FiltersModalProps> = memo(
             </button>
           </div>
 
-          {/* Scrollable Filters */}
-          <div className="flex-1 overflow-y-auto px-6 py-2">
-            <SortOptions sortBy={sortBy} setSortBy={setSortBy} />
-            {filterOptions.map((filter) => (
-              <FilterSection
-                key={filter.id}
-                filter={filter}
-                onOptionChange={filter.onChange}
-              />
-            ))}
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Sort Options */}
+              <div className="md:col-span-2">
+                <SortOptions sortBy={sortBy} setSortBy={setSortBy} />
+              </div>
+              
+              {/* Filter Sections */}
+              {filterOptions.map((filter) => (
+                <FilterSection
+                  key={filter.id}
+                  filter={filter}
+                  onOptionChange={filter.onChange}
+                />
+              ))}
+            </div>
           </div>
 
-          {/* Fixed Footer */}
-          <div className="flex justify-end gap-4 px-6 py-4 border-t border-neutral-200 rounded-b-2xl sticky bottom-0 bg-white z-10">
+          {/* Footer */}
+          <div className="flex justify-between items-center p-6 border-t border-gray-200">
             <button
-              className="px-6 py-2 rounded-lg border border-neutral-400 bg-neutral-50 text-neutral-700 font-medium hover:bg-neutral-100 cursor-pointer"
+              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               onClick={onClearAll}
             >
               Clear All
             </button>
-            <button
-              className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold cursor-pointer"
-              onClick={onApply}
-            >
-              Show Results
-            </button>
+            <div className="flex gap-3">
+              <button
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                onClick={onClose}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={onApply}
+              >
+                Apply Filters
+              </button>
+            </div>
           </div>
         </div>
       </div>

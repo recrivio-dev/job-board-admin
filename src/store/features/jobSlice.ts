@@ -153,7 +153,7 @@ const initialState: JobState = {
     currentPage: 1,
     totalPages: 1,
     totalCount: 0,
-    pageSize: 18,
+    pageSize: 30,
   },
   filterOptions: {
     companies: [],
@@ -234,7 +234,7 @@ export const fetchJobs = createAsyncThunk(
       const supabase = createClient();
       const {
         page = 1,
-        limit = 18,
+        limit = 30,
         filters = {},
         userRole,
         userId,
@@ -378,9 +378,13 @@ export const fetchFilterOptions = createAsyncThunk(
       // Define default statuses if not provided by server
       const defaultStatuses = ["active", "paused", "closed"];
 
+      // Deduplicate and sort the arrays to prevent duplicates
+      const uniqueCompanies = Array.from(new Set((data.companies || []))).sort();
+      const uniqueLocations = Array.from(new Set((data.locations || []))).sort();
+
       return {
-        companies: (data.companies || []).sort(),
-        locations: (data.locations || []).sort(),
+        companies: uniqueCompanies,
+        locations: uniqueLocations,
         statuses: defaultStatuses,
         cached: false,
       };

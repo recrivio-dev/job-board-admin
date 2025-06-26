@@ -23,7 +23,8 @@ import { TiArrowSortedDown } from "react-icons/ti";
 import GlobalStickyTable from "@/components/GlobalStickyTable";
 import CandidatesDetailsOverlay from "./candidates-details-overlay";
 import Pagination from "./pagination";
-import { FaPlus } from "react-icons/fa";
+import FiltersModal from "./filters-modal";
+import TableCustomization, { TableColumn } from "./table-customization";
 
 interface InitializationState {
   initialized: boolean;
@@ -179,8 +180,38 @@ export default function CandidatesList({
     error: null,
   });
 
+  // Filters modal state
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
+
+  // Table customization state
+  const [tableColumns, setTableColumns] = useState<TableColumn[]>([
+    { key: "checkbox", label: "Select", visible: true },
+    { key: "id", label: "ID", visible: true },
+    { key: "applied_date", label: "Applied Date", visible: true },
+    { key: "candidate_name", label: "Candidate Name", visible: true },
+    { key: "job_title", label: "Job", visible: true },
+    { key: "company_name", label: "Company", visible: true },
+    { key: "location", label: "Location", visible: true },
+    { key: "status", label: "Status", visible: true },
+    { key: "actions", label: "Actions", visible: true },
+  ]);
+
   // Refs for cleanup
 const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void) & { cancel: () => void } | null>(null);
+
+  // Load column preferences from localStorage on mount
+  useEffect(() => {
+    const savedColumns = localStorage.getItem('candidates-table-columns');
+    if (savedColumns) {
+      try {
+        const parsedColumns = JSON.parse(savedColumns);
+        setTableColumns(parsedColumns);
+      } catch (error) {
+        console.error('Failed to parse saved column preferences:', error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -217,22 +248,6 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
     initializeData();
   }, [dispatch, userContext, initState.initialized, jobId]);
 
-  // Improved experience range parsing with validation
-  const parseExperienceRange = useCallback((experienceValue: string) => {
-    if (!experienceValue || experienceValue === "") {
-      return { min: undefined, max: undefined };
-    }
-
-    const ranges: Record<string, { min?: number; max?: number }> = {
-      '0-2': { min: 0, max: 2 },
-      '3-5': { min: 3, max: 5 },
-      '6-8': { min: 6, max: 8 },
-      '9+': { min: 9, max: undefined }
-    };
-    
-    return ranges[experienceValue] || { min: undefined, max: undefined };
-  }, []);
-
   // Get current experience range display value
 const { minExperience, maxExperience } = filters;
 
@@ -251,21 +266,21 @@ const getCurrentExperienceValue = useCallback(() => {
 }, [minExperience, maxExperience]);
 
   // Improved sort value getter
-const { sortBy, sortOrder } = filters;
+const { sortBy: currentSortBy, sortOrder } = filters;
 
 const getCurrentSortValue = useCallback(() => {
-  if (!sortBy || !sortOrder) {
+  if (!currentSortBy || !sortOrder) {
     return "date_desc"; // default
   }
   
   // Map current sort state back to select value
-  if (sortBy === 'applied_date' && sortOrder === 'desc') return 'date_desc';
-  if (sortBy === 'applied_date' && sortOrder === 'asc') return 'date_asc';
-  if (sortBy === 'name' && sortOrder === 'asc') return 'name_asc';
-  if (sortBy === 'name' && sortOrder === 'desc') return 'name_desc';
+  if (currentSortBy === 'applied_date' && sortOrder === 'desc') return 'date_desc';
+  if (currentSortBy === 'applied_date' && sortOrder === 'asc') return 'date_asc';
+  if (currentSortBy === 'name' && sortOrder === 'asc') return 'name_asc';
+  if (currentSortBy === 'name' && sortOrder === 'desc') return 'name_desc';
   
   return "date_desc"; // fallback
-}, [sortBy, sortOrder]);
+}, [currentSortBy, sortOrder]);
 
   // Create a stable debounced function
 const debouncedFetch = useMemo(() => {
@@ -313,70 +328,73 @@ const debouncedFetch = useMemo(() => {
 
 // Improved filter change handler with proper TypeScript
 const handleFilterChange = useCallback((filterType: string, value: string) => {
-  try {
-    const currentFilters = { ...filters };
-    const newFilters = { ...currentFilters };
+  if (!userContext) return;
 
-    //if the jobId is provided, always include it in the filters
-    if (jobId) {
-      newFilters.jobId = jobId;
-    }
+  let newFilters = { ...filters };
 
-    // Handle different filter types
-    switch (filterType) {
-      case "experience":
-        const { min, max } = parseExperienceRange(value);
-        newFilters.minExperience = min;
-        newFilters.maxExperience = max;
+  if (filterType === "sortBy") {
+    // Handle sort changes
+    switch (value) {
+      case "date_desc":
+        newFilters.sortBy = "applied_date";
+        newFilters.sortOrder = "desc";
         break;
-
-      case "sortBy":
-        const sortMappings: Record<string, {
-          sortBy: "name" | "application_status" | "experience_years" | "company_name" | "applied_date" | "created_at" | "updated_at" | "current_ctc" | "expected_ctc";
-          sortOrder: 'asc' | 'desc'
-        }> = {
-          'date_desc': { sortBy: 'applied_date', sortOrder: 'desc' },
-          'date_asc': { sortBy: 'applied_date', sortOrder: 'asc' },
-          'name_asc': { sortBy: 'name', sortOrder: 'asc' },
-          'name_desc': { sortBy: 'name', sortOrder: 'desc' }
-        };
-
-        const sortOption = sortMappings[value];
-        if (sortOption) {
-          newFilters.sortBy = sortOption.sortBy;
-          newFilters.sortOrder = sortOption.sortOrder;
-        }
+      case "date_asc":
+        newFilters.sortBy = "applied_date";
+        newFilters.sortOrder = "asc";
         break;
-
-      case "status":
-        newFilters.status = value || undefined;
+      case "name_asc":
+        newFilters.sortBy = "name";
+        newFilters.sortOrder = "asc";
         break;
-
-      case "companyName":
-        newFilters.companyName = value || undefined;
-        break;
-
-      default:
-        // Handle other filter types with proper typing
-        if (filterType in newFilters) {
-          // Type assertion with proper check
-          (newFilters as Record<string, string | undefined>)[filterType] = value || undefined;
-        } else {
-          console.warn(`Unknown filter type: ${filterType}`);
-        }
+      case "name_desc":
+        newFilters.sortBy = "name";
+        newFilters.sortOrder = "desc";
         break;
     }
-
-    // Update Redux state first (immediate UI feedback)
-    dispatch(setFilters(newFilters));
-
-    // Then trigger debounced API call
-    debouncedFetch(newFilters);
-
-  } catch (err) {
-    console.error("Failed to handle filter change:", err);
+  } else if (filterType === "experience") {
+    // Handle experience filter
+    if (value === "0-2") {
+      newFilters.minExperience = 0;
+      newFilters.maxExperience = 2;
+    } else if (value === "3-5") {
+      newFilters.minExperience = 3;
+      newFilters.maxExperience = 5;
+    } else if (value === "6-8") {
+      newFilters.minExperience = 6;
+      newFilters.maxExperience = 8;
+    } else if (value === "9+") {
+      newFilters.minExperience = 9;
+      newFilters.maxExperience = undefined;
+    } else {
+      newFilters.minExperience = undefined;
+      newFilters.maxExperience = undefined;
+    }
+  } else {
+    // Handle other filters
+    newFilters = {
+      ...newFilters,
+      [filterType]: value || undefined,
+    };
   }
-}, [filters, dispatch, parseExperienceRange, debouncedFetch, jobId]);
+
+  // Remove undefined values
+  Object.keys(newFilters).forEach(key => {
+    if (newFilters[key as keyof typeof newFilters] === undefined) {
+      delete newFilters[key as keyof typeof newFilters];
+    }
+  });
+
+  dispatch(setFilters(newFilters));
+  
+  // Fetch data with new filters
+  dispatch(fetchJobApplicationsWithAccess({
+    page: 1,
+    limit: pagination.candidatesPerPage,
+    filters: newFilters,
+    userContext,
+  }));
+}, [dispatch, filters, userContext, pagination.candidatesPerPage]);
 
   // Handle status updates 
   const handleStatusUpdate = async (applicationId: string, status: string) => {
@@ -421,7 +439,7 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
     }
   };
 
-  const handleViewCandidate = (candidate: CandidateWithApplication) => {
+  const handleViewCandidate = useCallback((candidate: CandidateWithApplication) => {
     // Show overlay instead of navigating
     setCandidatesDetailsOverlay({
       candidate,
@@ -431,7 +449,7 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
     if (onCandidateClick) {
       onCandidateClick(candidate);
     }
-  };
+  }, [onCandidateClick]);
 
   const handleDeleteCandidate = async (application_id: string) => {
     if (!userContext) {
@@ -461,13 +479,13 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
     });
-  };
+  }, []);
 
   const calculateExperience = (candidate: CandidateWithApplication) => {
     if (!candidate.experience || candidate.experience.length === 0) return "0";
@@ -534,121 +552,159 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
     [dispatch, filters, userContext] // Fixed dependency array
   );
 
-  const generateShortId = (applicationId: string) => {
+  const generateShortId = useCallback((applicationId: string) => {
     // Generate a shorter, more readable ID from the application ID
     const hash = applicationId.split("-").pop() || applicationId;
     return hash.substring(0, 8);
+  }, []);
+
+  // Table customization handlers
+  const handleColumnToggle = useCallback((columnKey: string) => {
+    const updatedColumns = tableColumns.map(col =>
+      col.key === columnKey ? { ...col, visible: !col.visible } : col
+    );
+    setTableColumns(updatedColumns);
+    localStorage.setItem('candidates-table-columns', JSON.stringify(updatedColumns));
+  }, [tableColumns]);
+
+  const handleResetColumns = useCallback(() => {
+    const defaultColumns: TableColumn[] = [
+      { key: "checkbox", label: "Select", visible: true },
+      { key: "id", label: "ID", visible: true },
+      { key: "applied_date", label: "Applied Date", visible: true },
+      { key: "candidate_name", label: "Candidate Name", visible: true },
+      { key: "job_title", label: "Job", visible: true },
+      { key: "company_name", label: "Company", visible: true },
+      { key: "location", label: "Location", visible: true },
+      { key: "status", label: "Status", visible: true },
+      { key: "actions", label: "Actions", visible: true },
+    ];
+    setTableColumns(defaultColumns);
+    localStorage.setItem('candidates-table-columns', JSON.stringify(defaultColumns));
+  }, []);
+
+  // Modal handlers
+  const handleOpenFiltersModal = () => setShowFiltersModal(true);
+  const handleCloseFiltersModal = () => setShowFiltersModal(false);
+  
+  const handleClearAllFilters = () => {
+    const clearedFilters = {};
+    dispatch(setFilters(clearedFilters));
+  };
+
+  const handleApplyFilters = () => {
+    handleCloseFiltersModal();
+    // Filters are already applied through individual onChange handlers
   };
 
   // Table columns for GlobalStickyTable
-  const columns = [
-    {
-      key: "checkbox",
-      header: <input type="checkbox" className="rounded border-neutral-300" />,
-      width: "48px",
-      render: (candidate: CandidateWithApplication) => (
-        <input
-          type="checkbox"
-          className="rounded border-neutral-300"
-          onClick={(e) => e.stopPropagation()}
-          aria-label={`Select ${candidate.name}`}
-        />
-      ),
-    },
-    {
-      key: "id",
-      header: "ID",
-      render: (candidate: CandidateWithApplication) => (
-        <span className="text-sm font-medium text-neutral-900">
-          {generateShortId(candidate.application_id)}
-        </span>
-      ),
-    },
-    {
-      key: "applied_date",
-      header: "Applied Date",
-      render: (candidate: CandidateWithApplication) => (
-        <span className="text-sm text-neutral-900">
-          {formatDate(candidate.applied_date)}
-        </span>
-      ),
-    },
-    {
-      key: "candidate_name",
-      header: "Candidate Name",
-      render: (candidate: CandidateWithApplication) => (
-        <div>
-          <div className="text-sm font-medium text-neutral-900">
-            {candidate.name}
+  const columns = useMemo(() => {
+    const allColumns = [
+      {
+        key: "checkbox",
+        header: <input type="checkbox" className="rounded border-neutral-300" />,
+        width: "48px",
+        render: (candidate: CandidateWithApplication) => (
+          <input
+            type="checkbox"
+            className="rounded border-neutral-300"
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Select ${candidate.name}`}
+          />
+        ),
+      },
+      {
+        key: "id",
+        header: "ID",
+        render: (candidate: CandidateWithApplication) => (
+          <span className="text-sm font-medium text-neutral-900">
+            {generateShortId(candidate.application_id)}
+          </span>
+        ),
+      },
+      {
+        key: "applied_date",
+        header: "Applied Date",
+        render: (candidate: CandidateWithApplication) => (
+          <span className="text-sm text-neutral-900">
+            {formatDate(candidate.applied_date)}
+          </span>
+        ),
+      },
+      {
+        key: "candidate_name",
+        header: "Candidate Name",
+        render: (candidate: CandidateWithApplication) => (
+          <div>
+            <div className="text-sm font-medium text-neutral-900">
+              {candidate.name}
+            </div>
+            <div className="text-sm text-neutral-500">
+              {candidate.candidate_email}
+            </div>
           </div>
-          <div className="text-sm text-neutral-500">
-            {candidate.candidate_email}
+        ),
+      },
+      {
+        key: "job_title",
+        header: "Job",
+        render: (candidate: CandidateWithApplication) => (
+          <span className="text-sm text-neutral-900">{candidate.job_title}</span>
+        ),
+      },
+      {
+        key: "company_name",
+        header: "Company",
+        render: (candidate: CandidateWithApplication) => (
+          <span className="text-sm text-neutral-900">
+            {candidate.company_name || "—"}
+          </span>
+        ),
+      },
+      {
+        key: "location",
+        header: "Location",
+        render: (candidate: CandidateWithApplication) => (
+          <span className="text-sm text-neutral-900">
+            {candidate.address || candidate.job_location || "—"}
+          </span>
+        ),
+      },
+      {
+        key: "status",
+        header: "Status",
+        width: "140px",
+        className: "text-center",
+        render: (candidate: CandidateWithApplication) => (
+          <div className="flex justify-center">
+            <StatusBadge status={candidate.application_status} />
           </div>
-        </div>
-      ),
-    },
-    {
-      key: "job_title",
-      header: "Job",
-      render: (candidate: CandidateWithApplication) => (
-        <span className="text-sm text-neutral-900">{candidate.job_title}</span>
-      ),
-    },
-    {
-      key: "company_name",
-      header: "Company",
-      render: (candidate: CandidateWithApplication) => (
-        <span className="text-sm text-neutral-900">
-          {candidate.company_name || "—"}
-        </span>
-      ),
-    },
-    {
-      key: "location",
-      header: "Location",
-      render: (candidate: CandidateWithApplication) => (
-        <span className="text-sm text-neutral-900">
-          {candidate.address || candidate.job_location || "—"}
-        </span>
-      ),
-    },
-    {
-      key: "years_of_exp",
-      header: "Years of Exp.",
-      render: (candidate: CandidateWithApplication) => (
-        <span className="text-sm text-neutral-900">
-          {calculateExperience(candidate)}
-        </span>
-      ),
-    },
-    {
-      key: "app_status",
-      header: "App. Status",
-      width: "140px",
-      className: "text-center",
-      render: (candidate: CandidateWithApplication) => (
-        <div className="flex justify-center">
-          <StatusBadge status={candidate.application_status} />
-        </div>
-      ),
-    },
-    {
-      key: "action",
-      header: "Action",
-      width: "120px",
-      render: (candidate: CandidateWithApplication) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleViewCandidate(candidate);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          View
-        </button>
-      ),
-    },
-  ];
+        ),
+      },
+      {
+        key: "actions",
+        header: "Actions",
+        width: "120px",
+        render: (candidate: CandidateWithApplication) => (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewCandidate(candidate);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            View
+          </button>
+        ),
+      },
+    ];
+
+    // Filter columns based on visibility settings
+    return allColumns.filter(column => {
+      const columnConfig = tableColumns.find(col => col.key === column.key);
+      return columnConfig?.visible !== false;
+    });
+  }, [tableColumns, generateShortId, formatDate, handleViewCandidate]);
 
   // Handle error state
   if (error) {
@@ -807,13 +863,18 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
 
                 {showFilters && (
                   <>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-neutral-200 hover:bg-neutral-200 rounded-full text-xs font-medium text-neutral-600 transition-colors">
+                    <button 
+                      onClick={handleOpenFiltersModal}
+                      className="flex items-center gap-2 px-4 py-2 bg-neutral-200 hover:bg-neutral-300 rounded-full text-xs font-medium text-neutral-600 transition-colors"
+                    >
                       <CiFilter className="w-4 h-4" />
                       All Filters
                     </button>
-                    <button className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-neutral-700">
-                      <FaPlus className="w-3 h-3" />
-                    </button>
+                    <TableCustomization
+                      columns={tableColumns}
+                      onColumnToggle={handleColumnToggle}
+                      onResetToDefault={handleResetColumns}
+                    />
                   </>
                 )}
               </div>
@@ -857,6 +918,48 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
         onStatusUpdate={handleStatusUpdate}
         onDelete={handleDeleteCandidate}
         calculateExperience={calculateExperience}
+      />
+
+      {/* Filters Modal */}
+      <FiltersModal
+        show={showFiltersModal}
+        onClose={handleCloseFiltersModal}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        filterOptions={[
+          {
+            id: "status",
+            label: "Application Status",
+            type: "checkbox" as const,
+            options: ["accepted", "pending", "rejected"],
+            selected: filters.status ? [filters.status] : [],
+            onChange: (option: string) => {
+              const isSelected = filters.status === option;
+              const newFilters = {
+                ...filters,
+                status: isSelected ? undefined : option
+              };
+              dispatch(setFilters(newFilters));
+            },
+          },
+          {
+            id: "company",
+            label: "Company",
+            type: "checkbox" as const,
+            options: filterOptions.companies?.map(c => c.value) || [],
+            selected: filters.companyName ? [filters.companyName] : [],
+            onChange: (option: string) => {
+              const isSelected = filters.companyName === option;
+              const newFilters = {
+                ...filters,
+                companyName: isSelected ? undefined : option
+              };
+              dispatch(setFilters(newFilters));
+            },
+          },
+        ]}
+        onClearAll={handleClearAllFilters}
+        onApply={handleApplyFilters}
       />
     </>
   );

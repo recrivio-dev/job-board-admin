@@ -1,78 +1,215 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { MdCurrencyRupee } from "react-icons/md";
 import { IoLocationOutline } from "react-icons/io5";
 import { FaChevronRight } from "react-icons/fa";
 import Image from "next/image";
+import GlobalStickyTable from "@/components/GlobalStickyTable";
+import TableCustomization, { TableColumn } from "./table-customization";
 
-type Job = {
+interface Job {
   job_id: string;
   job_title: string;
   company_name: string;
-  min_salary: number | null;
-  max_salary: number | null;
+  min_salary: number;
+  max_salary: number;
   job_location: string;
-};
+  application_deadline?: string;
+  status?: string;
+}
 
 const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
   const router = useRouter();
-  const formatSalary = (min: number | null, max: number | null) => {
+  
+  // Table customization state
+  const [tableColumns, setTableColumns] = useState<TableColumn[]>([
+    { key: "checkbox", label: "Select", visible: true },
+    { key: "job_title", label: "Job", visible: true },
+    { key: "company_name", label: "Company", visible: true },
+    { key: "salary", label: "Salary", visible: true },
+    { key: "location", label: "Location", visible: true },
+    { key: "deadline", label: "Deadline", visible: true },
+    { key: "status", label: "Status", visible: true },
+    { key: "actions", label: "Actions", visible: true },
+  ]);
+
+  // Load column preferences from localStorage on mount
+  useEffect(() => {
+    const savedColumns = localStorage.getItem('jobs-table-columns');
+    if (savedColumns) {
+      try {
+        const parsedColumns = JSON.parse(savedColumns);
+        setTableColumns(parsedColumns);
+      } catch (error) {
+        console.error('Failed to parse saved column preferences:', error);
+      }
+    }
+  }, []);
+
+  // Save column preferences to localStorage when changed
+  const handleColumnToggle = useCallback((columnKey: string) => {
+    const updatedColumns = tableColumns.map(col =>
+      col.key === columnKey ? { ...col, visible: !col.visible } : col
+    );
+    setTableColumns(updatedColumns);
+    localStorage.setItem('jobs-table-columns', JSON.stringify(updatedColumns));
+  }, [tableColumns]);
+
+  const handleResetColumns = useCallback(() => {
+    const defaultColumns: TableColumn[] = [
+      { key: "checkbox", label: "Select", visible: true },
+      { key: "job_title", label: "Job", visible: true },
+      { key: "company_name", label: "Company", visible: true },
+      { key: "salary", label: "Salary", visible: true },
+      { key: "location", label: "Location", visible: true },
+      { key: "deadline", label: "Deadline", visible: true },
+      { key: "status", label: "Status", visible: true },
+      { key: "actions", label: "Actions", visible: true },
+    ];
+    setTableColumns(defaultColumns);
+    localStorage.setItem('jobs-table-columns', JSON.stringify(defaultColumns));
+  }, []);
+
+  const formatSalary = useCallback((min: number | null, max: number | null) => {
     if ((min === 0 || min === null) && (max === 0 || max === null))
       return "Salary not specified";
     if (min === max) return `${(min || 0).toLocaleString()}`;
     return `${(min || 0).toLocaleString()} - ${(max || 0).toLocaleString()}`;
-  };
+  }, []);
+
+  const formatDate = useCallback((dateString?: string) => {
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }, []);
+
+  const getStatusBadge = useCallback((status?: string) => {
+    if (!status) return <span className="text-gray-500">—</span>;
+    
+    const statusStyles = {
+      active: "bg-green-100 text-green-800 border-green-200",
+      paused: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      closed: "bg-red-100 text-red-800 border-red-200",
+    };
+    
+    const style = statusStyles[status.toLowerCase() as keyof typeof statusStyles] || 
+                  "bg-gray-100 text-gray-800 border-gray-200";
+    
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${style}`}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
+  }, []);
+
+  // Table columns configuration
+  const columns = useMemo(() => {
+    const allColumns = [
+      {
+        key: "checkbox",
+        header: <input type="checkbox" className="rounded border-neutral-300" />,
+        width: "48px",
+        render: (job: Job) => (
+          <input
+            type="checkbox"
+            className="rounded border-neutral-300"
+            aria-label={`Select ${job.job_title}`}
+          />
+        ),
+      },
+      {
+        key: "job_title",
+        header: "Job",
+        render: (job: Job) => (
+          <span className="font-medium text-neutral-900">{job.job_title}</span>
+        ),
+      },
+      {
+        key: "company_name",
+        header: "Company",
+        render: (job: Job) => (
+          <span className="text-neutral-900">{job.company_name || "N/A"}</span>
+        ),
+      },
+      {
+        key: "salary",
+        header: "Salary",
+        render: (job: Job) => (
+          <span className="text-neutral-900">
+            {formatSalary(job.min_salary, job.max_salary)}
+          </span>
+        ),
+      },
+      {
+        key: "location",
+        header: "Location",
+        render: (job: Job) => (
+          <span className="text-neutral-900">{job.job_location || "N/A"}</span>
+        ),
+      },
+      {
+        key: "deadline",
+        header: "Deadline",
+        render: (job: Job) => (
+          <span className="text-neutral-900">
+            {formatDate(job.application_deadline)}
+          </span>
+        ),
+      },
+      {
+        key: "status",
+        header: "Status",
+        render: (job: Job) => getStatusBadge(job.status),
+      },
+      {
+        key: "actions",
+        header: "Actions",
+        width: "120px",
+        render: (job: Job) => (
+          <button
+            onClick={() => {
+              const params = new URLSearchParams({ jobId: job.job_id });
+              router.push(`jobs/job-details?${params.toString()}`);
+            }}
+            type="button"
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-md transition-colors"
+          >
+            View
+          </button>
+        ),
+      },
+    ];
+
+    // Filter columns based on visibility settings
+    return allColumns.filter(column => {
+      const columnConfig = tableColumns.find(col => col.key === column.key);
+      return columnConfig?.visible !== false;
+    });
+  }, [tableColumns, formatSalary, formatDate, getStatusBadge, router]);
+
   return (
-    <div>
+    <div className="space-y-4">
+      {/* Table Customization Controls */}
+      <div className="flex justify-end">
+        <TableCustomization
+          columns={tableColumns}
+          onColumnToggle={handleColumnToggle}
+          onResetToDefault={handleResetColumns}
+        />
+      </div>
+
+      {/* Table */}
       <div className="overflow-x-auto rounded-lg border border-neutral-200">
-        <table className="min-w-full text-left text">
-          <thead className="bg-neutral-200 shadow-sm text-neutral-900 font-medium text-base">
-            <tr>
-              <th className="px-4 py-4">
-                <input type="checkbox" />
-              </th>
-              <th className="px-4 py-4">Job</th>
-              <th className="px-4 py-4">Company</th>
-              <th className="px-4 py-4">Salary</th>
-              <th className="px-4 py-4">Location</th>
-              <th className="px-4 py-4 text-right"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-200">
-            {jobsFromStore.map((job) => (
-              <tr key={`job-row-${job.job_id}-${job.job_title}`}>
-                <td className="px-4 py-4">
-                  <input type="checkbox" />
-                </td>
-                <td className="px-4 py-4 font-medium text-neutral-900">
-                  {job.job_title}
-                </td>
-                <td className="px-4 py-4 text-neutral-900">
-                  {job.company_name || "N/A"}
-                </td>
-                <td className="px-4 py-4 text-neutral-900">
-                  {formatSalary(job.min_salary, job.max_salary)}
-                </td>
-                <td className="px-4 py-4 text-neutral-900">
-                  {job.job_location || "N/A"}
-                </td>
-                <td className="px-4 py-4 text-right">
-                  <button
-                    onClick={() => {
-                      const params = new URLSearchParams({ jobId: job.job_id });
-                      router.push(`jobs/job-details?${params.toString()}`);
-                    }}
-                    type="button"
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-md"
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <GlobalStickyTable
+          columns={columns}
+          data={jobsFromStore}
+          stickyFirst
+          stickyLastTwo
+        />
       </div>
     </div>
   );
