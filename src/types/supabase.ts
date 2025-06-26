@@ -526,39 +526,7 @@ export type Database = {
         Returns: boolean
       }
       fetch_candidates_with_access: {
-        Args:
-        | {
-          p_user_id: string
-          p_user_role: string
-          p_organization_id?: string
-          p_page?: number
-          p_limit?: number
-          p_application_status?: string
-          p_job_id?: string
-          p_date_from?: string
-          p_date_to?: string
-          p_sort_by?: string
-          p_sort_order?: string
-          p_name_filter?: string
-          p_company_filter?: string
-          p_min_experience?: number
-          p_max_experience?: number
-        }
-        | {
-          p_user_id: string
-          p_user_role: string
-          p_organization_id?: string
-          p_page?: number
-          p_limit?: number
-          p_application_status?: string
-          p_sort_by?: string
-          p_sort_order?: string
-          p_name_filter?: string
-          p_company_filter?: string
-          p_min_experience?: number
-          p_max_experience?: number
-        }
-        | {
+        Args: {
           p_user_id: string
           p_user_role: string
           p_organization_id?: string
@@ -604,7 +572,13 @@ export type Database = {
         Returns: Json
       }
       get_applications_over_time: {
-        Args: { user_uuid: string; org_uuid: string; weeks_back?: number }
+        Args: {
+          user_uuid: string
+          org_uuid: string
+          weeks_back?: number
+          company_name?: string
+          job_title?: string
+        }
         Returns: Json
       }
       get_complete_dashboard_data: {

@@ -120,15 +120,21 @@ export const fetchApplicationsOverTime = createAsyncThunk(
         userUuid,
         orgUuid,
         weeksBack = 12,
+        company_name = undefined,
+        job_title = undefined,
     }: {
         userUuid: string;
         orgUuid: string;
         weeksBack?: number;
+        company_name?: string;
+        job_title?: string;
     }) => {
         const { data, error } = await supabase.rpc('get_applications_over_time', {
             user_uuid: userUuid,
             org_uuid: orgUuid,
             weeks_back: weeksBack,
+            company_name,
+            job_title,
         });
 
         if (error) {
@@ -156,7 +162,7 @@ export const fetchTopPerformers = createAsyncThunk(
     }: {
         userUuid: string;
         orgUuid: string;
-        metricType?: 'applications' | 'companies' | 'roles';
+        metricType?: 'applications' | 'companies';
         limitCount?: number;
     }) => {
         const { data, error } = await supabase.rpc('get_top_performers', {

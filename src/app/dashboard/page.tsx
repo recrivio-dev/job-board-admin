@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
 import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
@@ -9,12 +9,13 @@ import { BsBriefcase } from "react-icons/bs";
 import { FaCaretDown } from "react-icons/fa";
 import { GoPeople } from "react-icons/go";
 import Link from "next/link";
-import { AppDispatch, RootState } from "@/store/store"; // Adjust path as needed
+import { AppDispatch, RootState } from "@/store/store";
 import { useAppSelector } from "@/store/hooks";
 
 // Import selectors and actions
 import {
   fetchDashboardData,
+  fetchApplicationsOverTime,
   selectDashboardData,
   selectDashboardStats,
   selectDashboardChartData,
@@ -22,11 +23,13 @@ import {
   selectDashboardError,
   selectUserRole,
   clearError,
-} from "@/store/features/dashboardSlice"; // Adjust path as needed
+  selectTopJobs,
+  selectTopCompanies,
+} from "@/store/features/dashboardSlice";
 
 import {
   initializeAuth,
-} from "@/store/features/userSlice"; // Adjust path as needed
+} from "@/store/features/userSlice";
 
 // Loading component for better UX
 const LoadingSpinner = ({ message = "Loading..." }: { message?: string }) => (
@@ -55,6 +58,78 @@ const InfoMessage = ({
   </div>
 );
 
+// Dropdown component for companies and jobs
+const FilterDropdown = ({ 
+  label, 
+  items, 
+  selectedItem, 
+  onSelect, 
+  isOpen, 
+  onToggle 
+}: {
+  label: string;
+  items: Array<{ id: string; name: string; count?: number }>;
+  selectedItem: string | null;
+  onSelect: (item: { id: string; name: string }) => void;
+  isOpen: boolean;
+  onToggle: () => void;
+}) => {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        if (isOpen) onToggle();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onToggle]);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={onToggle}
+        className="bg-neutral-100 text-neutral-500 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-neutral-200 transition-colors min-w-[140px] justify-between"
+      >
+        <span className="truncate">
+          {selectedItem ? selectedItem : label}
+        </span>
+        <FaCaretDown 
+          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-50 min-w-[200px] max-h-60 overflow-y-auto">
+          <div className="py-1">
+            {items.length > 0 ? (
+              items.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    onSelect(item);
+                    onToggle();
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center justify-between"
+                >
+                  <span className="truncate">{item.name}</span>
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-neutral-500 text-center">
+                No {label.toLowerCase()} available
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Add proper types for user and organization
 interface User {
   id: string;
@@ -65,7 +140,6 @@ interface User {
 interface Organization {
   id: string;
   name?: string;
-  // Add other organization properties as needed
 }
 
 // Main Dashboard Content Component
@@ -84,9 +158,66 @@ const DashboardContent = ({
   const dashboardData = useSelector(selectDashboardData);
   const dashboardStats = useSelector(selectDashboardStats);
   const chartData = useSelector(selectDashboardChartData);
+  const topJobs = useSelector(selectTopJobs);
+  const topCompanies = useSelector(selectTopCompanies);
   const loading = useSelector(selectDashboardLoading);
   const error = useSelector(selectDashboardError);
   const userRole = useSelector(selectUserRole);
+
+  // State for dropdown filters
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [selectedJob, setSelectedJob] = useState<string | null>(null);
+  const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
+  const [isJobDropdownOpen, setIsJobDropdownOpen] = useState(false);
+
+  console.log(topJobs, topCompanies, "Top Jobs and Companies Data");
+
+  // Demo function to handle company selection
+  const handleCompanySelect = (company: { id: string; name: string }) => {
+    setSelectedCompany(company.name);
+    setSelectedJob(null); // Reset job filter when company is selected
+    console.log("Selected company:", company);
+    // Dispatch action to filter chart data by company
+    dispatch(fetchApplicationsOverTime({ userUuid: user.id, orgUuid: organization.id, company_name: company.name, job_title: undefined }));
+  };
+
+  // Demo function to handle job selection
+  const handleJobSelect = (job: { id: string; name: string }) => {
+    setSelectedJob(job.name);
+    setSelectedCompany(null); // Reset company filter when job is selected
+    console.log("Selected job:", job);
+    // Dispatch action to filter chart data by job
+    dispatch(fetchApplicationsOverTime({ userUuid: user.id, orgUuid: organization.id, job_title: job.name, company_name: undefined }));
+    // 3. Possibly calling an API endpoint with the job filter
+  };
+
+  // Reset filters function
+  const handleResetFilters = () => {
+    setSelectedCompany(null);
+    setSelectedJob(null);
+    console.log("Filters reset - showing all data");
+    dispatch(fetchApplicationsOverTime({
+      userUuid: user.id,
+      orgUuid: organization.id,
+      company_name: undefined,
+      job_title: undefined,
+    }));
+    // TODO: Dispatch action to reset chart data to show all
+  };
+
+  // Transform top companies data for dropdown
+  const companyDropdownItems = topCompanies?.map(company => ({
+    id: String(Math.random()), // Handle different possible id fields
+    name: company.name || 'Unknown Company',
+    count: company.value,
+  })) || [];
+
+  // Transform top jobs data for dropdown
+  const jobDropdownItems = topJobs?.map(job => ({
+    id: String(Math.random()), // Handle different possible id fields
+    name: job.name || 'Unknown Job',
+    count: job.value
+  })) || [];
 
   // Transform stats for display
   const stats = dashboardStats ? [
@@ -296,18 +427,43 @@ const DashboardContent = ({
 
         {/* Applications Over Time Chart */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-2">
-            <h2 className="text-xl font-semibold text-neutral-900">
-              Applications Over Time
-            </h2>
-            <div className="flex gap-2 flex-wrap">
-              <button className="bg-neutral-100 text-neutral-500 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-neutral-200 transition-colors">
-                Show by Company <FaCaretDown className="w-4 h-4" />
-              </button>
-              <button className="bg-neutral-100 text-neutral-500 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-neutral-200 transition-colors">
-                Show by Role <FaCaretDown className="w-4 h-4" />
-              </button>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold text-neutral-900">
+                Applications Over Time
+              </h2>
             </div>
+            
+            {/* Filter Dropdowns */}
+            <div className="flex gap-2 flex-wrap">
+              <FilterDropdown
+                label="Show by Company"
+                items={companyDropdownItems}
+                selectedItem={selectedCompany}
+                onSelect={handleCompanySelect}
+                isOpen={isCompanyDropdownOpen}
+                onToggle={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
+              />
+              
+              <FilterDropdown
+                label="Show by Role"
+                items={jobDropdownItems}
+                selectedItem={selectedJob}
+                onSelect={handleJobSelect}
+                isOpen={isJobDropdownOpen}
+                onToggle={() => setIsJobDropdownOpen(!isJobDropdownOpen)}
+              />
+            </div>
+            {(selectedCompany || selectedJob) && (
+                <div className="flex items-center justify-end">
+                  <button
+                    onClick={handleResetFilters}
+                    className="text-xs text-neutral-500 hover:text-neutral-700 underline"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
           </div>
 
           {/* Chart */}
@@ -372,75 +528,34 @@ export default function DashboardPage() {
   const collapsed = useAppSelector((state: RootState) => state.ui.sidebar.collapsed);
 
   // User authentication data
-  const user = useSelector((state: RootState) => state.user.user);
-  const organization = useSelector((state: RootState) => state.user.organization);
-  const isLoading = useSelector((state: RootState) => state.user.loading);
-  const error = useSelector((state: RootState) => state.user.error);
+  const user = useAppSelector((state: RootState) => state.user.user);
+  const organization = useAppSelector((state: RootState) => state.user.organization);
+  const isLoading = useAppSelector((state: RootState) => state.user.loading);
+  const error = useAppSelector((state: RootState) => state.user.error);
 
-  // Ref to track if auth initialization has been attempted
-  const authInitialized = useRef(false);
-  const mountedRef = useRef(true);
+  // **FIXED**: Simplified loading logic - removed complex initialization tracking
+  const [authChecked, setAuthChecked] = useState(false);
 
-  // Cleanup on unmount
+  // **FIXED**: Initialize auth once when component mounts
   useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  // Initialize auth only once and only if user is truly not authenticated
-  useEffect(() => {
-    if (
-      authInitialized.current || 
-      isLoading || 
-      user || 
-      error ||
-      !mountedRef.current
-    ) {
-      return;
+    // Only initialize if we haven't checked auth yet and don't have user data
+    if (!authChecked && !user && !isLoading) {
+      console.log("Initializing auth for dashboard...");
+      dispatch(initializeAuth());
+      setAuthChecked(true);
     }
+  }, [dispatch, user, isLoading, authChecked]);
 
-    console.log("Initializing auth for dashboard...");
-    authInitialized.current = true;
-    dispatch(initializeAuth());
-  }, [dispatch, user, isLoading, error]);
-
-  // Reset auth initialization flag when user logs out
+  // **FIXED**: Reset auth check when user logs out or there's an error
   useEffect(() => {
-    if (error && authInitialized.current) {
-      console.log("User error detected, resetting auth initialization flag");
-      authInitialized.current = false;
+    if (error && authChecked) {
+      console.log("Auth error detected, will re-check on next mount");
+      setAuthChecked(false);
     }
-  }, [error]);
+  }, [error, authChecked]);
 
-  // Handle error state
-  if (error) {
-    return (
-      <div
-        className={`transition-all duration-300 min-h-full px-3 md:px-6 ${
-          collapsed ? "md:ml-20" : "md:ml-60"
-        } pt-18`}
-      >
-        <div className="max-w-8xl mx-auto px-2 py-8">
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-            <h3 className="text-red-800 font-medium">Authentication Error</h3>
-            <p className="text-red-700 mt-2">{error}</p>
-            <div className="mt-4">
-              <Link
-                href="/login"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              >
-                Go to Login
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading only during initial auth check
-  if (isLoading && !authInitialized.current) {
+  // **FIXED**: Show loading only when actually loading and no user data exists
+  if (isLoading && !user) {
     return (
       <div
         className={`transition-all duration-300 min-h-full px-3 md:px-6 ${
@@ -454,8 +569,43 @@ export default function DashboardPage() {
     );
   }
 
-  // If no user after auth initialization, redirect to login
-  if (!user && authInitialized.current && !isLoading) {
+  // Handle error state
+  if (error) {
+    return (
+      <div
+        className={`transition-all duration-300 min-h-full px-3 md:px-6 ${
+          collapsed ? "md:ml-20" : "md:ml-60"
+        } pt-18`}
+      >
+        <div className="max-w-8xl mx-auto px-2 py-8">
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <h3 className="text-red-800 font-medium">Authentication Error</h3>
+            <p className="text-red-700 mt-2">{error}</p>
+            <div className="mt-4 space-x-2">
+              <Link
+                href="/login"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Go to Login
+              </Link>
+              <button
+                onClick={() => {
+                  setAuthChecked(false);
+                  dispatch(initializeAuth());
+                }}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // **FIXED**: Only show this if auth has been checked and still no user
+  if (authChecked && !user && !isLoading) {
     return (
       <div
         className={`transition-all duration-300 min-h-full px-3 md:px-6 ${
@@ -480,8 +630,8 @@ export default function DashboardPage() {
     );
   }
 
-  // Handle missing organization
-  if (!organization) {
+  // Handle missing organization (only show after we have a user but no org)
+  if (user && !organization) {
     return (
       <div
         className={`transition-all duration-300 min-h-full px-3 md:px-6 ${
@@ -499,7 +649,7 @@ export default function DashboardPage() {
   }
 
   // Additional validation for required data
-  if (!user || !user.id || !organization.id) {
+  if (user && (!user.id || (organization && !organization.id))) {
     return (
       <div
         className={`transition-all duration-300 min-h-full px-3 md:px-6 ${
@@ -516,11 +666,27 @@ export default function DashboardPage() {
     );
   }
 
+  // **FIXED**: Only render dashboard if we have all required data
+  if (user && organization) {
+    return (
+      <DashboardContent
+        user={user}
+        organization={organization}
+        collapsed={collapsed}
+      />
+    );
+  }
+
+  // **FIXED**: Default loading state for initial render
   return (
-    <DashboardContent
-      user={user}
-      organization={organization}
-      collapsed={collapsed}
-    />
+    <div
+      className={`transition-all duration-300 min-h-full px-3 md:px-6 ${
+        collapsed ? "md:ml-20" : "md:ml-60"
+      } pt-18`}
+    >
+      <div className="max-w-8xl mx-auto px-2 py-8 flex justify-center items-center">
+        <LoadingSpinner message="Initializing..." />
+      </div>
+    </div>
   );
 }
