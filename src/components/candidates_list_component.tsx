@@ -70,13 +70,13 @@ interface CandidatesListProps {
 }
 
 // Loading component
-function LoadingSpinner() {
-  return (
-    <div className="flex justify-center items-center py-12">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-    </div>
-  );
-}
+// function LoadingSpinner() {
+//   return (
+//     <div className="flex justify-center items-center py-12">
+//       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+//     </div>
+//   );
+// }
 
 // Error component
 function ErrorMessage({
@@ -186,7 +186,6 @@ export default function CandidatesList({
 
   // Table customization state
   const [tableColumns, setTableColumns] = useState<TableColumn[]>([
-    { key: "checkbox", label: "Select", visible: true },
     { key: "id", label: "ID", visible: true },
     { key: "applied_date", label: "Applied Date", visible: true },
     { key: "candidate_name", label: "Candidate Name", visible: true },
@@ -567,21 +566,26 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
     localStorage.setItem('candidates-table-columns', JSON.stringify(updatedColumns));
   }, [tableColumns]);
 
-  const handleResetColumns = useCallback(() => {
-    const defaultColumns: TableColumn[] = [
-      { key: "checkbox", label: "Select", visible: true },
-      { key: "id", label: "ID", visible: true },
-      { key: "applied_date", label: "Applied Date", visible: true },
-      { key: "candidate_name", label: "Candidate Name", visible: true },
-      { key: "job_title", label: "Job", visible: true },
-      { key: "company_name", label: "Company", visible: true },
-      { key: "location", label: "Location", visible: true },
-      { key: "status", label: "Status", visible: true },
-      { key: "actions", label: "Actions", visible: true },
-    ];
-    setTableColumns(defaultColumns);
-    localStorage.setItem('candidates-table-columns', JSON.stringify(defaultColumns));
+  const handleColumnsUpdate = useCallback((updatedColumns: TableColumn[]) => {
+    setTableColumns(updatedColumns);
+    localStorage.setItem('candidates-table-columns', JSON.stringify(updatedColumns));
   }, []);
+
+  // const handleResetColumns = useCallback(() => {
+  //   const defaultColumns: TableColumn[] = [
+  //     { key: "checkbox", label: "Select", visible: true },
+  //     { key: "id", label: "ID", visible: true },
+  //     { key: "applied_date", label: "Applied Date", visible: true },
+  //     { key: "candidate_name", label: "Candidate Name", visible: true },
+  //     { key: "job_title", label: "Job", visible: true },
+  //     { key: "company_name", label: "Company", visible: true },
+  //     { key: "location", label: "Location", visible: true },
+  //     { key: "status", label: "Status", visible: true },
+  //     { key: "actions", label: "Actions", visible: true },
+  //   ];
+  //   setTableColumns(defaultColumns);
+  //   localStorage.setItem('candidates-table-columns', JSON.stringify(defaultColumns));
+  // }, []);
 
   // Modal handlers
   const handleOpenFiltersModal = () => setShowFiltersModal(true);
@@ -873,7 +877,7 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
                     <TableCustomization
                       columns={tableColumns}
                       onColumnToggle={handleColumnToggle}
-                      onResetToDefault={handleResetColumns}
+                      onColumnsUpdate={handleColumnsUpdate}
                     />
                   </>
                 )}
@@ -883,7 +887,7 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
         )}
 
         {/* Loading State */}
-        {loading && <LoadingSpinner />}
+        {/* {loading && <LoadingSpinner />} */}
         
         {/* Table */}
         {!loading && (

@@ -60,9 +60,9 @@ const FilterSection = memo(
       <div className="mb-6">
         <h3 className="font-semibold text-lg mb-3 text-gray-900">{filter.label}</h3>
         <div className="space-y-2">
-          {filter.options.map((option) => (
+          {filter.options.map((option, index) => (
             <FilterOptionItem
-              key={option}
+              key={index}
               option={option}
               type={filter.type}
               isSelected={filter.selected.includes(option)}

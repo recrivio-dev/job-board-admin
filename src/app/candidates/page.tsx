@@ -212,6 +212,13 @@ const CandidatesContent = ({
           </div>
         )}
 
+        {/* Candidates List Component */}
+        <CandidatesList
+          showHeader={false}
+          showFilters={true}
+          showSorting={true}
+        />
+
         {/* Loading State */}
         {loading && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -221,13 +228,6 @@ const CandidatesContent = ({
             </div>
           </div>
         )}
-
-        {/* Candidates List Component */}
-        <CandidatesList
-          showHeader={false}
-          showFilters={true}
-          showSorting={true}
-        />
       </div>
     </div>
   );
@@ -292,7 +292,7 @@ export default function Candidates() {
   }
 
   // Handle missing organization
-  if (!organization) {
+  if (isLoading || !organization) {
     return (
       <div
         className={`transition-all duration-300 h-full px-3 md:px-0 ${
