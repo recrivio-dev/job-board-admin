@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import { CiFilter } from "react-icons/ci";
+import { CiFilter, CiSearch } from "react-icons/ci";
+import { IoClose } from "react-icons/io5";
 import {
   fetchJobApplicationsWithAccess,
   updateApplicationStatusWithAccess,
@@ -18,6 +19,7 @@ import {
   selectFilterOptions,
   CandidateWithApplication,
   deleteCandidateApplication,
+  CandidateFilters,
 } from "@/store/features/candidatesSlice";
 import { TiArrowSortedDown } from "react-icons/ti";
 import GlobalStickyTable from "@/components/GlobalStickyTable";
@@ -30,6 +32,155 @@ interface InitializationState {
   initialized: boolean;
   error: string | null;
 }
+
+const MultiSelectDropdown = ({
+  options,
+  selectedValues,
+  onChange,
+  placeholder,
+  className = "",
+  searchPlaceholder = "Search"
+}: {
+  options: Array<{ value: string; label: string }>;
+  selectedValues: string[] | string;
+  onChange: (values: string[]) => void;
+  placeholder: string;
+  className?: string;
+  searchPlaceholder?: string;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm(""); // Clear search when closing
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Focus search input when dropdown opens
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const handleOptionToggle = (value: string) => {
+    const currentValues = Array.isArray(selectedValues) ? selectedValues : [];
+    const newValues = currentValues.includes(value)
+      ? currentValues.filter(v => v !== value)
+      : [...currentValues, value];
+    onChange(newValues);
+  };
+
+  const getDisplayText = () => {
+    const currentValues = Array.isArray(selectedValues) ? selectedValues : [];
+    if (currentValues.length === 0) return placeholder;
+    if (currentValues.length === 1) {
+      const option = options.find(opt => opt.value === currentValues[0]);
+      return option?.label || currentValues[0];
+    }
+    return `${currentValues.length} selected`;
+  };
+
+  // Filter options based on search term
+  const filteredOptions = options.filter(option =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    option.value.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const currentValues = Array.isArray(selectedValues) ? selectedValues : [];
+
+  return (
+    <div className={`relative ${className} min-w-[120px]`} ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer text-left"
+      >
+        {getDisplayText()}
+      </button>
+      <TiArrowSortedDown 
+        className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none transition-transform w-4 h-4 ${
+          isOpen ? 'rotate-180' : ''
+        }`} 
+      />
+      
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
+          {/* Search Input */}
+          { placeholder==="Company" ? (
+            <div className="sticky top-0 bg-white border-b border-neutral-200 p-2">
+              <div className="relative">
+                <CiSearch className="absolute left-1 top-1/2 transform -translate-y-1/2 text-neutral-400 w-4 h-4" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="w-full pl-7 pr-6 py-2 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                  >
+                    <IoClose className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Options List */}
+          <div className="max-h-40 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option, index) => (
+                <label
+                  key={index}
+                  className="flex items-center px-3 py-2 hover:bg-neutral-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={currentValues.includes(option.value)}
+                    onChange={() => handleOptionToggle(option.value)}
+                    className="mr-3 rounded border-neutral-300 focus:ring-blue-300"
+                  />
+                  <span className="text-xs text-neutral-700">{option.label}</span>
+                </label>
+              ))
+            ) : (
+              <div className="px-3 py-4 text-sm text-neutral-500 text-center">
+                No options found
+              </div>
+            )}
+          </div>
+
+          {/* Footer - Only show when there are selected values */}
+          {currentValues.length > 0 && (
+            <div className="sticky bottom-0 bg-white border-t border-neutral-200 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Clear all ({currentValues.length})
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function debounce<T extends (...args: any[]) => any>(
@@ -68,15 +219,6 @@ interface CandidatesListProps {
   jobId?: string | null;
   onCandidateClick?: (candidate: CandidateWithApplication) => void;
 }
-
-// Loading component
-// function LoadingSpinner() {
-//   return (
-//     <div className="flex justify-center items-center py-12">
-//       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-//     </div>
-//   );
-// }
 
 // Error component
 function ErrorMessage({
@@ -182,7 +324,8 @@ export default function CandidatesList({
 
   // Filters modal state
   const [showFiltersModal, setShowFiltersModal] = useState(false);
-  const [sortBy, setSortBy] = useState("recent");
+  const [tempFilters, setTempFilters] = useState<Partial<CandidateFilters>>({});
+
 
   // Table customization state
   const [tableColumns, setTableColumns] = useState<TableColumn[]>([
@@ -192,8 +335,6 @@ export default function CandidatesList({
     { key: "job_title", label: "Job", visible: true },
     { key: "company_name", label: "Company", visible: true },
     { key: "location", label: "Location", visible: true },
-    { key: "status", label: "Status", visible: true },
-    { key: "actions", label: "Actions", visible: true },
   ]);
 
   // Refs for cleanup
@@ -210,7 +351,7 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
         console.error('Failed to parse saved column preferences:', error);
       }
     }
-  }, []);
+  }, []);    
 
   useEffect(() => {
     const initializeData = async () => {
@@ -225,7 +366,6 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
         })).unwrap();
 
         // Then fetch candidates
-        console.log("Fetching job applications with access...");
         await dispatch(fetchJobApplicationsWithAccess({
           page: 1,
           limit: 50,
@@ -264,22 +404,16 @@ const getCurrentExperienceValue = useCallback(() => {
   return "";
 }, [minExperience, maxExperience]);
 
-  // Improved sort value getter
-const { sortBy: currentSortBy, sortOrder } = filters;
-
-const getCurrentSortValue = useCallback(() => {
-  if (!currentSortBy || !sortOrder) {
-    return "date_desc"; // default
-  }
+const getCurrentSortValue = () => {
+  const { sortBy, sortOrder } = filters;
   
-  // Map current sort state back to select value
-  if (currentSortBy === 'applied_date' && sortOrder === 'desc') return 'date_desc';
-  if (currentSortBy === 'applied_date' && sortOrder === 'asc') return 'date_asc';
-  if (currentSortBy === 'name' && sortOrder === 'asc') return 'name_asc';
-  if (currentSortBy === 'name' && sortOrder === 'desc') return 'name_desc';
+  if (sortBy === "applied_date" && sortOrder === "desc") return "date_desc";
+  if (sortBy === "applied_date" && sortOrder === "asc") return "date_asc";
+  if (sortBy === "name" && sortOrder === "asc") return "name_asc";
+  if (sortBy === "name" && sortOrder === "desc") return "name_desc";
   
-  return "date_desc"; // fallback
-}, [currentSortBy, sortOrder]);
+  return "date_desc"; // default
+};
 
   // Create a stable debounced function
 const debouncedFetch = useMemo(() => {
@@ -325,14 +459,14 @@ const debouncedFetch = useMemo(() => {
     };
   }, [debouncedFetch]);
 
-// Improved filter change handler with proper TypeScript
-const handleFilterChange = useCallback((filterType: string, value: string) => {
+// Updated filter change handler with multi-select support
+const handleFilterChange = useCallback((filterType: string, value: string | string[] | number) => {
   if (!userContext) return;
 
   let newFilters = { ...filters };
 
   if (filterType === "sortBy") {
-    // Handle sort changes
+    // Handle sort changes (single select)
     switch (value) {
       case "date_desc":
         newFilters.sortBy = "applied_date";
@@ -352,25 +486,47 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
         break;
     }
   } else if (filterType === "experience") {
-    // Handle experience filter
-    if (value === "0-2") {
-      newFilters.minExperience = 0;
-      newFilters.maxExperience = 2;
-    } else if (value === "3-5") {
-      newFilters.minExperience = 3;
-      newFilters.maxExperience = 5;
-    } else if (value === "6-8") {
-      newFilters.minExperience = 6;
-      newFilters.maxExperience = 8;
-    } else if (value === "9+") {
-      newFilters.minExperience = 9;
-      newFilters.maxExperience = undefined;
-    } else {
+    // Handle experience min/max values
+    console.log("Experience filter change:", value);
+    if (value === "" || value === "all") {
+      // If empty or "all", clear both min and max experience
       newFilters.minExperience = undefined;
       newFilters.maxExperience = undefined;
+    } else if (typeof value === "string") {
+      // Parse the value to set min and max experience
+      if (value === "9+") {
+        // Handle 9+ case specifically
+        newFilters.minExperience = 9;
+        newFilters.maxExperience = undefined; // No upper limit
+      } else if (value.includes("-")) {
+        // Handle range cases like "0-2", "3-5", "6-8"
+        const [min, max] = value.split("-").map(Number);
+        console.log("Parsed experience range:", min, max);
+        newFilters.minExperience = isNaN(min) ? undefined : min;
+        newFilters.maxExperience = isNaN(max) ? undefined : max;
+      } else {
+        // Handle any other single number cases
+        const numValue = Number(value);
+        if (!isNaN(numValue)) {
+          newFilters.minExperience = numValue;
+          newFilters.maxExperience = numValue;
+        }
+      }
+    }
+  }
+  else if (filterType === "status" || filterType === "companyName" || filterType === "jobTitle") {
+    // Handle multi-select filters - expect array values
+    if (value === "" || value === "all") {
+      // If "All" is selected, clear the filter
+      newFilters[filterType] = undefined;
+    } else if (Array.isArray(value)) {
+      newFilters[filterType] = value.length > 0 ? value : undefined;
+    } else {
+      // If single value passed, convert to array
+      newFilters[filterType] = value ? [value as string] : undefined;
     }
   } else {
-    // Handle other filters
+    // Handle other single-select filters
     newFilters = {
       ...newFilters,
       [filterType]: value || undefined,
@@ -394,6 +550,103 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
     userContext,
   }));
 }, [dispatch, filters, userContext, pagination.candidatesPerPage]);
+
+const handleTempFilterChange = useCallback((filterType: string, value: string | string[] | number) => {
+  let newTempFilters = { ...tempFilters }; // Use tempFilters instead of filters
+  console.log("Temp filter change:", filterType, value, newTempFilters);
+        
+  if (filterType === "sortBy") {
+    // Handle sort changes (single select)
+    switch (value) {
+      case "date_desc":
+        newTempFilters.sortBy = "applied_date";
+        newTempFilters.sortOrder = "desc";
+        break;
+      case "date_asc":
+        newTempFilters.sortBy = "applied_date";
+        newTempFilters.sortOrder = "asc";
+        break;
+      case "name_asc":
+        newTempFilters.sortBy = "name";
+        newTempFilters.sortOrder = "asc";
+        break;
+      case "name_desc":
+        newTempFilters.sortBy = "name";
+        newTempFilters.sortOrder = "desc";
+        break;
+    }
+  } else if (filterType === "minExperience" || filterType === "maxExperience") {
+    // Handle experience min/max values
+    newTempFilters[filterType] = value === "" ? undefined : Number(value);
+  }
+   else if (filterType === "status" || filterType === "jobTitle" || filterType === "companyName") {
+
+    // Fixed multi-select logic for checkbox filters
+    const currentSelected = Array.isArray(newTempFilters[filterType])
+      ? [...(newTempFilters[filterType] as string[])]
+      : [];
+            
+    // Handle "All" option (empty string)
+    if (value === "" || value === "all") {
+      // Clear all selections when "All" is selected
+      newTempFilters[filterType] = undefined;
+    } else if (typeof value === 'string') {
+      // Toggle individual option
+      const valueIndex = currentSelected.indexOf(value);
+            
+      if (valueIndex > -1) {
+        // Remove if already selected
+        currentSelected.splice(valueIndex, 1);
+      } else {
+        // Add if not selected
+        currentSelected.push(value);
+      }
+            
+      // Update the filter
+      newTempFilters[filterType] = currentSelected.length > 0 ? currentSelected : undefined;
+    } else if (Array.isArray(value)) {
+      // Handle array input directly
+      newTempFilters[filterType] = value.length > 0 ? value : undefined;
+    }
+  } else {
+    // Handle other single-select filters
+    newTempFilters = {
+      ...newTempFilters,
+      [filterType]: value || undefined,
+    };
+  }
+
+  // Clean up undefined values
+  Object.keys(newTempFilters).forEach(key => {
+    if (newTempFilters[key as keyof typeof newTempFilters] === undefined) {
+      delete newTempFilters[key as keyof typeof newTempFilters];
+    }
+  });
+
+  setTempFilters(newTempFilters); //Update tempFilters state instead of dispatching
+}, [tempFilters]); // Depend on tempFilters instead of filters
+
+const handleCloseFiltersModal = useCallback(() => {
+  setTempFilters({ ...filters }); // Reset temp filters to current filters
+  setShowFiltersModal(false);
+}, [filters]);
+
+const handleApplyFilters = useCallback(() => {
+  if (!userContext) return;
+       
+  // Apply the temporary filters to main filters
+  dispatch(setFilters(tempFilters));
+       
+  // Fetch data with the temporary filters
+  dispatch(fetchJobApplicationsWithAccess({
+    page: 1,
+    limit: pagination.candidatesPerPage,
+    filters: tempFilters, // Use tempFilters
+    userContext,
+  }));
+   
+  handleCloseFiltersModal();
+}, [dispatch, tempFilters, userContext, pagination.candidatesPerPage, handleCloseFiltersModal]);
 
   // Handle status updates 
   const handleStatusUpdate = async (applicationId: string, status: string) => {
@@ -522,7 +775,6 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
     [dispatch, pagination.candidatesPerPage, filters, userContext]
   );
   
-
   const handlePageSizeChange = useCallback(
     async (pageSize: number) => {
       if (!userContext) {
@@ -571,35 +823,29 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
     localStorage.setItem('candidates-table-columns', JSON.stringify(updatedColumns));
   }, []);
 
-  // const handleResetColumns = useCallback(() => {
-  //   const defaultColumns: TableColumn[] = [
-  //     { key: "checkbox", label: "Select", visible: true },
-  //     { key: "id", label: "ID", visible: true },
-  //     { key: "applied_date", label: "Applied Date", visible: true },
-  //     { key: "candidate_name", label: "Candidate Name", visible: true },
-  //     { key: "job_title", label: "Job", visible: true },
-  //     { key: "company_name", label: "Company", visible: true },
-  //     { key: "location", label: "Location", visible: true },
-  //     { key: "status", label: "Status", visible: true },
-  //     { key: "actions", label: "Actions", visible: true },
-  //   ];
-  //   setTableColumns(defaultColumns);
-  //   localStorage.setItem('candidates-table-columns', JSON.stringify(defaultColumns));
-  // }, []);
-
   // Modal handlers
-  const handleOpenFiltersModal = () => setShowFiltersModal(true);
-  const handleCloseFiltersModal = () => setShowFiltersModal(false);
-  
-  const handleClearAllFilters = () => {
-    const clearedFilters = {};
-    dispatch(setFilters(clearedFilters));
-  };
+  const handleOpenFiltersModal = useCallback(() => {
+    setTempFilters({ ...filters }); // Copy current filters to temp
+    setShowFiltersModal(true);
+  }, [filters]);
 
-  const handleApplyFilters = () => {
-    handleCloseFiltersModal();
-    // Filters are already applied through individual onChange handlers
-  };
+const handleClearAllFilters = () => {
+  if (!userContext) return;
+  
+  const clearedFilters = {};
+  dispatch(setFilters(clearedFilters));
+  dispatch(fetchJobApplicationsWithAccess({
+    page: 1,
+    limit: pagination.candidatesPerPage,
+    filters: clearedFilters,
+    userContext,
+  }));
+  setShowFiltersModal(false);
+  // Clear debounced fetch if it exists
+  if (debouncedFetchRef.current?.cancel) {
+    debouncedFetchRef.current.cancel();
+  }
+};
 
   // Table columns for GlobalStickyTable
   const columns = useMemo(() => {
@@ -728,9 +974,41 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
     );
   }
 
+const filtersModalOptions = [
+  {
+    id: "sortBy",
+    label: "Sort By",
+    type: "radio" as const,
+    options: [
+      "name_asc",
+      "name_desc", 
+      "date_desc",
+      "date_asc",
+    ],
+    selected: getCurrentSortValue(),
+    onChange: (value: string) => handleTempFilterChange('sortBy', value),
+  },
+  {
+    id: "status",
+    label: "Application Status",
+    type: "checkbox" as const,
+    options: filterOptions.statuses || [],
+    selected: tempFilters.status || [],
+    onChange: (option: string) => handleTempFilterChange('status', option),
+  },
+  {
+    id: "jobTitle",     
+    label: "Active Jobs",
+    type: "checkbox" as const,
+    options: filterOptions.jobTitles?.map(j => j.value) || [], // Remove the empty string from here
+    selected: tempFilters.jobTitle || [],
+    onChange: (option: string) => handleTempFilterChange('jobTitle', option),
+  },
+];
+
   return (
     <>
-      <div className={className}>
+      <div className={`${className} relative`}>
         {/* Header */}
         {showHeader && (
           <div className="mb-6">
@@ -765,7 +1043,7 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
 
         {/* Filters and Sorting */}
         {(showSorting || showFilters) && (
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div className="flex z-999 flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             {/* Left side - Sorting */}
             <div className="flex items-center gap-4">
               {showSorting && (
@@ -807,19 +1085,15 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
                     </div>
                   </div>
 
-                  <div className="relative">
-                    <select
-                      value={filters.status || ""}
-                      onChange={(e) => handleFilterChange("status", e.target.value)}
-                      className="bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer appearance-none"
-                    >
-                      <option value="">App. Status</option>
-                      <option value="accepted">Accepted</option>
-                      <option value="pending">Pending</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
-                    <TiArrowSortedDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                  </div>
+                 <MultiSelectDropdown
+                    options={filterOptions.statuses?.map((status: string) => ({
+                      value: status==="all" ? "all" : status.toLowerCase(),
+                      label: status.charAt(0).toUpperCase() + status.slice(1)
+                    })) || []}
+                    selectedValues={filters.status || []}
+                    onChange={(values) => handleFilterChange("status", values)}
+                    placeholder="App. Status"
+                  />
                 </div>
               )}
             </div>
@@ -844,21 +1118,17 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
 
                 {
                   !jobId && (
-                     <div className="relative">
-                  <select
-                    value={filters.companyName || ""}
-                    onChange={(e) => handleFilterChange("companyName", e.target.value)}
-                    className="bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer appearance-none"
-                  >
-                    <option value="">Company</option>
-                    {filterOptions.companies?.map((company, index) => (
-                      <option key={index} value={company.value}>
-                        {company.value}
-                      </option>
-                    ))}
-                  </select>
-                  <TiArrowSortedDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                </div>
+                    <div className="relative z-30">
+                     <MultiSelectDropdown
+                        options={filterOptions.companies?.map(company => ({
+                          value: company.value,
+                          label: company.value
+                        })) || []}
+                        selectedValues={filters.companyName || []}
+                        onChange={(values) => handleFilterChange("companyName", values)}
+                        placeholder="Company"
+                      />
+                      </div>
                   )
                 }          
 
@@ -885,9 +1155,6 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
             </div>
           </div>
         )}
-
-        {/* Loading State */}
-        {/* {loading && <LoadingSpinner />} */}
         
         {/* Table */}
         {!loading && (
@@ -923,45 +1190,12 @@ const handleFilterChange = useCallback((filterType: string, value: string) => {
         onDelete={handleDeleteCandidate}
         calculateExperience={calculateExperience}
       />
-
       {/* Filters Modal */}
       <FiltersModal
         show={showFiltersModal}
         onClose={handleCloseFiltersModal}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        filterOptions={[
-          {
-            id: "status",
-            label: "Application Status",
-            type: "checkbox" as const,
-            options: ["accepted", "pending", "rejected"],
-            selected: filters.status ? [filters.status] : [],
-            onChange: (option: string) => {
-              const isSelected = filters.status === option;
-              const newFilters = {
-                ...filters,
-                status: isSelected ? undefined : option
-              };
-              dispatch(setFilters(newFilters));
-            },
-          },
-          {
-            id: "company",
-            label: "Company",
-            type: "checkbox" as const,
-            options: filterOptions.companies?.map(c => c.value) || [],
-            selected: filters.companyName ? [filters.companyName] : [],
-            onChange: (option: string) => {
-              const isSelected = filters.companyName === option;
-              const newFilters = {
-                ...filters,
-                companyName: isSelected ? undefined : option
-              };
-              dispatch(setFilters(newFilters));
-            },
-          },
-        ]}
+        tempFilter={tempFilters}
+        filterOptions={filtersModalOptions}
         onClearAll={handleClearAllFilters}
         onApply={handleApplyFilters}
       />

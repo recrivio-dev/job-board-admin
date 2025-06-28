@@ -525,6 +525,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      fetch_all_org_members_simple: {
+        Args: { p_org_id: string }
+        Returns: {
+          id: string
+          email: string
+          full_name: string
+          is_active: boolean
+          user_roles: Json
+          assigned_jobs: Json
+          member_count: number
+        }[]
+      }
       fetch_candidates_with_access: {
         Args: {
           p_user_id: string
@@ -532,11 +544,12 @@ export type Database = {
           p_organization_id?: string
           p_page?: number
           p_limit?: number
-          p_application_status?: string
+          p_application_status?: string[]
           p_sort_by?: string
           p_sort_order?: string
           p_name_filter?: string
-          p_company_filter?: string
+          p_company_filter?: string[]
+          p_job_title_filter?: string[]
           p_min_experience?: number
           p_max_experience?: number
           p_date_from?: string

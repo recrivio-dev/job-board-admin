@@ -67,6 +67,7 @@ export interface FilterOption {
 
 export interface FilterOptionsResponse {
   companies: FilterOption[];
+  job_titles: FilterOption[];
   locations?: FilterOption[];
   statuses: string[];
   cached?: boolean;
@@ -154,10 +155,13 @@ function isDatabaseFunctionResponse(data: unknown): data is DatabaseFunctionResp
   );
 }
 
+
+// Updated CandidateFilters interface (keeping multi-select)
 export interface CandidateFilters {
-  status?: string;
   candidateName?: string;
-  companyName?: string;
+  status?: string[];         // Multi-select array
+  companyName?: string[];    // Multi-select array
+  jobTitle?: string[];       // Multi-select array
   minExperience?: number;
   maxExperience?: number;
   dateFrom?: string;
@@ -166,7 +170,6 @@ export interface CandidateFilters {
   sortBy?: 'name' | 'application_status' | 'experience_years' | 'company_name' | 'applied_date' | 'created_at' | 'updated_at' | 'current_ctc' | 'expected_ctc';
   sortOrder?: 'asc' | 'desc';
 }
-
 // Enhanced async thunk with role-based access control
 export const fetchJobApplicationsWithAccess = createAsyncThunk(
   "candidates/fetchJobApplicationsWithAccess",
@@ -206,6 +209,21 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
         };
       }
 
+      // Helper function to handle multi-value filters
+      const prepareArrayFilter = (filter: string | string[] | undefined): string[] | undefined => {
+        if (!filter) return undefined;
+        if (Array.isArray(filter)) {
+          // Filter out empty strings and 'All' values
+          const cleanedArray = filter.filter(item => item && item.trim() !== '' && item !== 'All');
+          return cleanedArray.length > 0 ? cleanedArray : undefined;
+        }
+        // Single value - convert to array if not 'All' or empty
+        if (filter !== 'All' && filter.trim() !== '') {
+          return [filter];
+        }
+        return undefined;
+      };
+
       // Prepare function parameters
       const functionParams = {
         p_user_id: userId,
@@ -213,11 +231,14 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
         p_organization_id: organizationId,
         p_page: page,
         p_limit: limit,
-        p_application_status: filters.status && filters.status !== "All" ? filters.status : undefined,
+        // Multi-value array parameters
+        p_application_status: prepareArrayFilter(filters.status),
+        p_company_filter: prepareArrayFilter(filters.companyName),
+        p_job_title_filter: prepareArrayFilter(filters.jobTitle),
+        // Other parameters remain the same
         p_sort_by: filters.sortBy || 'applied_date',
         p_sort_order: filters.sortOrder || 'desc',
         p_name_filter: filters.candidateName || undefined,
-        p_company_filter: filters.companyName || undefined,
         p_min_experience: filters.minExperience || undefined,
         p_max_experience: filters.maxExperience || undefined,
         p_date_from: filters.dateFrom || undefined,
@@ -340,7 +361,9 @@ const isFilterOptionsRPCResponse = (data: unknown): data is FilterOptionsRespons
   return (
     'companies' in obj &&
     'success' in obj &&
-    Array.isArray(obj.companies)
+    'job_titles' in obj &&
+    Array.isArray(obj.companies) &&
+    Array.isArray(obj.job_titles)
   );
 };
 
@@ -375,6 +398,7 @@ export const fetchFilterOptions = createAsyncThunk(
         if (!params.forceRefresh && cacheValid && filterOptions.companies.length > 0) {
           return {
             companies: filterOptions.companies,
+            jobTitles: filterOptions.jobTitles || [],
             statuses: filterOptions.statuses,
             cached: true,
           };
@@ -410,10 +434,13 @@ export const fetchFilterOptions = createAsyncThunk(
       }
 
       // Define default statuses if not provided by server
-      const defaultStatuses = ["Accepted", "Pending", "Rejected"];
+      const defaultStatuses = ["accepted", "pending", "rejected"];
+
+      console.log("Fetched filter options:", data.job_titles);
 
       return {
         companies: (data.companies || []).sort(),
+        jobTitles: (data.job_titles || []).sort(),
         statuses: defaultStatuses,
         cached: false,
       };
@@ -438,13 +465,15 @@ export const applyFilters = createAsyncThunk(
       userContext: UserContext;
       page?: number;
     },
-    { dispatch, getState }
+    { dispatch, getState, rejectWithValue }
   ) => {
     try {
       // Validate user context
       const state = getState() as { candidates: CandidatesState };
       const currentPageSize = state.candidates.pagination.candidatesPerPage;
       const targetPage = page || 1;
+
+      // Set filters in the state
       dispatch(setFilters(filters));
 
       // If page is not specified and filters changed, reset to page 1
@@ -452,25 +481,28 @@ export const applyFilters = createAsyncThunk(
         dispatch(setCurrentPage(1));
       }
 
-      // Fetch job applications with access control
-      const response = await fetchJobApplicationsWithAccess({
+      // Dispatch the fetchJobApplicationsWithAccess thunk and unwrap the result
+      const response = await dispatch(fetchJobApplicationsWithAccess({
         filters,
         userContext,
         page: targetPage,
         limit: currentPageSize,
-      });
+      })).unwrap();
 
       return response;
+
     } catch (error) {
       console.log("applyFilters error:", error);
-      return {
+
+      // Return a rejected value that matches the expected response format
+      return rejectWithValue({
         candidates: [],
         total_count: 0,
         current_page: page,
         total_pages: 0,
         success: false,
         error: error instanceof Error ? error.message : "Failed to apply filters",
-      };
+      });
     }
   }
 );
@@ -721,6 +753,7 @@ interface CandidatesState {
   // Filter options
   filterOptions: {
     companies: FilterOption[];
+    jobTitles: FilterOption[];
     statuses: string[];
     lastFetched: number | null; // Timestamp of last fetch
     loading?: boolean; // Optional loading state for filter options
@@ -747,7 +780,7 @@ const initialState: CandidatesState = {
 
   // Filters (using default values that match your function)
   filters: {
-    status: "All", // Will be filtered out in function if "All"
+    status: [], // Will be filtered out in function if "All"
     candidateName: undefined,
     companyName: undefined,
     minExperience: undefined,
@@ -762,7 +795,8 @@ const initialState: CandidatesState = {
   // Filter options
   filterOptions: {
     companies: [],
-    statuses: ["Accepted", "Rejected", "Pending"], // Default statuses
+    jobTitles: [],
+    statuses: ["All", "Accepted", "Rejected", "Pending"], // Default statuses
     lastFetched: null, // Timestamp of last fetch
   },
 
@@ -957,6 +991,7 @@ const candidatesSlice = createSlice({
         state.filterOptions.error = null;
         state.filterOptions = {
           companies: action.payload.companies,
+          jobTitles: action.payload.jobTitles,
           statuses: action.payload.statuses,
           lastFetched: Date.now(),
         };
@@ -967,7 +1002,8 @@ const candidatesSlice = createSlice({
         // Optionally reset filter options on error
         state.filterOptions = {
           companies: [],
-          statuses: ["Accepted", "Rejected", "Pending"], // Default statuses
+          jobTitles: [],
+          statuses: ["accepted", "rejected", "pending"], // Default statuses
           lastFetched: null,
         };
       })
