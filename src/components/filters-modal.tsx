@@ -1,4 +1,5 @@
 import { RxCross2 } from "react-icons/rx";
+import { FaCheck } from "react-icons/fa6";
 import { useEffect, memo, useCallback } from "react";
 
 interface FilterOption {
@@ -27,9 +28,6 @@ const getDisplayLabel = (value: string, filterId: string): string => {
     'name_desc': 'Name (Z-A)',
     'date_desc': 'Most Recent',
     'date_asc': 'Oldest First',
-    'relevance': 'Most Relevant',
-    'experience_desc': 'Most Experienced',
-    'experience_asc': 'Least Experienced',
   };
 
   // Apply mappings based on filter type
@@ -47,7 +45,6 @@ const getDisplayLabel = (value: string, filterId: string): string => {
   }
 };
 
-// Simple filter option component
 const FilterOptionItem = memo(
   ({
     option,
@@ -65,24 +62,45 @@ const FilterOptionItem = memo(
     onChange: () => void;
   }) => (
     <label className="flex items-center gap-2 cursor-pointer py-1 mb-0 hover:bg-gray-50 rounded px-2 transition-colors">
-      <input
-        type={type}
-        checked={isSelected}
-        onChange={onChange}
-        value={filterId === "status" ? option.toLowerCase() : option}
-        className={`
-          w-4 h-4 cursor-pointer transition-all duration-150
-          ${type === 'radio' 
-            ? `appearance-none border-2 border-gray-300 rounded-full relative
-               checked:border-[#359A57] checked:before:content-[''] checked:before:absolute 
-               checked:before:inset-0.5 checked:before:bg-[#359A57] checked:before:rounded-full
-               focus:ring-2 focus:ring-[#359A57] focus:ring-opacity-50 focus:outline-none
-               hover:border-gray-400`
-            : `text-[#359A57] border-gray-300 rounded focus:ring-[#359A57] focus:ring-2`
-          }
-        `}
-      />
-      <span className="text-sm text-gray-700 select-none font-medium">
+      {type === 'checkbox' ? (
+        <div className="relative w-5 h-5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={onChange}
+            value={filterId === "status" ? option.toLowerCase() : option}
+            className="sr-only"
+          />
+          <div className={`
+            w-5 h-5 border-2 rounded-sm transition-all duration-150 flex items-center justify-center
+            ${isSelected 
+              ? 'bg-[#359A57] border-[#359A57]' 
+              : 'border-gray-300 bg-white hover:border-gray-400'
+            }
+          `}>
+            {isSelected && (
+              <FaCheck className="w-4 h-4 text-white" />
+            )}
+          </div>
+        </div>
+      ) : (
+        <input
+          type="radio"
+          checked={isSelected}
+          name={filterId} // Ensure radio buttons are grouped by filter ID
+          onChange={onChange}
+          value={option}
+          className={`
+            w-5 h-5 cursor-pointer transition-all duration-150
+            appearance-none border border-gray-300 rounded-full relative
+            checked:border-gray-300 checked:before:content-[''] checked:before:absolute 
+            checked:before:inset-0.5 checked:before:bg-[#359A57] checked:before:rounded-full
+            focus:ring-1 focus:ring-gray-300 focus:ring-opacity-50 focus:outline-none
+            hover:border-gray-400
+          `}
+        />
+      )}
+      <span className="text-sm text-gray-500 select-none">
         {value}
       </span>
     </label>
@@ -102,13 +120,13 @@ const FilterSection = memo(
   }) => {
     return (
       <div className="mb-8">
-        <h3 className="font-semibold text-lg mb-4 text-gray-900">
+        <h3 className="font-medium text-base mb-5 text-gray-900">
           {filter.label}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-b border-gray-200 pb-6">
-          {filter.options.map((option) => (
+        <div className={`${filter.label === "Active Jobs" ?"grid grid-cols-1 sm:grid-cols-2" : "flex flex-wrap" } pb-5 gap-3 border-b border-gray-200`}>
+          {filter.options.map((option, index) => (
             <FilterOptionItem
-              key={option}
+              key={index}
               filterId={filter.id}
               option={option} // Keep original value for form submission
               value={getDisplayLabel(option, filter.id)} // Use formatted display label
@@ -171,19 +189,19 @@ const FiltersModal: React.FC<FiltersModalProps> = memo(
 
     return (
       <div className="fixed inset-0 z-999 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
+        <div className="bg-white rounded-lg shadow-xl max-w-[720px] w-full mx-4 max-h-[800px] h-[90vh] flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-semibold text-gray-900">All Filters</h2>
               {totalSelectedFilters > 0 && (
-                <span className="bg-[#359A57] text-white text-sm font-medium px-2.5 py-0.5 rounded-full">
+                <span className="bg-[#1E5CDC] text-white text-sm font-medium px-2.5 py-0.5 rounded-full">
                   {totalSelectedFilters} selected
                 </span>
               )}
             </div>
             <button
-              className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+              className="text-gray-900 hover:text-black transition-colors p-1 rounded-full hover:bg-gray-100"
               onClick={onClose}
               aria-label="Close filters modal"
             >
@@ -205,32 +223,24 @@ const FiltersModal: React.FC<FiltersModalProps> = memo(
           </div>
 
           {/* Footer */}
-          <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
-            <button
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-              onClick={onClearAll}
-              disabled={totalSelectedFilters === 0}
-            >
-              Clear All
-            </button>
-            <div className="flex gap-3">
+          <div className="flex gap-3 justify-end rounded-b-lg items-center p-6 border-t border-gray-200 bg-gray-50">
               <button
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors font-medium"
-                onClick={onClose}
+                className="px-4 py-2 text-sm text-neutral-500 border border-neutral-500 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                onClick={onClearAll}
+                disabled={totalSelectedFilters === 0}
               >
-                Cancel
+                Clear All
               </button>
               <button
-                className="px-6 py-2 bg-[#359A57] text-white rounded-lg hover:bg-[#2d7a47] transition-colors font-medium shadow-sm"
+                className="px-4 py-2 text-sm bg-[#1E5CDC] text-white rounded-lg hover:bg-[#1A4BB8] transition-colors font-medium shadow-sm cursor-pointer"
                 onClick={onApply}
               >
-                Apply Filters
-                {totalSelectedFilters > 0 && ` (${totalSelectedFilters})`}
+                Show Results
+                {/* {totalSelectedFilters > 0 && ` (${totalSelectedFilters})`} */}
               </button>
             </div>
           </div>
         </div>
-      </div>
     );
   }
 );

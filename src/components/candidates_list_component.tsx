@@ -176,7 +176,10 @@ export default function CandidatesList({
 
   // Filters modal state
   const [showFiltersModal, setShowFiltersModal] = useState(false);
-  const [tempFilters, setTempFilters] = useState<Partial<CandidateFilters>>({});
+  const [tempFilters, setTempFilters] = useState<Partial<CandidateFilters>>({
+    ...filters,
+    jobId: jobId || undefined, // Ensure jobId is handled correctly
+  });
 
 
   // Table customization state
@@ -240,6 +243,17 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
   }, [dispatch, userContext, initState.initialized, jobId]);
 
 const getCurrentSortValue = () => {
+  const { sortBy, sortOrder } = tempFilters;
+  
+  if (sortBy === "applied_date" && sortOrder === "desc") return "date_desc";
+  if (sortBy === "applied_date" && sortOrder === "asc") return "date_asc";
+  if (sortBy === "name" && sortOrder === "asc") return "name_asc";
+  if (sortBy === "name" && sortOrder === "desc") return "name_desc";
+  
+  return "date_desc"; // default
+};
+
+const getCurrentSortValueFilter = () => {
   const { sortBy, sortOrder } = filters;
   
   if (sortBy === "applied_date" && sortOrder === "desc") return "date_desc";
@@ -299,6 +313,9 @@ const handleFilterChange = useCallback((filterType: string, value: string | stri
   if (!userContext) return;
 
   let newFilters = { ...filters };
+  if (jobId) {
+    newFilters.jobId = jobId; // Ensure jobId is included in filters
+  }
 
   if (filterType === "sortBy") {
     // Handle sort changes (single select)
@@ -350,7 +367,7 @@ const handleFilterChange = useCallback((filterType: string, value: string | stri
     }
   } else if (filterType === "status" || filterType === "companyName" || filterType === "jobTitle") {
     // Handle multi-select filters - expect array values
-    if (value === "" || value === "all") {
+    if (value === "" || value === "all" || value === null) {
       newFilters[filterType] = undefined;
     } else if (Array.isArray(value)) {
       newFilters[filterType] = value.length > 0 ? value : undefined;
@@ -385,8 +402,9 @@ const handleFilterChange = useCallback((filterType: string, value: string | stri
 
 const handleTempFilterChange = useCallback((filterType: string, value: string | string[] | number) => {
   let newTempFilters = { ...tempFilters }; // Use tempFilters instead of filters
-  console.log("Temp filter change:", filterType, value, newTempFilters);
-        
+  if (jobId) {
+    newTempFilters.jobId = jobId; // Ensure jobId is included in temp filters
+  }        
   if (filterType === "sortBy") {
     // Handle sort changes (single select)
     switch (value) {
@@ -408,9 +426,7 @@ const handleTempFilterChange = useCallback((filterType: string, value: string | 
         break;
     }
   } else if (filterType === "experience") {
-      // Handle experience filter with improved parsing
-      console.log("Experience filter change:", value);
-      
+      // Handle experience filter with improved parsing      
       if (value === "" || value === "all") {
         newTempFilters.minExperience = undefined;
         newTempFilters.maxExperience = undefined;
@@ -442,7 +458,7 @@ const handleTempFilterChange = useCallback((filterType: string, value: string | 
       : [];
             
     // Handle "All" option (empty string)
-    if (value === "" || value === "all") {
+    if (value === "" || value === "all" || value === null) {
       // Clear all selections when "All" is selected
       newTempFilters[filterType] = undefined;
     } else if (typeof value === 'string') {
@@ -702,9 +718,9 @@ const handleClearAllFilters = () => {
   }
 };
 
-const handleCloseExperienceFilter = useCallback(() => {
-  setTempFilters({ ...filters }); // Reset temp filters to current filters
-}, [filters]);
+  const handleCloseExperienceFilter = useCallback(() => {
+    setTempFilters({ ...filters }); // Reset temp filters to current filters
+  }, [filters]);
 
   // Table columns for GlobalStickyTable
   const columns = useMemo(() => {
@@ -910,11 +926,11 @@ const filtersModalOptions = [
                   <div className="flex items-center bg-blue-600 text-white text-xs border border-blue-600 rounded-full px-2 py-2 cursor-pointer">
                     <span className="font-medium mr-2">Sort by</span>
                     <div className="relative">
-                      <select 
-                        value={getCurrentSortValue()}
+                        <select 
+                        value={getCurrentSortValueFilter()}
                         onChange={(e) => handleFilterChange("sortBy", e.target.value)}
-                        className="bg-blue-600 text-white text-xs border-none outline-none focus:ring-0 appearance-none pr-4 cursor-pointer hover:underline"
-                      >
+                        className="bg-blue-600 px-2 text-white text-xs border-none outline-none focus:ring-0 appearance-none pr-4 cursor-pointer hover:underline rounded-md"
+                        >
                         <option
                           value="date_desc"
                           className="bg-white text-neutral-900" 
@@ -939,7 +955,7 @@ const filtersModalOptions = [
                         >
                           Name (Z-A)
                         </option>
-                      </select>
+                        </select>
                       <TiArrowSortedDown className="absolute right-0 top-1/2 transform -translate-y-1/2 text-white pointer-events-none" />
                     </div>
                   </div>
@@ -988,6 +1004,7 @@ const filtersModalOptions = [
 
                 {showFilters && (
                   <>
+                  {!jobId && (
                     <button 
                       onClick={handleOpenFiltersModal}
                       className="flex items-center gap-2 px-4 py-2 bg-neutral-200 hover:bg-neutral-300 rounded-full text-xs font-medium text-neutral-600 transition-colors"
@@ -995,11 +1012,13 @@ const filtersModalOptions = [
                       <CiFilter className="w-4 h-4" />
                       All Filters
                     </button>
+                    )} 
                     <TableCustomization
                       columns={tableColumns}
                       onColumnToggle={handleColumnToggle}
                       onColumnsUpdate={handleColumnsUpdate}
                     />
+                    
                   </>
                 )}
               </div>

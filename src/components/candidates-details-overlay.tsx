@@ -478,28 +478,6 @@ const AdditionalInformation = memo(
               </div>
             </div>
           </div>
-
-          <div className="flex items-start gap-3">
-            <div>
-              <div className="font-medium text-sm text-neutral-800 mb-1">
-                Portfolio/Website
-              </div>
-              <div className="text-sm text-neutral-600">
-                {candidate?.portfolio_url ? (
-                  <a
-                    href={candidate.portfolio_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 underline"
-                  >
-                    View Portfolio
-                  </a>
-                ) : (
-                  "N/A"
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
