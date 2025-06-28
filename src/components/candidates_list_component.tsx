@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import { CiFilter, CiSearch } from "react-icons/ci";
-import { IoClose } from "react-icons/io5";
+import { CiFilter } from "react-icons/ci";
+import MultiSelectDropdown from "./multiSelectDropdown";
+import ExperienceFilter from "./experienceSlider";
 import {
   fetchJobApplicationsWithAccess,
   updateApplicationStatusWithAccess,
@@ -32,155 +33,6 @@ interface InitializationState {
   initialized: boolean;
   error: string | null;
 }
-
-const MultiSelectDropdown = ({
-  options,
-  selectedValues,
-  onChange,
-  placeholder,
-  className = "",
-  searchPlaceholder = "Search"
-}: {
-  options: Array<{ value: string; label: string }>;
-  selectedValues: string[] | string;
-  onChange: (values: string[]) => void;
-  placeholder: string;
-  className?: string;
-  searchPlaceholder?: string;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearchTerm(""); // Clear search when closing
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Focus search input when dropdown opens
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [isOpen]);
-
-  const handleOptionToggle = (value: string) => {
-    const currentValues = Array.isArray(selectedValues) ? selectedValues : [];
-    const newValues = currentValues.includes(value)
-      ? currentValues.filter(v => v !== value)
-      : [...currentValues, value];
-    onChange(newValues);
-  };
-
-  const getDisplayText = () => {
-    const currentValues = Array.isArray(selectedValues) ? selectedValues : [];
-    if (currentValues.length === 0) return placeholder;
-    if (currentValues.length === 1) {
-      const option = options.find(opt => opt.value === currentValues[0]);
-      return option?.label || currentValues[0];
-    }
-    return `${currentValues.length} selected`;
-  };
-
-  // Filter options based on search term
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    option.value.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const currentValues = Array.isArray(selectedValues) ? selectedValues : [];
-
-  return (
-    <div className={`relative ${className} min-w-[120px]`} ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer text-left"
-      >
-        {getDisplayText()}
-      </button>
-      <TiArrowSortedDown 
-        className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none transition-transform w-4 h-4 ${
-          isOpen ? 'rotate-180' : ''
-        }`} 
-      />
-      
-      {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
-          {/* Search Input */}
-          { placeholder==="Company" ? (
-            <div className="sticky top-0 bg-white border-b border-neutral-200 p-2">
-              <div className="relative">
-                <CiSearch className="absolute left-1 top-1/2 transform -translate-y-1/2 text-neutral-400 w-4 h-4" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={searchPlaceholder}
-                  className="w-full pl-7 pr-6 py-2 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                  >
-                    <IoClose className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : null}
-
-          {/* Options List */}
-          <div className="max-h-40 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((option, index) => (
-                <label
-                  key={index}
-                  className="flex items-center px-3 py-2 hover:bg-neutral-50 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={currentValues.includes(option.value)}
-                    onChange={() => handleOptionToggle(option.value)}
-                    className="mr-3 rounded border-neutral-300 focus:ring-blue-300"
-                  />
-                  <span className="text-xs text-neutral-700">{option.label}</span>
-                </label>
-              ))
-            ) : (
-              <div className="px-3 py-4 text-sm text-neutral-500 text-center">
-                No options found
-              </div>
-            )}
-          </div>
-
-          {/* Footer - Only show when there are selected values */}
-          {currentValues.length > 0 && (
-            <div className="sticky bottom-0 bg-white border-t border-neutral-200 px-3 py-2">
-              <button
-                type="button"
-                onClick={() => onChange([])}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Clear all ({currentValues.length})
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function debounce<T extends (...args: any[]) => any>(
@@ -387,23 +239,6 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
     initializeData();
   }, [dispatch, userContext, initState.initialized, jobId]);
 
-  // Get current experience range display value
-const { minExperience, maxExperience } = filters;
-
-const getCurrentExperienceValue = useCallback(() => {
-  if (minExperience === undefined && maxExperience === undefined) {
-    return "";
-  }
-  
-  // Find matching range
-  if (minExperience === 0 && maxExperience === 2) return "0-2";
-  if (minExperience === 3 && maxExperience === 5) return "3-5";
-  if (minExperience === 6 && maxExperience === 8) return "6-8";
-  if (minExperience === 9 && maxExperience === undefined) return "9+";
-  
-  return "";
-}, [minExperience, maxExperience]);
-
 const getCurrentSortValue = () => {
   const { sortBy, sortOrder } = filters;
   
@@ -486,18 +321,18 @@ const handleFilterChange = useCallback((filterType: string, value: string | stri
         break;
     }
   } else if (filterType === "experience") {
-    // Handle experience min/max values
+    // Handle experience filter with improved parsing
     console.log("Experience filter change:", value);
+    
     if (value === "" || value === "all") {
-      // If empty or "all", clear both min and max experience
       newFilters.minExperience = undefined;
       newFilters.maxExperience = undefined;
     } else if (typeof value === "string") {
-      // Parse the value to set min and max experience
-      if (value === "9+") {
-        // Handle 9+ case specifically
-        newFilters.minExperience = 9;
-        newFilters.maxExperience = undefined; // No upper limit
+      if (value.endsWith("+")) {
+        // Handle X+ cases (e.g., "9+", "5+")
+        const minValue = parseInt(value.replace("+", ""));
+        newFilters.minExperience = isNaN(minValue) ? undefined : minValue;
+        newFilters.maxExperience = undefined;
       } else if (value.includes("-")) {
         // Handle range cases like "0-2", "3-5", "6-8"
         const [min, max] = value.split("-").map(Number);
@@ -505,7 +340,7 @@ const handleFilterChange = useCallback((filterType: string, value: string | stri
         newFilters.minExperience = isNaN(min) ? undefined : min;
         newFilters.maxExperience = isNaN(max) ? undefined : max;
       } else {
-        // Handle any other single number cases
+        // Handle single number cases
         const numValue = Number(value);
         if (!isNaN(numValue)) {
           newFilters.minExperience = numValue;
@@ -513,16 +348,13 @@ const handleFilterChange = useCallback((filterType: string, value: string | stri
         }
       }
     }
-  }
-  else if (filterType === "status" || filterType === "companyName" || filterType === "jobTitle") {
+  } else if (filterType === "status" || filterType === "companyName" || filterType === "jobTitle") {
     // Handle multi-select filters - expect array values
     if (value === "" || value === "all") {
-      // If "All" is selected, clear the filter
       newFilters[filterType] = undefined;
     } else if (Array.isArray(value)) {
       newFilters[filterType] = value.length > 0 ? value : undefined;
     } else {
-      // If single value passed, convert to array
       newFilters[filterType] = value ? [value as string] : undefined;
     }
   } else {
@@ -541,7 +373,7 @@ const handleFilterChange = useCallback((filterType: string, value: string | stri
   });
 
   dispatch(setFilters(newFilters));
-  
+
   // Fetch data with new filters
   dispatch(fetchJobApplicationsWithAccess({
     page: 1,
@@ -575,12 +407,35 @@ const handleTempFilterChange = useCallback((filterType: string, value: string | 
         newTempFilters.sortOrder = "desc";
         break;
     }
-  } else if (filterType === "minExperience" || filterType === "maxExperience") {
-    // Handle experience min/max values
-    newTempFilters[filterType] = value === "" ? undefined : Number(value);
-  }
-   else if (filterType === "status" || filterType === "jobTitle" || filterType === "companyName") {
-
+  } else if (filterType === "experience") {
+      // Handle experience filter with improved parsing
+      console.log("Experience filter change:", value);
+      
+      if (value === "" || value === "all") {
+        newTempFilters.minExperience = undefined;
+        newTempFilters.maxExperience = undefined;
+      } else if (typeof value === "string") {
+        if (value.endsWith("+")) {
+          // Handle X+ cases (e.g., "9+", "5+")
+          const minValue = parseInt(value.replace("+", ""));
+          newTempFilters.minExperience = isNaN(minValue) ? undefined : minValue;
+          newTempFilters.maxExperience = undefined;
+        } else if (value.includes("-")) {
+          // Handle range cases like "0-2", "3-5", "6-8"
+          const [min, max] = value.split("-").map(Number);
+          console.log("Parsed experience range:", min, max);
+          newTempFilters.minExperience = isNaN(min) ? undefined : min;
+          newTempFilters.maxExperience = isNaN(max) ? undefined : max;
+        } else {
+          // Handle single number cases
+          const numValue = Number(value);
+          if (!isNaN(numValue)) {
+            newTempFilters.minExperience = numValue;
+            newTempFilters.maxExperience = numValue;
+          }
+        }
+      }
+    } else if (filterType === "status" || filterType === "jobTitle" || filterType === "companyName") {
     // Fixed multi-select logic for checkbox filters
     const currentSelected = Array.isArray(newTempFilters[filterType])
       ? [...(newTempFilters[filterType] as string[])]
@@ -847,6 +702,10 @@ const handleClearAllFilters = () => {
   }
 };
 
+const handleCloseExperienceFilter = useCallback(() => {
+  setTempFilters({ ...filters }); // Reset temp filters to current filters
+}, [filters]);
+
   // Table columns for GlobalStickyTable
   const columns = useMemo(() => {
     const allColumns = [
@@ -1101,21 +960,13 @@ const filtersModalOptions = [
             {/* Right side - Additional filters */}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className="relative">
-                  <select 
-                    className="bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer appearance-none"
-                    value={getCurrentExperienceValue()}
-                    onChange={(e) => handleFilterChange("experience", e.target.value)}
-                  >
-                    <option value="">Years of Exp.</option>
-                    <option value="0-2">0-2</option>
-                    <option value="3-5">3-5</option>
-                    <option value="6-8">6-8</option>
-                    <option value="9+">9+</option>
-                  </select>
-                  <TiArrowSortedDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                </div>
-
+                <ExperienceFilter
+                  minExperience={tempFilters.minExperience}
+                  maxExperience={tempFilters.maxExperience}
+                  onFilterChange={handleTempFilterChange}
+                  onApplyFilterChange={handleApplyFilters}
+                  onClose={handleCloseExperienceFilter}
+                />
                 {
                   !jobId && (
                     <div className="relative z-30">
@@ -1155,7 +1006,6 @@ const filtersModalOptions = [
             </div>
           </div>
         )}
-        
         {/* Table */}
         {!loading && (
           <GlobalStickyTable
@@ -1194,7 +1044,6 @@ const filtersModalOptions = [
       <FiltersModal
         show={showFiltersModal}
         onClose={handleCloseFiltersModal}
-        tempFilter={tempFilters}
         filterOptions={filtersModalOptions}
         onClearAll={handleClearAllFilters}
         onApply={handleApplyFilters}

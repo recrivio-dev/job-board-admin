@@ -1,6 +1,5 @@
 import { RxCross2 } from "react-icons/rx";
 import { useEffect, memo, useCallback } from "react";
-import type { CandidateFilters } from "@/store/features/candidatesSlice";
 
 interface FilterOption {
   id: string;
@@ -14,7 +13,7 @@ interface FilterOption {
 interface FiltersModalProps {
   show: boolean;
   onClose: () => void;
-  tempFilter: CandidateFilters;
+  // tempFilter: CandidateFilters;
   filterOptions: FilterOption[];
   onClearAll: () => void;
   onApply: () => void;

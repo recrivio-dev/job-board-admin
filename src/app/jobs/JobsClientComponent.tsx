@@ -111,7 +111,6 @@ export default function JobsClientComponent({
   });
 
   const [showFiltersModal, setShowFiltersModal] = useState(false);
-  const [sortBy, setSortBy] = useState("recent");
 
   // Validation helper
   const isValidProps = useMemo(() => {
@@ -724,8 +723,6 @@ const handlePageSizeChange = useCallback(
       <FiltersModal
         show={showFiltersModal}
         onClose={handleCloseFiltersModal}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
         filterOptions={modalFilterOptions}
         onClearAll={handleClearAllFilters}
         onApply={handleApplyFilters}
