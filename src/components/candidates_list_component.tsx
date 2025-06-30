@@ -718,9 +718,10 @@ const handleClearAllFilters = () => {
   }
 };
 
-  const handleCloseExperienceFilter = useCallback(() => {
-    setTempFilters({ ...filters }); // Reset temp filters to current filters
-  }, [filters]);
+  // const handleCloseExperienceFilter = useCallback(() => {
+  //   setTempFilters({ ...filters }); // Reset temp filters to current filters
+  // }, [filters]);
+
 
   // Table columns for GlobalStickyTable
   const columns = useMemo(() => {
@@ -977,11 +978,10 @@ const filtersModalOptions = [
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <ExperienceFilter
-                  minExperience={tempFilters.minExperience}
-                  maxExperience={tempFilters.maxExperience}
-                  onFilterChange={handleTempFilterChange}
-                  onApplyFilterChange={handleApplyFilters}
-                  onClose={handleCloseExperienceFilter}
+                  minExperience={filters.minExperience}
+                  maxExperience={filters.maxExperience}
+                  onApplyFilterChange={handleFilterChange}
+                  // onClose={handleCloseExperienceFilter}
                 />
                 {
                   !jobId && (

@@ -4,15 +4,13 @@ import { TiArrowSortedDown } from 'react-icons/ti';
 const ExperienceFilter = ({ 
   minExperience,
   maxExperience, 
-  onFilterChange,
   onApplyFilterChange,
-  onClose,
+  // onClose,
 }: {
   minExperience?: number;
   maxExperience?: number;
-  onFilterChange: (filterType: string, value: string) => void;
   onApplyFilterChange: (filterType: string, value: string) => void;
-  onClose: () => void;
+  // onClose: () => void;
 }) => {
   // Current applied filter state
   const [appliedRange, setAppliedRange] = useState({ min: 0, max: 15 });
@@ -45,7 +43,7 @@ const ExperienceFilter = ({
   };
 
   const getExperienceLabel = (range = appliedRange) => {
-    if (range.min === 0 && range.max === 15) return "All Experience";
+    if (range.min === 0 && range.max === 15) return "Years of Exp";
     if (range.max >= 15) return `${range.min}+ years`;
     if (range.min === range.max) return `${range.min} year${range.min !== 1 ? 's' : ''}`;
     return `${range.min}-${range.max} years`;
@@ -69,17 +67,16 @@ const ExperienceFilter = ({
       filterValue = `${tempRange.min}-${tempRange.max}`;
     }
 
-    onFilterChange("experience", filterValue);
-    onApplyFilterChange("experience", getExperienceLabel(tempRange));
+    onApplyFilterChange("experience", filterValue);
     handleClose();
   };
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
-    onClose();
+    // onClose();
     // Reset temp range to applied range (revert changes if not applied)
     setTempRange(appliedRange);
-  }, [onClose, appliedRange]);
+  }, [appliedRange]);
 
   const handleToggle = () => {
     if (isOpen) {
