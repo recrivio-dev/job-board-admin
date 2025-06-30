@@ -371,20 +371,3 @@ useEffect(() => {
     </div>
   );
 };
-
-// Usage example with the enhanced props:
-/*
-<FilterDropdown
-  label="Job Status"
-  value={filterDropdowns.status}
-  options={filterOptions.statuses}
-  onChange={(value) => handleFilterChange("status", value)}
-  isOpen={filterDropdowns.isOpen === "status"}
-  onToggle={() => toggleFilterDropdown("status")}
-  loading={filterOptionsLoading}
-  searchable={true}
-  showCount={true}
-  placeholder="Select status..."
-  error={filterOptions.error}
-/>
-*/

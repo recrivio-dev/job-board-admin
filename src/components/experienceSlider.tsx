@@ -43,7 +43,7 @@ const ExperienceFilter = ({
   };
 
   const getExperienceLabel = (range = appliedRange) => {
-    if (range.min === 0 && range.max === 15) return "Years of Exp";
+    if (range.min === 0 && range.max === 15) return "Years of Exp.";
     if (range.max >= 15) return `${range.min}+ years`;
     if (range.min === range.max) return `${range.min} year${range.min !== 1 ? 's' : ''}`;
     return `${range.min}-${range.max} years`;
@@ -192,12 +192,12 @@ const ExperienceFilter = ({
         <button
           type="button"
           onClick={handleToggle}
-          className="w-full min-w-36 bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer text-left"
+          className="w-full min-w-32 bg-transparent text-neutral-600 text-xs font-medium border border-neutral-500 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer text-left"
         >
           {getExperienceLabel(appliedRange)}
         </button>
         <TiArrowSortedDown 
-          className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none transition-transform w-4 h-4 ${
+          className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-500 pointer-events-none transition-transform w-4 h-4 ${
             isOpen ? 'rotate-180' : ''
           }`} 
         />

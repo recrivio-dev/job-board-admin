@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TiArrowSortedDown } from 'react-icons/ti';
-import { CiSearch } from 'react-icons/ci';
-import { IoClose } from 'react-icons/io5';
+import { FaCaretDown } from 'react-icons/fa';
 
 const MultiSelectDropdown = ({
   options,
@@ -69,54 +67,71 @@ const MultiSelectDropdown = ({
   const currentValues = Array.isArray(selectedValues) ? selectedValues : [];
 
   return (
-    <div className={`relative ${className} min-w-[120px]`} ref={dropdownRef}>
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      {/* Main Button - Styled like FilterDropdown */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-transparent text-neutral-600 text-xs font-medium border border-neutral-300 rounded-full px-4 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:border-neutral-500 transition-colors cursor-pointer text-left"
+        className={`
+          flex items-center justify-between gap-2 font-medium cursor-pointer 
+          border px-4 py-2 rounded-3xl transition-all duration-200 min-w-[120px]
+          ${currentValues.length > 0
+            ? 'border-blue-500 bg-blue-50 text-blue-700 hover:border-blue-600' 
+            : 'border-neutral-500 text-neutral-700 hover:border-neutral-700 hover:bg-neutral-50'
+          }
+          hover:shadow-sm
+          ${isOpen ? 'ring-2 ring-blue-200 border-blue-500' : ''}
+        `}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
       >
-        {getDisplayText()}
+        <span className="truncate text-xs">
+          {getDisplayText()}
+        </span>
+        <div className="flex items-center gap-1">
+          <FaCaretDown 
+            className={`w-4 h-4 text-neutral-500 transition-transform duration-200 ${
+              isOpen ? 'rotate-180' : ''
+            }`} 
+          />
+        </div>
       </button>
-      <TiArrowSortedDown 
-        className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none transition-transform w-4 h-4 ${
-          isOpen ? 'rotate-180' : ''
-        }`} 
-      />
-      
-      {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
-          {/* Search Input */}
-          { placeholder==="Company" ? (
-            <div className="sticky top-0 bg-white border-b border-neutral-200 p-2">
-              <div className="relative">
-                <CiSearch className="absolute left-1 top-1/2 transform -translate-y-1/2 text-neutral-400 w-4 h-4" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={searchPlaceholder}
-                  className="w-full pl-7 pr-6 py-2 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                  >
-                    <IoClose className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : null}
 
-          {/* Options List */}
-          <div className="max-h-40 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* Dropdown Menu - Styled like FilterDropdown */}
+      {isOpen && (
+        <div 
+          className="absolute top-full left-0 mt-2 w-52 bg-white border border-neutral-200 rounded-lg shadow-lg z-50 overflow-hidden"
+          role="listbox"
+        >
+          {/* Search Input - Only for Company */}
+          {placeholder === "Company" && (
+            <div className="p-3 border-b border-neutral-100">
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder={searchPlaceholder}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          )}
+
+          {/* Options Container */}
+          <div 
+            className="py-2 overflow-y-auto"
+            style={{ maxHeight: '240px' }}
+          >
+            {/* Options */}
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option, index) => (
                 <label
                   key={index}
-                  className="flex items-center px-3 py-2 hover:bg-neutral-50 cursor-pointer"
+                  className={`
+                    flex items-center px-4 py-2.5 text-sm transition-colors cursor-pointer
+                    hover:bg-neutral-50
+                    ${currentValues.includes(option.value) ? 'font-medium bg-blue-50 text-blue-700' : ''}
+                  `}
                 >
                   <input
                     type="checkbox"
@@ -124,19 +139,21 @@ const MultiSelectDropdown = ({
                     onChange={() => handleOptionToggle(option.value)}
                     className="mr-3 rounded border-neutral-300 focus:ring-blue-300"
                   />
-                  <span className="text-xs text-neutral-700">{option.label}</span>
+                  <span className="truncate">{option.label}</span>
                 </label>
               ))
             ) : (
-              <div className="px-3 py-4 text-sm text-neutral-500 text-center">
-                No options found
+              <div className="px-4 py-6 text-center text-sm text-neutral-500">
+                <div className="mb-2">🔍</div>
+                <div>No options found</div>
+                <div className="text-xs mt-1">Try a different search term</div>
               </div>
             )}
           </div>
 
-          {/* Footer - Only show when there are selected values */}
+          {/* Footer - Clear all button */}
           {currentValues.length > 0 && (
-            <div className="sticky bottom-0 bg-white border-t border-neutral-200 px-3 py-2">
+            <div className="px-4 py-2 bg-neutral-50 border-t border-neutral-100">
               <button
                 type="button"
                 onClick={() => onChange([])}
