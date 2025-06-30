@@ -398,7 +398,7 @@ const handleFilterChange = useCallback((filterType: string, value: string | stri
     filters: newFilters,
     userContext,
   }));
-}, [dispatch, filters, userContext, pagination.candidatesPerPage]);
+}, [dispatch, jobId, filters, userContext, pagination.candidatesPerPage]);
 
 const handleTempFilterChange = useCallback((filterType: string, value: string | string[] | number) => {
   let newTempFilters = { ...tempFilters }; // Use tempFilters instead of filters
@@ -495,7 +495,7 @@ const handleTempFilterChange = useCallback((filterType: string, value: string | 
   });
 
   setTempFilters(newTempFilters); //Update tempFilters state instead of dispatching
-}, [tempFilters]); // Depend on tempFilters instead of filters
+}, [tempFilters, jobId]); // Depend on tempFilters instead of filters
 
 const handleCloseFiltersModal = useCallback(() => {
   setTempFilters({ ...filters }); // Reset temp filters to current filters
@@ -926,7 +926,7 @@ const filtersModalOptions = [
                   <div className="flex items-center bg-blue-600 text-white text-xs border border-blue-600 rounded-full px-2 py-2 cursor-pointer">
                     <span className="font-medium mr-2">Sort by</span>
                     <div className="relative">
-                        <select 
+                      <select 
                         value={getCurrentSortValueFilter()}
                         onChange={(e) => handleFilterChange("sortBy", e.target.value)}
                         className="bg-blue-600 px-2 text-white text-xs border-none outline-none focus:ring-0 appearance-none pr-4 cursor-pointer hover:underline rounded-md"
