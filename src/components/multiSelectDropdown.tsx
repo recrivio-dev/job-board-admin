@@ -73,7 +73,7 @@ const MultiSelectDropdown = ({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          flex items-center justify-between gap-2 font-medium cursor-pointer 
+          flex items-center justify-between gap-2 font-medium cursor-pointer
           border px-4 py-2 rounded-3xl transition-all duration-200 min-w-[120px]
           ${currentValues.length > 0
             ? 'border-blue-500 bg-blue-50 text-blue-700 hover:border-blue-600' 

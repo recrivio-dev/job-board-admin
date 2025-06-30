@@ -525,18 +525,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      fetch_all_org_members_simple: {
-        Args: { p_org_id: string }
-        Returns: {
-          id: string
-          email: string
-          full_name: string
-          is_active: boolean
-          user_roles: Json
-          assigned_jobs: Json
-          member_count: number
-        }[]
-      }
       fetch_candidates_with_access: {
         Args: {
           p_user_id: string
@@ -583,6 +571,21 @@ export type Database = {
           p_experience_max?: number
         }
         Returns: Json
+      }
+      fetch_org_members_with_jobs: {
+        Args: { org_id: string }
+        Returns: {
+          user_id: string
+          email: string
+          full_name: string
+          is_active: boolean
+          role_id: string
+          role_name: string
+          role_display_name: string
+          assigned_by: string
+          assigned_at: string
+          job_access: Json
+        }[]
       }
       get_applications_over_time: {
         Args: {

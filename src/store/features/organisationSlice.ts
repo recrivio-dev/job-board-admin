@@ -2,41 +2,69 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { createClient } from '@/utils/supabase/client';
 
 // Types
-interface OrganisationMember {
-    id: string;
-    name: string;
+export interface JobAccess {
+    job_id: string;
+    title: string;
+    company_name: string;
+    status: string;
+    access_type: 'all_jobs' | 'assigned';
+    granted_by?: string;
+    granted_at?: string;
+}
+
+// Base job access interface
+interface BaseJobAccess {
+    job_id: string;
+    title: string;
+    company_name: string;
+    status: string;
+}
+
+// For admin and hr roles - all jobs access
+interface AllJobsAccess extends BaseJobAccess {
+    access_type: 'all_jobs';
+}
+
+// For ta role - assigned jobs only
+interface AssignedJobAccess extends BaseJobAccess {
+    access_type: 'assigned';
+    granted_by: string;
+    granted_at: string; // ISO timestamp
+}
+
+type RpcResponseJobAccess = AllJobsAccess | AssignedJobAccess;
+
+interface RpcMemberResponse {
+    user_id: string;
     email: string;
-    role: 'admin' | 'hr' | 'ta';
+    full_name: string;
+    is_active: boolean;
+    role_id: string;
+    role_name: string;
+    role_display_name: string;
     assigned_by: string;
     assigned_at: string;
-    is_member_active: boolean;
-    is_role_active: boolean;
-    status: 'active' | 'inactive';
+    job_access: RpcResponseJobAccess[] | null; // Fixed: Should be array, not single object
+}
+
+interface OrgMemberWithJobs {
+    user_id: string;
+    email: string;
+    full_name: string;
+    is_active: boolean;
+    role_id: string;
+    role_name: string;
+    role_display_name: string;
+    assigned_by: string;
+    assigned_at: string;
+    job_access: JobAccess[];
 }
 
 interface OrganisationState {
-    members: OrganisationMember[];
+    members: OrgMemberWithJobs[];
     loading: boolean;
     error: string | null;
     lastFetchedOrgId: string | null; // Track which org was last fetched
-}
-
-// API Response types for better type safety
-interface UserProfileResponse {
-    id: string;
-    email: string;
-    full_name: string;
-    is_active: boolean | null;
-    user_roles: Array<{
-        id: string;
-        assigned_by: string | null;
-        assigned_at: string | null;
-        is_active: boolean | null;
-        roles: {
-            name: string;
-            display_name: string;
-        } | null;
-    }>;
 }
 
 // Initial state
@@ -49,20 +77,42 @@ const initialState: OrganisationState = {
 
 const supabase = createClient();
 
-// Helper function to transform user data
-const transformUserToMember = (user: UserProfileResponse): OrganisationMember => {
-    const userRole = user.user_roles[0]; // Assuming single active role per user
+// Type guard to check if job access is valid
+const isValidJobAccess = (job: unknown): job is JobAccess => {
+    return (
+        typeof job === 'object' &&
+        job !== null &&
+        'job_id' in job &&
+        'title' in job &&
+        'company_name' in job &&
+        'status' in job &&
+        'access_type' in job &&
+        typeof (job as JobAccess).job_id === 'string' &&
+        typeof (job as JobAccess).title === 'string' &&
+        typeof (job as JobAccess).company_name === 'string' &&
+        typeof (job as JobAccess).status === 'string' &&
+        ['all_jobs', 'assigned'].includes((job as JobAccess).access_type)
+    );
+};
+
+const transformRpcResponseToMember = (rpcData: RpcMemberResponse): OrgMemberWithJobs => {
+    let jobAccess: JobAccess[] = [];
+
+    if (Array.isArray(rpcData.job_access)) {
+        jobAccess = rpcData.job_access.filter(isValidJobAccess);
+    }
 
     return {
-        id: user.id,
-        name: user.full_name || 'Unknown',
-        email: user.email,
-        is_role_active: userRole?.is_active ?? false,
-        role: (userRole?.roles?.name as 'admin' | 'hr' | 'ta') || 'ta', // Default fallback
-        assigned_by: userRole?.assigned_by || '',
-        assigned_at: userRole?.assigned_at || '',
-        is_member_active: user.is_active ?? false,
-        status: (user.is_active ?? false) ? 'active' : 'inactive',
+        user_id: rpcData.user_id,
+        email: rpcData.email,
+        full_name: rpcData.full_name,
+        is_active: rpcData.is_active,
+        role_id: rpcData.role_id,
+        role_name: rpcData.role_name,
+        role_display_name: rpcData.role_display_name,
+        assigned_by: rpcData.assigned_by,
+        assigned_at: rpcData.assigned_at,
+        job_access: jobAccess
     };
 };
 
@@ -76,36 +126,23 @@ export const fetchOrgMembers = createAsyncThunk(
             }
 
             const { data, error } = await supabase
-                .from('user_profiles')
-                .select(`
-                    id,
-                    email,
-                    full_name,
-                    is_active,
-                    user_roles!user_roles_user_id_fkey!inner (
-                        id,
-                        assigned_by,
-                        assigned_at,
-                        is_active,
-                        roles (
-                            name,
-                            display_name
-                        )
-                    )
-                `)
-                .eq('organization_id', orgId)
-                .eq('user_roles.is_active', true);
+                .rpc('fetch_org_members_with_jobs', {
+                    org_id: orgId
+                });
 
             if (error) {
                 throw new Error(`Failed to fetch members: ${error.message}`);
             }
-            console.log('Fetched members:', data);
+
+            console.log('Fetched members with jobs:', data);
 
             if (!data) {
                 return { members: [], orgId };
             }
 
-            const members = data.map(transformUserToMember);
+            // Type the data properly
+            const typedData = data as RpcMemberResponse[];
+            const members = typedData.map(transformRpcResponseToMember);
             return { members, orgId };
 
         } catch (error) {
@@ -124,7 +161,7 @@ export const addMemberRole = createAsyncThunk(
             organization_id: string;
             assigned_by: string;
         },
-        { rejectWithValue }
+        { rejectWithValue, dispatch }
     ) => {
         try {
             // Validate inputs
@@ -143,39 +180,8 @@ export const addMemberRole = createAsyncThunk(
             if (rpcError) {
                 throw new Error(`Failed to assign role: ${rpcError.message}`);
             }
-
-            // Fetch updated member data
-            const { data: updatedMember, error: fetchError } = await supabase
-                .from('user_profiles')
-                .select(`
-                    id,
-                    email,
-                    full_name,
-                    is_active,
-                    user_roles!user_roles_user_id_fkey!inner (
-                        id,
-                        assigned_by,
-                        assigned_at,
-                        is_active,
-                        roles (
-                            name,
-                            display_name
-                        )
-                    )
-                `)
-                .eq('email', memberEmailId)
-                .eq('user_roles.is_active', true)
-                .single();
-
-            if (fetchError) {
-                throw new Error(`Failed to fetch updated member: ${fetchError.message}`);
-            }
-
-            if (!updatedMember) {
-                throw new Error('Updated member data not found');
-            }
-
-            return transformUserToMember(updatedMember as UserProfileResponse);
+            // Fetch updated member data use dispatch
+            dispatch(fetchOrgMembers(organization_id));
 
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -187,12 +193,13 @@ export const addMemberRole = createAsyncThunk(
 export const updateMemberRole = createAsyncThunk(
     'organisation/updateMember',
     async (
-        { memberEmailId, newRole, updated_by }: {
+        { memberEmailId, newRole, updated_by, organization_id }: {
             memberEmailId: string;
             newRole: string;
             updated_by: string;
+            organization_id: string;
         },
-        { rejectWithValue }
+        { rejectWithValue, dispatch }
     ) => {
         try {
             // Validate inputs
@@ -212,39 +219,7 @@ export const updateMemberRole = createAsyncThunk(
             }
 
             // Fetch updated member data
-            const { data: updatedMember, error: fetchError } = await supabase
-                .from('user_profiles')
-                .select(`
-                    id,
-                    email,
-                    full_name,
-                    is_active,
-                    organization_id,
-                    user_roles!user_roles_user_id_fkey!inner (
-                        id,
-                        assigned_by,
-                        assigned_at,
-                        is_active,
-                        roles (
-                            name,
-                            display_name
-                        )
-                    )
-                `)
-                .eq('email', memberEmailId)
-                .eq('user_roles.is_active', true)
-                .single();
-
-            if (fetchError) {
-                throw new Error(`Failed to fetch updated member: ${fetchError.message}`);
-            }
-
-            if (!updatedMember) {
-                throw new Error('Updated member data not found');
-            }
-
-            return transformUserToMember(updatedMember as UserProfileResponse);
-
+            dispatch(fetchOrgMembers(organization_id));
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
             return rejectWithValue(message);
@@ -265,9 +240,9 @@ const organisationSlice = createSlice({
             state.lastFetchedOrgId = null;
         },
         // Optimistic update for better UX
-        updateMemberOptimistic: (state, action: PayloadAction<{ memberId: string; updates: Partial<OrganisationMember> }>) => {
+        updateMemberOptimistic: (state, action: PayloadAction<{ memberId: string; updates: Partial<OrgMemberWithJobs> }>) => {
             const { memberId, updates } = action.payload;
-            const memberIndex = state.members.findIndex(member => member.id === memberId);
+            const memberIndex = state.members.findIndex(member => member.user_id === memberId);
             if (memberIndex !== -1) {
                 state.members[memberIndex] = { ...state.members[memberIndex], ...updates };
             }
@@ -290,17 +265,15 @@ const organisationSlice = createSlice({
                 state.error = action.payload as string;
             })
 
-            // Update member role
+            // add member role
             .addCase(addMemberRole.pending, (state) => {
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(addMemberRole.fulfilled, (state, action) => {
+            .addCase(addMemberRole.fulfilled, (state) => {
                 state.loading = false;
-                const memberIndex = state.members.findIndex(member => member.id === action.payload.id);
-                if (memberIndex !== -1) {
-                    state.members[memberIndex] = action.payload;
-                }
+                // The fetchOrgMembers will update the members list
+                // No need to modify state.members here as it will be updated by the fetchOrgMembers
             })
             .addCase(addMemberRole.rejected, (state, action) => {
                 state.loading = false;
@@ -312,12 +285,9 @@ const organisationSlice = createSlice({
                 state.error = null;
             }
             )
-            .addCase(updateMemberRole.fulfilled, (state, action) => {
+            .addCase(updateMemberRole.fulfilled, (state) => {
                 state.loading = false;
-                const memberIndex = state.members.findIndex(member => member.id === action.payload.id);
-                if (memberIndex !== -1) {
-                    state.members[memberIndex] = action.payload;
-                }
+                // The fetchOrgMembers will update the members list
             })
             .addCase(updateMemberRole.rejected, (state, action) => {
                 state.loading = false;
@@ -331,9 +301,9 @@ export const { clearError, clearMembers, updateMemberOptimistic } = organisation
 // Selectors
 export const selectMembers = (state: { organisation: OrganisationState }) => state.organisation.members;
 export const selectActiveMembers = (state: { organisation: OrganisationState }) =>
-    state.organisation.members.filter(member => member.status === 'active');
+    state.organisation.members.filter(member => member.is_active === true);
 export const selectMembersByRole = (state: { organisation: OrganisationState }, role: 'admin' | 'hr' | 'ta') =>
-    state.organisation.members.filter(member => member.role === role);
+    state.organisation.members.filter(member => member.role_name === role);
 export const selectOrganisationLoading = (state: { organisation: OrganisationState }) => state.organisation.loading;
 export const selectOrganisationError = (state: { organisation: OrganisationState }) => state.organisation.error;
 

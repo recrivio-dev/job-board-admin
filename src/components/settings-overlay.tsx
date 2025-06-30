@@ -2,11 +2,17 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { IoMdClose } from "react-icons/io";
 import { FaExclamationCircle } from "react-icons/fa";
+import { fetchFilterOptions, FilterOption, UserContext } from "@/store/features/candidatesSlice";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { RootState } from "@/store/store";
+import { FaChevronDown, FaSearch } from "react-icons/fa";
 
 interface TeamMember {
   id: string;
   name: string;
   email: string;
+  assigned_company?: string[]; // Optional field for assigned company
+  assigned_jobs?: string[]; // Optional field for assigned jobs
   role: string;
 }
 
@@ -14,12 +20,18 @@ interface OverlayProps {
   setShowOverlay: (show: boolean) => void;
   member: TeamMember | null;
   onSave: (member: TeamMember) => void;
+  jobs?: FilterOption[]; // Replace with actual job type
+  company?: FilterOption[]; // Replace with actual company type
+  handleAssignJobs: (memberId: string, jobIds: string[]) => void;
+  handleAssignCompany: (memberId: string, companyId: string) => void;
 }
 
 interface FormErrors {
   name?: string;
   email?: string;
   role?: string;
+  assigned_company?: string[];
+  assigned_jobs?: string[];
   submit?: string;
 }
 
@@ -113,11 +125,152 @@ const InputField = memo(
 InputField.displayName = "InputField";
 
 // Memoize the form section component
+const MultiSelectDropdown = ({
+  id,
+  label,
+  options,
+  selectedValues,
+  onChange,
+  onBlur,
+  error,
+  isSubmitting,
+  placeholder,
+}: {
+  id: string;
+  label: string;
+  options: FilterOption[];
+  selectedValues: string[];
+  onChange: (values: string[]) => void;
+  onBlur: () => void;
+  error?: string;
+  isSubmitting: boolean;
+  placeholder: string;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredOptions = options.filter(option =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleToggleOption = (value: string) => {
+    const newValues = selectedValues.includes(value)
+      ? selectedValues.filter(v => v !== value)
+      : [...selectedValues, value];
+    onChange(newValues);
+  };
+
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      setIsOpen(false);
+      onBlur();
+    }
+  }, [onBlur]);
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [handleClickOutside]);
+
+  const displayText = selectedValues.length > 0 
+    ? `${selectedValues.length} selected`
+    : placeholder;
+
+  return (
+    <div className={`relative`} ref={dropdownRef} >
+      <label
+        htmlFor={id}
+        className="block text-sm font-medium text-neutral-800 mb-2"
+      >
+        {label}
+      </label>
+      
+      <button
+        type="button"
+        id={id}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 text-left flex items-center justify-between ${
+          error
+            ? "border-red-400 focus:ring-red-500 bg-red-50"
+            : "border-neutral-300 focus:ring-blue-500 hover:border-neutral-400"
+        } bg-white`}
+        aria-describedby={error ? `${id}-error` : undefined}
+        disabled={isSubmitting}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+      >
+        <span className={selectedValues.length === 0 ? "text-gray-500" : "text-gray-900"}>
+          {displayText}
+        </span>
+        <FaChevronDown 
+          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-hidden">
+          {/* Search input */}
+          <div className="p-3 border-b border-gray-100">
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search...."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Options list */}
+          <div className="max-h-38 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-gray-500">No options found</div>
+            ) : (
+              filteredOptions.map((option, index) => (
+                <label
+                  key={index}
+                  className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedValues.includes(option.value)}
+                    onChange={() => handleToggleOption(option.value)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="ml-3 text-sm text-gray-700">{option.label}</span>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div
+          id={`${id}-error`}
+          className="flex items-center gap-1 text-red-600 text-sm mt-1"
+          role="alert"
+        >
+          <FaExclamationCircle className="w-3 h-3 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const FormSection = memo(
   ({
     formData,
     errors,
     isSubmitting,
+    company,
+    jobs,
     isEditing,
     handleInputChange,
     validateField,
@@ -125,106 +278,111 @@ const FormSection = memo(
     formData: TeamMember;
     errors: FormErrors;
     isSubmitting: boolean;
+    company: FilterOption[];
+    jobs: FilterOption[];
     isEditing: boolean;
-    handleInputChange: (field: keyof TeamMember, value: string) => void;
+    handleInputChange: (field: keyof TeamMember, value: string | string[]) => void;
     validateField: (field: keyof TeamMember) => void;
-  }) => (
-    <div className="space-y-4 mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField
-          id="member-email"
-          label="Email Address"
-          type="email"
-          value={formData.email}
-          field="email"
-          placeholder="Enter member's email"
-          disabled={isEditing}
-          onChange={handleInputChange}
-          onBlur={validateField}
-          errors={errors}
-          isSubmitting={isSubmitting}
-        />
-        <div>
-          <label
-            htmlFor="member-role"
-            className="block text-sm font-medium text-neutral-800 mb-2"
-          >
-            Role{" "}
-            <span className="text-red-500 ml-1" aria-label="required">
-              *
-            </span>
-          </label>
-          <select
-            id="member-role"
-            value={formData.role}
-            onChange={(e) => handleInputChange("role", e.target.value)}
-            onBlur={() => validateField("role")}
-            className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 appearance-none transition-all duration-200 ${
-              errors.role
-                ? "border-red-400 focus:ring-red-500 bg-red-50"
-                : "border-neutral-300 focus:ring-blue-500 hover:border-neutral-400"
-            } bg-white`}
-            aria-describedby={errors.role ? "role-error" : undefined}
-            aria-invalid={errors.role ? "true" : "false"}
-            disabled={isSubmitting}
-          >
-            <option value="" disabled>
-              Select a role for this team member
-            </option>
-            {ROLE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          {errors.role && (
-            <div
-              id="role-error"
-              className="flex items-center gap-1 text-red-600 text-sm mt-1"
-              role="alert"
+  }) => {
+    // Convert single values to arrays for multi-select
+    const assignedCompanies = Array.isArray(formData.assigned_company) 
+      ? formData.assigned_company 
+      : formData.assigned_company ? [formData.assigned_company] : [];
+    
+    const assignedJobs = Array.isArray(formData.assigned_jobs)
+      ? formData.assigned_jobs
+      : formData.assigned_jobs ? [formData.assigned_jobs] : [];
+
+    return (
+      <div className="space-y-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InputField
+            id="member-email"
+            label="Email Address"
+            type="email"
+            value={formData.email}
+            field="email"
+            placeholder="Enter member's email"
+            disabled={isEditing}
+            onChange={handleInputChange}
+            onBlur={validateField}
+            errors={errors}
+            isSubmitting={isSubmitting}
+          />
+          <div>
+            <label
+              htmlFor="member-role"
+              className="block text-sm font-medium text-neutral-800 mb-2"
             >
-              <FaExclamationCircle className="w-3 h-3 flex-shrink-0" />
-              <span>{errors.role}</span>
-            </div>
+              Role{" "}
+              <span className="text-red-500 ml-1" aria-label="required">
+                *
+              </span>
+            </label>
+            <select
+              id="member-role"
+              value={formData.role}
+              onChange={(e) => handleInputChange("role", e.target.value)}
+              onBlur={() => validateField("role")}
+              className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 appearance-none transition-all duration-200 ${
+                errors.role
+                  ? "border-red-400 focus:ring-red-500 bg-red-50"
+                  : "border-neutral-300 focus:ring-blue-500 hover:border-neutral-400"
+              } bg-white`}
+              aria-describedby={errors.role ? "role-error" : undefined}
+              aria-invalid={errors.role ? "true" : "false"}
+              disabled={isSubmitting}
+            >
+              <option value="" disabled>
+                Select a role for this team member
+              </option>
+              {ROLE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {errors.role && (
+              <div
+                id="role-error"
+                className="flex items-center gap-1 text-red-600 text-sm mt-1"
+                role="alert"
+              >
+                <FaExclamationCircle className="w-3 h-3 flex-shrink-0" />
+                <span>{errors.role}</span>
+              </div>
+            )}
+          </div>
+          {isEditing && (
+            <>
+              <MultiSelectDropdown
+                id="member-assigned-company"
+                label="Assigned Company"
+                options={company}
+                selectedValues={assignedCompanies}
+                onChange={(values) => handleInputChange("assigned_company", values)}
+                onBlur={() => validateField("assigned_company")}
+                error={Array.isArray(errors.assigned_company) ? errors.assigned_company.join(', ') : errors.assigned_company}
+                isSubmitting={isSubmitting}
+                placeholder="Select Company"
+              />
+              <MultiSelectDropdown
+                id="member-assigned-jobs"
+                label="Assigned Jobs"
+                options={jobs}
+                selectedValues={assignedJobs}
+                onChange={(values) => handleInputChange("assigned_jobs", values)}
+                onBlur={() => validateField("assigned_jobs")}
+                error={Array.isArray(errors.assigned_jobs) ? errors.assigned_jobs.join(', ') : errors.assigned_jobs}
+                isSubmitting={isSubmitting}
+                placeholder="Select Jobs"
+              />
+            </>
           )}
         </div>
-        {// add assigned jobs field
-        // <div>
-        //   <label
-        //     htmlFor="member-assigned-jobs"
-        //     className="block text-sm font-medium text-neutral-800 mb-2"
-        //   >
-        //     Assigned Jobs
-        //   </label>
-        //   <textarea
-        //     id="member-assigned-jobs"
-        //     value={formData.assigned_jobs}
-        //     onChange={(e) => handleInputChange("assigned_jobs", e.target.value)}
-        //     onBlur={() => validateField("assigned_jobs")}
-        //     className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 ${
-        //       errors.assigned_jobs
-        //         ? "border-red-400 focus:ring-red-500 bg-red-50"
-        //         : "border-neutral-300 focus:ring-blue-500 hover:border-neutral-400"
-        //     } bg-white`}
-        //     aria-describedby={errors.assigned_jobs ? "assigned-jobs-error" : undefined}
-        //     aria-invalid={errors.assigned_jobs ? "true" : "false"}
-        //     disabled={isSubmitting}
-        //   />
-        //   {errors.assigned_jobs && (
-        //     <div
-        //       id="assigned-jobs-error"
-        //       className="flex items-center gap-1 text-red-600 text-sm mt-1"
-        //       role="alert"
-        //     >
-        //       <FaExclamationCircle className="w-3 h-3 flex-shrink-0" />
-        //       <span>{errors.assigned_jobs}</span>
-        //     </div>
-        //   )}
-        // </div>
-        }
       </div>
-    </div>
-  )
+    );
+  }
 );
 
 FormSection.displayName = "FormSection";
@@ -238,6 +396,7 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
     role: member?.role || "",
   });
 
+  const dispatch = useAppDispatch();
   // Form validation and UI state
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -248,6 +407,23 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
   const overlayRef = useRef<HTMLDivElement>(null);
   const firstFocusableRef = useRef<HTMLInputElement>(null);
   const lastFocusableRef = useRef<HTMLButtonElement>(null);
+
+  const jobs = useAppSelector((state: RootState) => state.candidates.filterOptions.jobTitles);
+  const company = useAppSelector((state: RootState) => state.candidates.filterOptions.companies);
+  const organizationId = useAppSelector((state: RootState) => state.user.organization?.id) || "";
+  const roles = useAppSelector((state: RootState) => state.user.roles[0]?.role?.name || "Guest");
+
+  //useEffect to fetch jobs and company data if initially they are not present in state
+  useEffect(() => {
+    if (jobs.length === 0 && !company.length) {
+      const userContext: UserContext = {
+        userId: member?.id || "",
+        organizationId: organizationId,
+        roles: roles,
+      };
+      dispatch(fetchFilterOptions({ userContext }));
+    }
+  }, [jobs, company, dispatch, member?.id, organizationId, roles]);
 
   // Track if form has been modified
   const isEditing = Boolean(member?.id);
@@ -387,7 +563,7 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
 
   // Handle input changes with real-time feedback - made stable with useCallback
   const handleInputChange = useCallback(
-    (field: keyof TeamMember, value: string) => {
+    (field: keyof TeamMember, value: string | string[]) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
 
       // Clear field error when user starts typing
@@ -477,7 +653,7 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
       >
         <div
           ref={overlayRef}
-          className="bg-white relative rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-4 duration-300"
+          className="bg-white relative rounded-xl shadow-2xl max-w-2xl w-full max-h-[613px] transition-all duration-300 animate-in slide-in-from-bottom-4"
           onKeyDown={handleKeyDown}
         >
           {/* Header */}
@@ -525,6 +701,8 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
                 formData={formData}
                 errors={errors}
                 isSubmitting={isSubmitting}
+                company={company || []}
+                jobs={jobs || []}
                 isEditing={isEditing}
                 handleInputChange={handleInputChange}
                 validateField={validateField}

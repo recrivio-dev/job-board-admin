@@ -14,6 +14,7 @@ import {
   selectOrganisationLoading,
   selectOrganisationError,
   clearError,
+  JobAccess,
 } from "@/store/features/organisationSlice";
 import { initializeAuth } from "@/store/features/userSlice";
 import { RootState } from "@/store/store";
@@ -23,6 +24,7 @@ interface TeamMember {
   id: string;
   name: string;
   email: string;
+  assignedJobs?: JobAccess[]; // Optional, can be used to show assigned jobs
   role: string;
 }
 
@@ -59,6 +61,11 @@ export default function Settings() {
   const currentOrgId = useAppSelector(
     (state: RootState) => state.user?.organization?.id
   );
+
+  const currentUserRole = useAppSelector(
+    (state: RootState) => state.user?.roles[0]?.role?.name || "Guest"
+  );
+
   const isLoading = useAppSelector((state: RootState) => state.user.loading);
   const userError = useAppSelector((state: RootState) => state.user.error);
 
@@ -129,10 +136,11 @@ export default function Settings() {
   // Update local team members when Redux members change
   useEffect(() => {
     const teamMembers: TeamMember[] = members.map((member) => ({
-      id: member.id,
-      name: member.name,
+      id: member.user_id,
+      name: member.full_name,
       email: member.email,
-      role: member.role,
+      role: member.role_name,
+      assignedJobs: member.job_access || [], // Optional, can be used to show assigned jobs
     }));
     setLocalTeamMembers(teamMembers);
     // Clear pending changes when fresh data is loaded
@@ -176,29 +184,16 @@ export default function Settings() {
 
         if (editingMember) {
           // Update existing member role - use email for the thunk
-          console.log("Updating member role:", {
-            memberEmailId: editingMember.email,
-            role: memberData.role,
-            organization_id: currentOrgId,
-            assigned_by: currentUser.id,
-          });
-
           await dispatch(
             updateMemberRole({
               memberEmailId: editingMember.email,
               newRole: memberData.role,
               updated_by: currentUser.id,
+              organization_id: currentOrgId,
             })
           ).unwrap();
         } else {
           // Add new member - use email from memberData
-          console.log("Adding new member:", {
-            memberEmailId: memberData.email,
-            role: memberData.role,
-            organization_id: currentOrgId,
-            assigned_by: currentUser.id,
-          });
-
           await dispatch(
             addMemberRole({
               memberEmailId: memberData.email,
@@ -295,6 +290,7 @@ export default function Settings() {
                   memberEmailId: change.memberEmail,
                   newRole: change.newRole,
                   updated_by: currentUser.id,
+                  organization_id: currentOrgId,
                 })
               ).unwrap();
 
@@ -474,6 +470,8 @@ export default function Settings() {
             setShowOverlay={setShowOverlay}
             member={editingMember}
             onSave={handleSaveMember}
+            handleAssignJobs={() => {}}
+            handleAssignCompany={() => {}}
           />
         )}
 
@@ -496,26 +494,6 @@ export default function Settings() {
                       Dismiss
                     </button>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Unsaved changes notification */}
-        {hasUnsavedChanges && step === 0 && (
-          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-            <div className="flex">
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">
-                  Unsaved Changes
-                </h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>
-                    You have {pendingRoleChanges.length} pending role change
-                    {pendingRoleChanges.length > 1 ? "s" : ""}. Click &quot;Save
-                    Changes&quot; to apply them.
-                  </p>
                 </div>
               </div>
             </div>
@@ -573,6 +551,26 @@ export default function Settings() {
           </div>
         </div>
 
+      {/* Unsaved changes notification */}
+        {hasUnsavedChanges && step === 0 && (
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">
+                  Unsaved Changes
+                </h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <p>
+                    You have {pendingRoleChanges.length} pending role change
+                    {pendingRoleChanges.length > 1 ? "s" : ""}. Click &quot;Save
+                    Changes&quot; to apply them.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Content section */}
         <div className="flex justify-center items-center w-full">
           <div className="max-w-7xl w-full pb-20">
@@ -599,7 +597,7 @@ export default function Settings() {
                     className="flex items-center border border-blue-600 justify-center gap-2 px-4 py-2 text-blue-600 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleAddMember}
                     type="button"
-                    disabled={loading || savingChanges}
+                    disabled={loading || savingChanges || currentUserRole === "admin" ? false : true}
                   >
                     <FaPlus className="w-4 h-4" />
                     <span>Add Member</span>
@@ -631,7 +629,7 @@ export default function Settings() {
                         key: "name",
                         header: "Name",
                         render: (member) => (
-                          <span className="font-medium text-neutral-900">
+                          <span className="text-sm text-[#272833]">
                             {member.name}
                           </span>
                         ),
@@ -640,26 +638,64 @@ export default function Settings() {
                         key: "email",
                         header: "Email",
                         render: (member) => (
-                          <span className="text-neutral-700">
+                          <span className="text-[#272833] text-sm">
                             {member.email}
                           </span>
                         ),
                       },
                       {
-                        key: "role",
-                        header: "Role",
+                        key: "assignedJobs",
+                        header: "Assigned Jobs",
+                        width: "200px",
                         render: (member) => {
+                          return (
+                            <span className="text-sm text-neutral-600">
+                              {member.assignedJobs?.length
+                                ? (() => {
+                                    const jobs = member.assignedJobs;
+                                    const displayJobs = jobs.slice(0, 2).map((job) => job.title).join(", ");
+                                    const remainingCount = jobs.length - 2;
+                                    
+                                    if (jobs.length > 2) {
+                                      return (
+                                        <span className="relative">
+                                          {displayJobs} & 
+                                          <span 
+                                            className="relative group cursor-help ml-1"
+                                            title={jobs.map(job => job.title).join(', ')}
+                                          >
+                                            <span className="text-blue-600">
+                                              {remainingCount} More
+                                            </span>
+                                          </span>
+                                        </span>
+                                      );
+                                    }
+                                    
+                                    return displayJobs;
+                                  })()
+                                : "No jobs assigned"}
+                            </span>
+                          );
+                        },
+                      },
+                          {
+                          key: "role",
+                          header: "Role",
+                          width: "200px",
+                          render: (member) => {
                           const hasChange = pendingRoleChanges.some(
                             (change) => change.memberId === member.id
                           );
                           return (
-                            <div className="relative inline-block w-full max-w-xs">
+                            <div className="relative inline-block w-full">
                               <select
                                 value={member.role}
-                                onChange={(e) =>
+                                disabled={loading || savingChanges || currentUserRole === "admin" ? false : true}
+                                onChange={(e) => {
                                   handleRoleChange(member, e.target.value)
-                                }
-                                className={`w-full border px-3 pr-8 rounded-md py-2 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-neutral-400 transition-colors ${
+                                }}
+                                className={`w-full border px-3 pr-8 rounded-md py-2 text-sm bg-white appearance-none focus:outline-none focus:ring-2 truncate focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                                   hasChange
                                     ? "border-yellow-400 bg-yellow-50 text-yellow-800"
                                     : "border-neutral-300 text-neutral-700"
@@ -688,13 +724,14 @@ export default function Settings() {
                       },
                       {
                         key: "actions",
-                        header: <span className="text-right">Actions</span>,
+                        header: "",
                         width: "80px",
                         render: (member) => (
                           <button
                             type="button"
                             onClick={() => handleEditMember(member)}
-                            className="p-2 text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md cursor-pointer transition-colors"
+                            disabled={loading || savingChanges || currentUserRole === "admin" ? false : true}
+                            className="p-2 text-neutral-600 hover:text-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md cursor-pointer transition-colors"
                             aria-label={`Edit ${member.name}`}
                           >
                             <FaRegEdit className="h-4 w-4" />
