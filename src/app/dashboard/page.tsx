@@ -269,13 +269,13 @@ const DashboardContent = ({
 
   // Fetch dashboard data on component mount
   useEffect(() => {
-    if (user?.id && organization?.id) {
+    if (user?.id && organization?.id && !loading) {
       dispatch(fetchDashboardData({
         userUuid: user.id,
         orgUuid: organization.id,
       }));
     }
-  }, [dispatch, user?.id, organization?.id]);
+  }, [dispatch, user?.id, organization?.id, loading]);
 
   // Clear error when component unmounts
   useEffect(() => {
@@ -533,26 +533,25 @@ export default function DashboardPage() {
   const isLoading = useAppSelector((state: RootState) => state.user.loading);
   const error = useAppSelector((state: RootState) => state.user.error);
 
-  // **FIXED**: Simplified loading logic - removed complex initialization tracking
-  const [authChecked, setAuthChecked] = useState(false);
+  const authInitialized = useRef(false);
 
   // **FIXED**: Initialize auth once when component mounts
   useEffect(() => {
     // Only initialize if we haven't checked auth yet and don't have user data
-    if (!authChecked && !user && !isLoading) {
+    if (!authInitialized.current && !user && !isLoading && !error) {
       console.log("Initializing auth for dashboard...");
       dispatch(initializeAuth());
-      setAuthChecked(true);
+      authInitialized.current = true;
     }
-  }, [dispatch, user, isLoading, authChecked]);
+  }, [dispatch, user, isLoading, authInitialized, error]);
 
-  // **FIXED**: Reset auth check when user logs out or there's an error
-  useEffect(() => {
-    if (error && authChecked) {
-      console.log("Auth error detected, will re-check on next mount");
-      setAuthChecked(false);
-    }
-  }, [error, authChecked]);
+    // Reset auth initialization flag when user logs out
+    useEffect(() => {
+      if (error && authInitialized.current) {
+        console.log("User error detected, resetting auth initialization flag");
+        authInitialized.current = false;
+      }
+    }, [error]);
 
   // **FIXED**: Show loading only when actually loading and no user data exists
   if (isLoading && !user) {
@@ -590,7 +589,8 @@ export default function DashboardPage() {
               </Link>
               <button
                 onClick={() => {
-                  setAuthChecked(false);
+                  // Reset auth initialization flag
+                  authInitialized.current = false;
                   dispatch(initializeAuth());
                 }}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -605,7 +605,7 @@ export default function DashboardPage() {
   }
 
   // **FIXED**: Only show this if auth has been checked and still no user
-  if (authChecked && !user && !isLoading) {
+  if (authInitialized.current && !user && !isLoading) {
     return (
       <div
         className={`transition-all duration-300 min-h-full px-3 md:px-6 ${

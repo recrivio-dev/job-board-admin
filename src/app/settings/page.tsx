@@ -14,6 +14,8 @@ import {
   selectOrganisationLoading,
   selectOrganisationError,
   clearError,
+  assignJobAccesswithJob_title,
+  assignJobAccessWithCompany,
   JobAccess,
 } from "@/store/features/organisationSlice";
 import { initializeAuth } from "@/store/features/userSlice";
@@ -52,12 +54,13 @@ export default function Settings() {
   const collapsed = useAppSelector((state) => state.ui.sidebar.collapsed);
 
   // Redux selectors
-  const members = useAppSelector(selectMembers);
-  const loading = useAppSelector(selectOrganisationLoading);
-  const error = useAppSelector(selectOrganisationError);
+  const members = useAppSelector((state: RootState) => selectMembers(state as RootState));
+  const loading = useAppSelector((state: RootState) => selectOrganisationLoading(state as RootState));
+  // Error handling
+  const error = useAppSelector((state: RootState) => selectOrganisationError(state as RootState));
 
   // Get current user and organization from your auth/user state
-  const currentUser = useAppSelector((state: RootState) => state.user?.user);
+  const currentUser = useAppSelector((state: RootState) => state.user.user);
   const currentOrgId = useAppSelector(
     (state: RootState) => state.user?.organization?.id
   );
@@ -345,6 +348,44 @@ export default function Settings() {
     dispatch,
   ]);
 
+  //handle assigning jobs
+  const handleAssignJobsWithJobTitle = useCallback(
+    (member: TeamMember, jobTitles: string[]) => {
+      // Logic to assign jobs to the member
+      console.log(`Assigning jobs ${jobTitles.join(", ")} to ${member.name}`);
+      dispatch(
+        assignJobAccesswithJob_title({
+          jobTitles: jobTitles,
+          memberUuid: member.id,
+          grantedBy: currentUser?.id || "",
+          organization_id: currentOrgId || "",  
+        })
+      ).unwrap();
+    },
+    [currentUser?.id, dispatch, currentOrgId]
+  );
+
+  //handle assigning company
+  const handleAssignCompany = useCallback(
+    (member: TeamMember, companies: string[]) => {
+      // Logic to assign company to the member
+      console.log(`Assigning company ${companies.join(", ")} to ${member.name}`);
+      if (!currentOrgId || !currentUser?.id) {
+        console.error("Missing organization ID or user ID");
+        return;
+      }
+      dispatch(
+        assignJobAccessWithCompany({
+          companies: companies,
+          memberUuid: member.id,
+          grantedBy: currentUser.id,
+          organization_id: currentOrgId,
+        })
+      ).unwrap();
+    },
+    [currentUser?.id, dispatch, currentOrgId]
+  );
+
   // Check if there are unsaved changes
   const hasUnsavedChanges = pendingRoleChanges.length > 0;
 
@@ -470,8 +511,8 @@ export default function Settings() {
             setShowOverlay={setShowOverlay}
             member={editingMember}
             onSave={handleSaveMember}
-            handleAssignJobs={() => {}}
-            handleAssignCompany={() => {}}
+            handleAssignJobsWithJobTitle={handleAssignJobsWithJobTitle}
+            handleAssignCompany={handleAssignCompany}
           />
         )}
 

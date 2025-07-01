@@ -180,7 +180,7 @@ export const addMemberRole = createAsyncThunk(
             if (rpcError) {
                 throw new Error(`Failed to assign role: ${rpcError.message}`);
             }
-            // Fetch updated member data use dispatch
+            // It can be optimised further by not fetching all members again
             dispatch(fetchOrgMembers(organization_id));
 
         } catch (error) {
@@ -218,7 +218,72 @@ export const updateMemberRole = createAsyncThunk(
                 throw new Error(`Failed to update role: ${rpcError.message}`);
             }
 
-            // Fetch updated member data
+            // It can be optimised further by not fetching all members again
+            dispatch(fetchOrgMembers(organization_id));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error occurred';
+            return rejectWithValue(message);
+        }
+    }
+);
+
+//assign jobs access with job title with the function grant_access_by_job_titles that accepts memberUUid, jobTitle[], grantedBy(uuid)]
+export const assignJobAccesswithJob_title = createAsyncThunk(
+    'organisation/assignJobAccesswithJob_title',
+    async (
+        { memberUuid, jobTitles, grantedBy, organization_id }: { memberUuid: string; jobTitles: string[]; grantedBy: string, organization_id: string },
+        { rejectWithValue, dispatch }
+    ) => {
+        try {
+            // Validate inputs
+            if (!memberUuid || !jobTitles.length || !grantedBy || !organization_id) {
+                throw new Error('All parameters are required');
+            }
+
+            // Call the RPC function to assign job access
+            const { error: rpcError } = await supabase.rpc('grant_access_by_job_titles', {
+                p_user_id: memberUuid,
+                p_job_titles: jobTitles,
+                p_granted_by: grantedBy
+            });
+
+            if (rpcError) {
+                throw new Error(`Failed to assign job access: ${rpcError.message}`);
+            }
+
+            // It can be optimised further by not fetching all members again
+            dispatch(fetchOrgMembers(organization_id));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error occurred';
+            return rejectWithValue(message);
+        }
+    }
+);
+
+export const assignJobAccessWithCompany = createAsyncThunk(
+    'organisation/assignJobAccessWithCompany',
+    async (
+        { memberUuid, companies, grantedBy, organization_id }: { memberUuid: string; companies: string[]; grantedBy: string, organization_id: string },
+        { rejectWithValue, dispatch }
+    ) => {
+        try {
+            // Validate inputs
+            if (!memberUuid || !companies.length || !grantedBy || !organization_id) {
+                throw new Error('All parameters are required');
+            }
+
+            // Call the RPC function to assign job access
+            const { error: rpcError } = await supabase.rpc('grant_access_by_companies', {
+                p_user_id: memberUuid,
+                p_companies: companies,
+                p_granted_by: grantedBy
+            });
+
+            if (rpcError) {
+                throw new Error(`Failed to assign job access: ${rpcError.message}`);
+            }
+
+            // It can be optimised further by not fetching all members again
             dispatch(fetchOrgMembers(organization_id));
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -292,7 +357,33 @@ const organisationSlice = createSlice({
             .addCase(updateMemberRole.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload as string;
-            });
+            })
+            // Assign job access with job title
+            .addCase(assignJobAccesswithJob_title.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(assignJobAccesswithJob_title.fulfilled, (state) => {
+                state.loading = false;
+                // The fetchOrgMembers will update the members list
+            })
+            .addCase(assignJobAccesswithJob_title.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
+            })
+            // Assign job access with company
+            .addCase(assignJobAccessWithCompany.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(assignJobAccessWithCompany.fulfilled, (state) => {
+                state.loading = false;
+                // The fetchOrgMembers will update the members list
+            })
+            .addCase(assignJobAccessWithCompany.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
+            })
     },
 });
 

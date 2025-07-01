@@ -11,8 +11,8 @@ interface TeamMember {
   id: string;
   name: string;
   email: string;
-  assigned_company?: string[]; // Optional field for assigned company
-  assigned_jobs?: string[]; // Optional field for assigned jobs
+  assigned_company?: string[];
+  assigned_jobs?: string[];
   role: string;
 }
 
@@ -20,18 +20,18 @@ interface OverlayProps {
   setShowOverlay: (show: boolean) => void;
   member: TeamMember | null;
   onSave: (member: TeamMember) => void;
-  jobs?: FilterOption[]; // Replace with actual job type
-  company?: FilterOption[]; // Replace with actual company type
-  handleAssignJobs: (memberId: string, jobIds: string[]) => void;
-  handleAssignCompany: (memberId: string, companyId: string) => void;
+  jobs?: FilterOption[];
+  company?: FilterOption[];
+  handleAssignJobsWithJobTitle: (member: TeamMember, jobTitles: string[]) => void;
+  handleAssignCompany: (member: TeamMember, companyNames: string[]) => void;
 }
 
 interface FormErrors {
   name?: string;
   email?: string;
   role?: string;
-  assigned_company?: string[];
-  assigned_jobs?: string[];
+  assigned_company?: string;
+  assigned_jobs?: string;
   submit?: string;
 }
 
@@ -124,8 +124,8 @@ const InputField = memo(
 
 InputField.displayName = "InputField";
 
-// Memoize the form section component
-const MultiSelectDropdown = ({
+// Improved MultiSelectDropdown with better performance and UX
+const MultiSelectDropdown = memo(({
   id,
   label,
   options,
@@ -135,6 +135,7 @@ const MultiSelectDropdown = ({
   error,
   isSubmitting,
   placeholder,
+  required = false,
 }: {
   id: string;
   label: string;
@@ -145,25 +146,51 @@ const MultiSelectDropdown = ({
   error?: string;
   isSubmitting: boolean;
   placeholder: string;
+  required?: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase())
+  // Memoize filtered options for better performance
+  const filteredOptions = React.useMemo(() => 
+    options.filter(option =>
+      option.label.toLowerCase().includes(searchTerm.toLowerCase())
+    ), [options, searchTerm]
   );
 
-  const handleToggleOption = (value: string) => {
+  const handleToggleOption = useCallback((value: string) => {
     const newValues = selectedValues.includes(value)
       ? selectedValues.filter(v => v !== value)
       : [...selectedValues, value];
     onChange(newValues);
-  };
+  }, [selectedValues, onChange]);
+
+  const handleSelectAll = useCallback(() => {
+    const allFilteredValues = filteredOptions.map(option => option.value);
+    const allSelected = allFilteredValues.every(value => selectedValues.includes(value));
+    
+    if (allSelected) {
+      // Deselect all filtered options
+      const newValues = selectedValues.filter(value => 
+        !allFilteredValues.includes(value)
+      );
+      onChange(newValues);
+    } else {
+      // Select all filtered options
+      const newValues = [...new Set([...selectedValues, ...allFilteredValues])];
+      onChange(newValues);
+    }
+  }, [filteredOptions, selectedValues, onChange]);
+
+  const handleClearAll = useCallback(() => {
+    onChange([]);
+  }, [onChange]);
 
   const handleClickOutside = useCallback((event: MouseEvent) => {
     if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
       setIsOpen(false);
+      setSearchTerm(''); // Clear search when closing
       onBlur();
     }
   }, [onBlur]);
@@ -173,17 +200,35 @@ const MultiSelectDropdown = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [handleClickOutside]);
 
+  // Get selected option labels for display
+  const selectedLabels = React.useMemo(() => {
+    return selectedValues.map(value => {
+      const option = options.find(opt => opt.value === value);
+      return option ? option.label : value;
+    });
+  }, [selectedValues, options]);
+
   const displayText = selectedValues.length > 0 
-    ? `${selectedValues.length} selected`
+    ? selectedValues.length === 1 
+      ? selectedLabels[0]
+      : `${selectedValues.length} selected`
     : placeholder;
 
+  const allFilteredSelected = filteredOptions.length > 0 && 
+    filteredOptions.every(option => selectedValues.includes(option.value));
+
   return (
-    <div className={`relative`} ref={dropdownRef} >
+    <div className="relative" ref={dropdownRef}>
       <label
         htmlFor={id}
         className="block text-sm font-medium text-neutral-800 mb-2"
       >
         {label}
+        {required && (
+          <span className="text-red-500 ml-1" aria-label="required">
+            *
+          </span>
+        )}
       </label>
       
       <button
@@ -200,41 +245,94 @@ const MultiSelectDropdown = ({
         aria-expanded={isOpen}
         aria-haspopup="listbox"
       >
-        <span className={selectedValues.length === 0 ? "text-gray-500" : "text-gray-900"}>
+        <span className={`truncate ${selectedValues.length === 0 ? "text-gray-500" : "text-gray-900"}`}>
           {displayText}
         </span>
         <FaChevronDown 
-          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+          className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ml-2 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>
 
+      {/* Selected items display */}
+      {selectedValues.length > 1 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {selectedLabels.slice(0, 3).map((label, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md"
+            >
+              {label}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const valueToRemove = selectedValues[index];
+                  handleToggleOption(valueToRemove);
+                }}
+                className="ml-1 text-blue-600 hover:text-blue-800"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          {selectedValues.length > 3 && (
+            <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md">
+              +{selectedValues.length - 3} more
+            </span>
+          )}
+        </div>
+      )}
+
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-hidden">
-          {/* Search input */}
-          <div className="p-3 border-b border-gray-100">
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-hidden">
+          {/* Search and actions */}
+          <div className="p-3 border-b border-gray-100 space-y-2">
             <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search...."
+                placeholder="Search options..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
+            </div>
+            
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleSelectAll}
+                className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                disabled={filteredOptions.length === 0}
+              >
+                {allFilteredSelected ? 'Deselect All' : 'Select All'}
+              </button>
+              {selectedValues.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="text-xs px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                >
+                  Clear All
+                </button>
+              )}
             </div>
           </div>
 
           {/* Options list */}
-          <div className="max-h-38 overflow-y-auto">
+          <div className="max-h-48 overflow-y-auto">
             {filteredOptions.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-gray-500">No options found</div>
+              <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                {searchTerm ? 'No options match your search' : 'No options available'}
+              </div>
             ) : (
               filteredOptions.map((option, index) => (
                 <label
                   key={index}
-                  className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                  className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
                 >
                   <input
                     type="checkbox"
@@ -242,7 +340,7 @@ const MultiSelectDropdown = ({
                     onChange={() => handleToggleOption(option.value)}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <span className="ml-3 text-sm text-gray-700">{option.label}</span>
+                  <span className="ml-3 text-sm text-gray-700 flex-1">{option.label}</span>
                 </label>
               ))
             )}
@@ -262,7 +360,9 @@ const MultiSelectDropdown = ({
       )}
     </div>
   );
-};
+});
+
+MultiSelectDropdown.displayName = "MultiSelectDropdown";
 
 const FormSection = memo(
   ({
@@ -274,6 +374,10 @@ const FormSection = memo(
     isEditing,
     handleInputChange,
     validateField,
+    assignedCompanies,
+    assignedJobs,
+    handleAssignedCompaniesChange,
+    handleAssignedJobsChange,
   }: {
     formData: TeamMember;
     errors: FormErrors;
@@ -283,15 +387,11 @@ const FormSection = memo(
     isEditing: boolean;
     handleInputChange: (field: keyof TeamMember, value: string | string[]) => void;
     validateField: (field: keyof TeamMember) => void;
+    assignedCompanies: string[];
+    assignedJobs: string[];
+    handleAssignedCompaniesChange: (values: string[]) => void;
+    handleAssignedJobsChange: (values: string[]) => void;
   }) => {
-    // Convert single values to arrays for multi-select
-    const assignedCompanies = Array.isArray(formData.assigned_company) 
-      ? formData.assigned_company 
-      : formData.assigned_company ? [formData.assigned_company] : [];
-    
-    const assignedJobs = Array.isArray(formData.assigned_jobs)
-      ? formData.assigned_jobs
-      : formData.assigned_jobs ? [formData.assigned_jobs] : [];
 
     return (
       <div className="space-y-4 mb-6">
@@ -353,33 +453,35 @@ const FormSection = memo(
               </div>
             )}
           </div>
-          {isEditing && (
-            <>
-              <MultiSelectDropdown
-                id="member-assigned-company"
-                label="Assigned Company"
-                options={company}
-                selectedValues={assignedCompanies}
-                onChange={(values) => handleInputChange("assigned_company", values)}
-                onBlur={() => validateField("assigned_company")}
-                error={Array.isArray(errors.assigned_company) ? errors.assigned_company.join(', ') : errors.assigned_company}
-                isSubmitting={isSubmitting}
-                placeholder="Select Company"
-              />
-              <MultiSelectDropdown
-                id="member-assigned-jobs"
-                label="Assigned Jobs"
-                options={jobs}
-                selectedValues={assignedJobs}
-                onChange={(values) => handleInputChange("assigned_jobs", values)}
-                onBlur={() => validateField("assigned_jobs")}
-                error={Array.isArray(errors.assigned_jobs) ? errors.assigned_jobs.join(', ') : errors.assigned_jobs}
-                isSubmitting={isSubmitting}
-                placeholder="Select Jobs"
-              />
-            </>
-          )}
         </div>
+        
+        {/* Assignment fields - only show when editing */}
+        {isEditing && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+            <MultiSelectDropdown
+              id="member-assigned-company"
+              label="Assigned Companies"
+              options={company}
+              selectedValues={assignedCompanies}
+              onChange={handleAssignedCompaniesChange}
+              onBlur={() => validateField("assigned_company")}
+              error={errors.assigned_company}
+              isSubmitting={isSubmitting}
+              placeholder="Select companies..."
+            />
+            <MultiSelectDropdown
+              id="member-assigned-jobs"
+              label="Assigned Job Titles"
+              options={jobs}
+              selectedValues={assignedJobs}
+              onChange={handleAssignedJobsChange}
+              onBlur={() => validateField("assigned_jobs")}
+              error={errors.assigned_jobs}
+              isSubmitting={isSubmitting}
+              placeholder="Select job titles..."
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -387,16 +489,33 @@ const FormSection = memo(
 
 FormSection.displayName = "FormSection";
 
-export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
+export const Overlay = ({ 
+  setShowOverlay, 
+  member, 
+  onSave, 
+  handleAssignJobsWithJobTitle, 
+  handleAssignCompany 
+}: OverlayProps) => {
   // Form state
   const [formData, setFormData] = useState<TeamMember>({
     id: member?.id || "",
     name: member?.name || "",
     email: member?.email || "",
     role: member?.role || "",
+    assigned_company: member?.assigned_company || [],
+    assigned_jobs: member?.assigned_jobs || [],
   });
 
+  // Separate state for assignments to handle them properly
+  const [assignedCompanies, setAssignedCompanies] = useState<string[]>(
+    member?.assigned_company || []
+  );
+  const [assignedJobs, setAssignedJobs] = useState<string[]>(
+    member?.assigned_jobs || []
+  );
+
   const dispatch = useAppDispatch();
+  
   // Form validation and UI state
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -413,9 +532,19 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
   const organizationId = useAppSelector((state: RootState) => state.user.organization?.id) || "";
   const roles = useAppSelector((state: RootState) => state.user.roles[0]?.role?.name || "Guest");
 
-  //useEffect to fetch jobs and company data if initially they are not present in state
+  // Track if form has been modified
+  const isEditing = Boolean(member?.id);
+  const initialData = useRef({
+    name: member?.name || "",
+    email: member?.email || "",
+    role: member?.role || "",
+    assigned_company: member?.assigned_company || [],
+    assigned_jobs: member?.assigned_jobs || [],
+  });
+
+  // useEffect to fetch jobs and company data if initially they are not present in state
   useEffect(() => {
-    if (jobs.length === 0 && !company.length) {
+    if (jobs.length === 0 || company.length === 0) {
       const userContext: UserContext = {
         userId: member?.id || "",
         organizationId: organizationId,
@@ -425,27 +554,25 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
     }
   }, [jobs, company, dispatch, member?.id, organizationId, roles]);
 
-  // Track if form has been modified
-  const isEditing = Boolean(member?.id);
-  const initialData = useRef({
-    name: member?.name || "",
-    email: member?.email || "",
-    role: member?.role || "",
-  });
-
-  // Check for unsaved changes
+  // Check for unsaved changes - improved to include assignments
   useEffect(() => {
-    const hasChanges =
+    const hasBasicChanges =
       formData.name !== initialData.current.name ||
       formData.email !== initialData.current.email ||
       formData.role !== initialData.current.role;
 
-    setHasUnsavedChanges(hasChanges);
-  }, [formData]);
+    const hasAssignmentChanges = isEditing && (
+      JSON.stringify(assignedCompanies.sort()) !== JSON.stringify(initialData.current.assigned_company.sort()) ||
+      JSON.stringify(assignedJobs.sort()) !== JSON.stringify(initialData.current.assigned_jobs.sort())
+    );
+
+    setHasUnsavedChanges(hasBasicChanges || hasAssignmentChanges);
+  }, [formData, assignedCompanies, assignedJobs, isEditing]);
 
   // Enhanced form validation
   const validateForm = useCallback((): boolean => {
     const newErrors: FormErrors = {};
+
     // Email validation
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
@@ -465,9 +592,28 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
       newErrors.role = "Please select a valid role";
     }
 
+    // Assignment validation for editing mode
+    if (isEditing) {
+      // Validate that selected companies exist in options
+      const invalidCompanies = assignedCompanies.filter(
+        companyId => !company.some(comp => comp.value === companyId)
+      );
+      if (invalidCompanies.length > 0) {
+        newErrors.assigned_company = "Some selected companies are no longer available";
+      }
+
+      // Validate that selected jobs exist in options
+      const invalidJobs = assignedJobs.filter(
+        jobId => !jobs.some(job => job.value === jobId)
+      );
+      if (invalidJobs.length > 0) {
+        newErrors.assigned_jobs = "Some selected job titles are no longer available";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData]);
+  }, [formData, assignedCompanies, assignedJobs, company, jobs, isEditing]);
 
   // Real-time validation on blur
   const validateField = useCallback(
@@ -479,8 +625,7 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
           if (!formData.email.trim()) {
             newErrors.email = "Email is required";
           } else {
-            const emailRegex =
-              /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+            const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
             if (!emailRegex.test(formData.email)) {
               newErrors.email = "Please enter a valid email address";
             } else if (formData.email.length > 100) {
@@ -496,6 +641,14 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
           } else {
             delete newErrors.role;
           }
+          break;
+        case "assigned_company":
+          // Clear company assignment errors when field is touched
+          delete newErrors.assigned_company;
+          break;
+        case "assigned_jobs":
+          // Clear job assignment errors when field is touched
+          delete newErrors.assigned_jobs;
           break;
       }
 
@@ -561,7 +714,7 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
     };
   }, [handleEscapeKey, showExitConfirmation]);
 
-  // Handle input changes with real-time feedback - made stable with useCallback
+  // Handle input changes with real-time feedback
   const handleInputChange = useCallback(
     (field: keyof TeamMember, value: string | string[]) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
@@ -579,7 +732,20 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
     [errors]
   );
 
-  // Handle form submission with better error handling
+  // Handle assignment changes
+  const handleAssignedCompaniesChange = useCallback((values: string[]) => {
+    setAssignedCompanies(values);
+    // Clear any related errors
+    setErrors(prev => ({ ...prev, assigned_company: undefined }));
+  }, []);
+
+  const handleAssignedJobsChange = useCallback((values: string[]) => {
+    setAssignedJobs(values);
+    // Clear any related errors
+    setErrors(prev => ({ ...prev, assigned_jobs: undefined }));
+  }, []);
+
+  // Handle form submission with improved assignment logic
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
@@ -595,15 +761,39 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
     setErrors({});
 
     try {
-      const memberData = {
+      // Prepare member data with assignments
+      const memberData: TeamMember = {
         ...formData,
         id: member?.id || Date.now().toString(),
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
+        assigned_company: assignedCompanies,
+        assigned_jobs: assignedJobs,
       };
 
+
+      // Handle job and company assignments separately if functions are provided
+      if (isEditing && handleAssignJobsWithJobTitle && assignedJobs.length > 0) {
+        try {
+          handleAssignJobsWithJobTitle(memberData, assignedJobs);
+        } catch (error) {
+          console.warn("Failed to assign job titles:", error);
+          // Don't fail the entire operation, just warn
+        }
+      }
+
+      if (isEditing && handleAssignCompany && assignedCompanies.length > 0) {
+        try {
+          handleAssignCompany(memberData, assignedCompanies);
+        } catch (error) {
+          console.warn("Failed to assign companies:", error);
+          // Don't fail the entire operation, just warn
+        }
+      }
       onSave(memberData);
-      // onSave should handle closing the overlay on success
+
+      // Success - close the overlay
+      setShowOverlay(false);
     } catch (error) {
       console.error("Error saving team member:", error);
       setErrors({
@@ -616,7 +806,6 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
       setIsSubmitting(false);
     }
   };
-
   // Enhanced focus trapping
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === "Tab" && !showExitConfirmation) {
@@ -706,6 +895,10 @@ export const Overlay = ({ setShowOverlay, member, onSave }: OverlayProps) => {
                 isEditing={isEditing}
                 handleInputChange={handleInputChange}
                 validateField={validateField}
+                assignedCompanies={assignedCompanies}
+                assignedJobs={assignedJobs}
+                handleAssignedCompaniesChange={handleAssignedCompaniesChange}
+                handleAssignedJobsChange={handleAssignedJobsChange}
               />
 
               {/* Action Buttons */}

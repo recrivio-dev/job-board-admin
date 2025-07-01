@@ -189,6 +189,7 @@ export type Database = {
           granted_by: string | null
           id: string
           job_id: string | null
+          updated_at: string | null
           user_id: string | null
         }
         Insert: {
@@ -197,6 +198,7 @@ export type Database = {
           granted_by?: string | null
           id?: string
           job_id?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
@@ -205,6 +207,7 @@ export type Database = {
           granted_by?: string | null
           id?: string
           job_id?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -621,6 +624,18 @@ export type Database = {
       get_user_role_in_org: {
         Args: { user_uuid: string; org_uuid: string }
         Returns: string
+      }
+      grant_access_by_companies: {
+        Args: { p_user_id: string; p_companies: string[]; p_granted_by: string }
+        Returns: boolean
+      }
+      grant_access_by_job_titles: {
+        Args: {
+          p_user_id: string
+          p_job_titles: string[]
+          p_granted_by: string
+        }
+        Returns: boolean
       }
       update_user_role: {
         Args: {
