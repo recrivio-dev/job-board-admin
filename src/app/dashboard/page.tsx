@@ -269,13 +269,13 @@ const DashboardContent = ({
 
   // Fetch dashboard data on component mount
   useEffect(() => {
-    if (user?.id && organization?.id && !loading) {
+    if (user?.id && organization?.id) {
       dispatch(fetchDashboardData({
         userUuid: user.id,
         orgUuid: organization.id,
       }));
     }
-  }, [dispatch, user?.id, organization?.id, loading]);
+  }, [dispatch, user?.id, organization?.id]);
 
   // Clear error when component unmounts
   useEffect(() => {
