@@ -8,13 +8,14 @@ import Link from "next/link";
 import CandidatesList from "@/components/candidates_list_component";
 import { RootState } from "@/store/store";
 import {
-  fetchJobApplicationsWithAccess,
+  // fetchJobApplicationsWithAccess,
   setUserContext,
   clearError,
   selectCandidatesError,
   selectCandidatesLoading,
   selectUserContext,
   UserContext,
+  // selectFilters,
 } from "@/store/features/candidatesSlice";
 
 import { initializeAuth } from "@/store/features/userSlice";
@@ -67,6 +68,7 @@ const CandidatesContent = ({
   const error = useAppSelector(selectCandidatesError);
   const loading = useAppSelector(selectCandidatesLoading);
   const userContext = useAppSelector(selectUserContext);
+  // const filters = useAppSelector(selectFilters);
 
   // Memoize user context to prevent unnecessary re-renders
   const memoizedUserContext = useMemo((): UserContext | null => {
@@ -95,16 +97,16 @@ const CandidatesContent = ({
   }, [memoizedUserContext, userContext, dispatch]);
 
   // Load candidates when user context is available
-  useEffect(() => {
-    if (memoizedUserContext) {
-      dispatch(
-        fetchJobApplicationsWithAccess({
-          filters: {}, // You can add default filters here if needed
-          userContext: memoizedUserContext,
-        })
-      );
-    }
-  }, [dispatch, memoizedUserContext]);
+  // useEffect(() => {
+  //   if (memoizedUserContext) {
+  //     dispatch(
+  //       fetchJobApplicationsWithAccess({
+  //         filters: filters, // You can add default filters here if needed
+  //         userContext: memoizedUserContext,
+  //       })
+  //     );
+  //   }
+  // }, [dispatch, memoizedUserContext, filters]);
 
   // Clear error when component unmounts
   useEffect(() => {

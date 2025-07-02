@@ -613,7 +613,7 @@ export default function Settings() {
         )}
 
         {/* Content section */}
-        <div className="flex justify-center items-center w-full">
+        <div className="flex justify-start items-center w-full">
           <div className="max-w-7xl w-full pb-20">
             {step === 0 && (
               <div className="bg-white rounded-lg shadow p-6">

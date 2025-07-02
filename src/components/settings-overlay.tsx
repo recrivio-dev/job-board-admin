@@ -923,9 +923,9 @@ export const Overlay = ({
                       Saving...
                     </>
                   ) : isEditing ? (
-                    "Update Member"
+                    "Save"
                   ) : (
-                    "Add Member"
+                    "Add"
                   )}
                 </button>
               </div>
