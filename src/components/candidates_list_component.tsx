@@ -157,7 +157,36 @@ export default function CandidatesList({
   const filters = useAppSelector(selectFilters);
   const userContext = useAppSelector(selectUserContext);
   const filterOptions = useAppSelector(selectFilterOptions);
-  const candidates = useAppSelector(state => state.candidates.candidates) || [];
+  const allCandidates = useAppSelector(state => state.candidates.candidates) || [];
+
+  // Client-side filtering for search
+  const filteredCandidates = useMemo(() => {
+    if (!filters.searchTerm || filters.searchTerm.trim() === "") {
+      return allCandidates;
+    }
+
+    const searchLower = filters.searchTerm.toLowerCase().trim();
+    
+    return allCandidates.filter((candidate) => {
+      // Search across multiple fields
+      const searchFields = [
+        candidate.name,
+        candidate.job_title,
+        candidate.company_name,
+        candidate.job_location,
+        candidate.id,
+        candidate.application_id,
+        candidate.candidate_email,
+      ];
+
+      return searchFields.some(field => 
+        field && field.toString().toLowerCase().includes(searchLower)
+      );
+    });
+  }, [allCandidates, filters.searchTerm]);
+
+  // Use filtered candidates for display
+  const candidates = filteredCandidates;
 
   // Local state for overlay
   const [candidatesDetailsOverlay, setCandidatesDetailsOverlay] = useState<{

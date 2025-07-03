@@ -405,6 +405,55 @@ const handlePageSizeChange = useCallback(
       });
     }
     
+    // Apply client-side multiselect filters
+    if (filters.status && Array.isArray(filters.status) && filters.status.length > 0) {
+      filteredJobs = filteredJobs.filter((job) => 
+        filters.status!.includes(job.status || "")
+      );
+    }
+    
+    if (filters.location && Array.isArray(filters.location) && filters.location.length > 0) {
+      filteredJobs = filteredJobs.filter((job) => 
+        filters.location!.includes(job.location || "")
+      );
+    }
+    
+    if (filters.company && Array.isArray(filters.company) && filters.company.length > 0) {
+      filteredJobs = filteredJobs.filter((job) => 
+        filters.company!.includes(job.company_name || "")
+      );
+    }
+    
+    if (filters.jobType && Array.isArray(filters.jobType) && filters.jobType.length > 0) {
+      filteredJobs = filteredJobs.filter((job) => 
+        filters.jobType!.includes(job.job_type || "")
+      );
+    }
+    
+    // Apply salary range filter
+    if (filters.salaryRange) {
+      filteredJobs = filteredJobs.filter((job) => {
+        const jobMinSalary = job.salary_min || 0;
+        const jobMaxSalary = job.salary_max || 0;
+        return (
+          jobMinSalary >= filters.salaryRange!.min &&
+          jobMaxSalary <= filters.salaryRange!.max
+        );
+      });
+    }
+    
+    // Apply experience range filter
+    if (filters.experienceRange) {
+      filteredJobs = filteredJobs.filter((job) => {
+        const jobMinExp = job.min_experience_needed || 0;
+        const jobMaxExp = job.max_experience_needed || 0;
+        return (
+          jobMinExp >= filters.experienceRange!.min &&
+          jobMaxExp <= filters.experienceRange!.max
+        );
+      });
+    }
+    
     // Apply client-side sorting
     if (sortBy === "az") {
       filteredJobs.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
@@ -752,10 +801,11 @@ const handlePageSizeChange = useCallback(
         onFiltersChange={(newFilters) => {
           const updatedFilters = {
             ...filters,
-            status: newFilters.status.length === 0 ? undefined : (newFilters.status.length === 1 ? newFilters.status[0] : newFilters.status),
-            location: newFilters.location.length === 0 ? undefined : (newFilters.location.length === 1 ? newFilters.location[0] : newFilters.location),
-            company: newFilters.company.length === 0 ? undefined : (newFilters.company.length === 1 ? newFilters.company[0] : newFilters.company),
-            jobType: newFilters.jobType.length === 0 ? undefined : (newFilters.jobType.length === 1 ? newFilters.jobType[0] : newFilters.jobType),
+            // Keep arrays for multiselect functionality
+            status: newFilters.status.length === 0 ? undefined : newFilters.status,
+            location: newFilters.location.length === 0 ? undefined : newFilters.location,
+            company: newFilters.company.length === 0 ? undefined : newFilters.company,
+            jobType: newFilters.jobType.length === 0 ? undefined : newFilters.jobType,
             salaryRange: newFilters.salaryRange[0] === 0 && newFilters.salaryRange[1] === 200000 ? undefined : {
               min: newFilters.salaryRange[0],
               max: newFilters.salaryRange[1],

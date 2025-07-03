@@ -74,9 +74,10 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           step={step}
           value={localValue[0]}
           onChange={(e) => handleMinChange(Number(e.target.value))}
-          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer"
+          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer z-10"
           style={{
             background: 'transparent',
+            pointerEvents: 'auto',
           }}
         />
         
@@ -88,15 +89,29 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           step={step}
           value={localValue[1]}
           onChange={(e) => handleMaxChange(Number(e.target.value))}
-          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer"
+          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer z-20"
           style={{
             background: 'transparent',
+            pointerEvents: 'auto',
           }}
         />
       </div>
 
       <style jsx>{`
+        input[type="range"] {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          cursor: pointer;
+        }
+        
+        input[type="range"]::-webkit-slider-track {
+          background: transparent;
+          height: 8px;
+        }
+        
         input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
           appearance: none;
           height: 20px;
           width: 20px;
@@ -105,9 +120,35 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           cursor: pointer;
           border: 2px solid white;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          position: relative;
+          z-index: 100;
+        }
+        
+        input[type="range"]::-moz-range-track {
+          background: transparent;
+          height: 8px;
+          border: none;
         }
         
         input[type="range"]::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: #3b82f6;
+          cursor: pointer;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          border: none;
+        }
+        
+        input[type="range"]::-ms-track {
+          background: transparent;
+          height: 8px;
+          border: none;
+          color: transparent;
+        }
+        
+        input[type="range"]::-ms-thumb {
           height: 20px;
           width: 20px;
           border-radius: 50%;
