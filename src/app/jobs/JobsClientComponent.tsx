@@ -111,6 +111,7 @@ export default function JobsClientComponent({
   });
 
   const [showFiltersModal, setShowFiltersModal] = useState(false);
+  const [sortBy, setSortBy] = useState<string>("recent");
 
   // Validation helper
   const isValidProps = useMemo(() => {
@@ -643,6 +644,18 @@ const handlePageSizeChange = useCallback(
 
           {/* Filters */}
           <div className="flex items-center gap-2 text-sm text-neutral-500">
+            {/* Sort dropdown */}
+            <div className="flex items-center gap-2 border-r border-neutral-300 pr-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-white border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="recent">Most Recent</option>
+                <option value="az">A-Z</option>
+                <option value="za">Z-A</option>
+              </select>
+            </div>
             <div className="hidden md:flex items-center gap-2 border-r border-neutral-300 pr-2">
               <FilterDropdown
                 label="Job Status"
