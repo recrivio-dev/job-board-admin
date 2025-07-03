@@ -45,12 +45,16 @@ const INITIAL_PAGE_SIZE = 30;
 const SKELETON_COUNT = 6;
 
 export interface JobFilters {
-  status?: string;
-  location?: string;
-  company?: string;
-  jobType?: string;
+  status?: string | string[];
+  location?: string | string[];
+  company?: string | string[];
+  jobType?: string | string[];
   experienceLevel?: string;
   salaryRange?: {
+    min: number;
+    max: number;
+  };
+  experienceRange?: {
     min: number;
     max: number;
   };
@@ -506,7 +510,7 @@ const handlePageSizeChange = useCallback(
     }));
 
     return { forCards, forList };
-  }, [paginatedJobs, sortBy, searchTerm]);
+  }, [paginatedJobs, sortBy, searchTerm, filters]);
 
   // Enhanced loading component
   const LoadingView = () => (
