@@ -184,11 +184,6 @@ export default function CandidatesList({
       );
     });
 
-    // Debug logging
-    console.log(`Search term: "${filters.searchTerm}"`);
-    console.log(`Total candidates: ${allCandidates.length}`);
-    console.log(`Filtered candidates: ${filtered.length}`);
-    
     return filtered;
   }, [allCandidates, filters.searchTerm]);
 

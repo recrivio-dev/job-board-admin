@@ -804,6 +804,8 @@ const handlePageSizeChange = useCallback(
           jobTypes: ["Full-time", "Part-time", "Contract", "Temporary", "Internship"],
         }}
         onFiltersChange={(newFilters) => {
+          // Only update Redux state for client-side filtering
+          // This prevents server calls and flickering
           const updatedFilters = {
             ...filters,
             // Keep arrays for multiselect functionality
@@ -820,18 +822,9 @@ const handlePageSizeChange = useCallback(
               max: newFilters.experienceRange[1],
             },
           };
-          dispatch(setFilters(updatedFilters));
           
-          // Trigger a new fetch with the updated filters
-          if (isValidProps && userRole && userId && organizationId) {
-            dispatch(applyFilters({
-              filters: updatedFilters,
-              userRole,
-              userId,
-              organizationId,
-              page: 1,
-            }));
-          }
+          // Only update Redux state - client-side filtering handles the display
+          dispatch(setFilters(updatedFilters));
         }}
         onClearAll={handleClearAllFilters}
         onApply={handleApplyFilters}

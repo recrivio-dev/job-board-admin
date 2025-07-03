@@ -2,6 +2,18 @@ import React, { useState, useCallback, useEffect } from "react";
 import { RxCross2 } from "react-icons/rx";
 import { FaCheck } from "react-icons/fa6";
 
+// Debounce utility function
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
+
 interface RangeSliderProps {
   label: string;
   min: number;
@@ -22,23 +34,42 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
   formatValue = (val) => val.toString(),
 }) => {
   const [localValue, setLocalValue] = useState(value);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     setLocalValue(value);
   }, [value]);
 
+  // Debounced onChange to reduce flicker
+  const debouncedOnChange = useCallback(
+    debounce((newValue: [number, number]) => {
+      onChange(newValue);
+    }, 100),
+    [onChange]
+  );
+
   const handleMinChange = (newMin: number) => {
     const clampedMin = Math.min(newMin, localValue[1] - step);
     const newValue: [number, number] = [clampedMin, localValue[1]];
     setLocalValue(newValue);
-    onChange(newValue);
+    
+    if (isDragging) {
+      debouncedOnChange(newValue);
+    } else {
+      onChange(newValue);
+    }
   };
 
   const handleMaxChange = (newMax: number) => {
     const clampedMax = Math.max(newMax, localValue[0] + step);
     const newValue: [number, number] = [localValue[0], clampedMax];
     setLocalValue(newValue);
-    onChange(newValue);
+    
+    if (isDragging) {
+      debouncedOnChange(newValue);
+    } else {
+      onChange(newValue);
+    }
   };
 
   const percentage1 = ((localValue[0] - min) / (max - min)) * 100;
@@ -74,6 +105,10 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           step={step}
           value={localValue[0]}
           onChange={(e) => handleMinChange(Number(e.target.value))}
+          onMouseDown={() => setIsDragging(true)}
+          onMouseUp={() => setIsDragging(false)}
+          onTouchStart={() => setIsDragging(true)}
+          onTouchEnd={() => setIsDragging(false)}
           className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer range-slider-min"
           style={{
             background: 'transparent',
@@ -90,6 +125,10 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           step={step}
           value={localValue[1]}
           onChange={(e) => handleMaxChange(Number(e.target.value))}
+          onMouseDown={() => setIsDragging(true)}
+          onMouseUp={() => setIsDragging(false)}
+          onTouchStart={() => setIsDragging(true)}
+          onTouchEnd={() => setIsDragging(false)}
           className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer range-slider-max"
           style={{
             background: 'transparent',
@@ -200,11 +239,12 @@ const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
   onChange,
 }) => {
   const handleOptionToggle = (option: string) => {
-    if (selected.includes(option)) {
-      onChange(selected.filter(item => item !== option));
-    } else {
-      onChange([...selected, option]);
-    }
+    const newSelected = selected.includes(option) 
+      ? selected.filter(item => item !== option)
+      : [...selected, option];
+    
+    // Immediate update for better UX
+    onChange(newSelected);
   };
 
   return (
