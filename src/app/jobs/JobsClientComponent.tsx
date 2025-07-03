@@ -631,9 +631,9 @@ const handlePageSizeChange = useCallback(
             </h1>
             <p className="text-sm text-neutral-500 mb-2">
               Manage your job listings and applications with ease.
-              {pagination.totalCount > 0 && (
+              {transformedJobs.forCards.length > 0 && (
                 <span className="ml-1 font-medium">
-                  ({pagination.totalCount} job{pagination.totalCount !== 1 ? "s" : ""} found)
+                  ({transformedJobs.forCards.length} job{transformedJobs.forCards.length !== 1 ? "s" : ""} found)
                 </span>
               )}
             </p>
@@ -785,7 +785,7 @@ const handlePageSizeChange = useCallback(
         {/* Content */}
         {error ? (
           <ErrorState error={error} onRetry={handleRetry} />
-        ) : pagination.totalCount === 0 ? (
+        ) : transformedJobs.forCards.length === 0 ? (
           <EmptyState onAddJob={handleAddJob} />
         ) : (
           <>
@@ -800,11 +800,11 @@ const handlePageSizeChange = useCallback(
             )}
 
             {/* Pagination */}
-            {pagination.totalCount > 0 && (
+            {transformedJobs.forCards.length > 0 && (
               <Pagination
                 currentPage={pagination.currentPage}
                 totalPages={pagination.totalPages}
-                totalItems={searchTerm.trim() ? transformedJobs.forCards.length : pagination.totalCount}
+                totalItems={transformedJobs.forCards.length}
                 itemsPerPage={pagination.pageSize}
                 onPageChange={handlePageChange}
                 onItemsPerPageChange={handlePageSizeChange}
