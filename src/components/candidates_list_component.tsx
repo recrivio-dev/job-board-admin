@@ -185,8 +185,32 @@ export default function CandidatesList({
     });
   }, [allCandidates, filters.searchTerm]);
 
-  // Use filtered candidates for display
-  const candidates = filteredCandidates;
+  // Client-side pagination for filtered results
+  const paginatedCandidates = useMemo(() => {
+    const isSearching = filters.searchTerm && filters.searchTerm.trim() !== "";
+    const candidatesToPaginate = isSearching ? filteredCandidates : allCandidates;
+    
+    const startIndex = (pagination.currentPage - 1) * pagination.candidatesPerPage;
+    const endIndex = startIndex + pagination.candidatesPerPage;
+    
+    return candidatesToPaginate.slice(startIndex, endIndex);
+  }, [filteredCandidates, allCandidates, filters.searchTerm, pagination.currentPage, pagination.candidatesPerPage]);
+
+  // Calculate pagination info for filtered results
+  const paginationInfo = useMemo(() => {
+    const isSearching = filters.searchTerm && filters.searchTerm.trim() !== "";
+    const totalItems = isSearching ? filteredCandidates.length : pagination.totalCandidates;
+    const totalPages = Math.ceil(totalItems / pagination.candidatesPerPage);
+    
+    return {
+      ...pagination,
+      totalCandidates: totalItems,
+      totalPages: totalPages,
+    };
+  }, [filteredCandidates.length, filters.searchTerm, pagination]);
+
+  // Use paginated candidates for display
+  const candidates = paginatedCandidates;
 
   // Local state for overlay
   const [candidatesDetailsOverlay, setCandidatesDetailsOverlay] = useState<{
@@ -1067,10 +1091,10 @@ const filtersModalOptions = [
         {/* Pagination - Only show if not using maxItems limit */}
         {!loading && (
           <Pagination
-            currentPage={pagination.currentPage}
-            totalPages={pagination.totalPages}
-            totalItems={pagination.totalCandidates}
-            itemsPerPage={pagination.candidatesPerPage}
+            currentPage={paginationInfo.currentPage}
+            totalPages={paginationInfo.totalPages}
+            totalItems={paginationInfo.totalCandidates}
+            itemsPerPage={paginationInfo.candidatesPerPage}
             onPageChange={handlePageChange}
             onItemsPerPageChange={handlePageSizeChange}
             showItemsPerPage={true}

@@ -74,10 +74,11 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           step={step}
           value={localValue[0]}
           onChange={(e) => handleMinChange(Number(e.target.value))}
-          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer z-10"
+          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer range-slider-min"
           style={{
             background: 'transparent',
             pointerEvents: 'auto',
+            zIndex: localValue[0] > localValue[1] - (max - min) * 0.05 ? 25 : 20,
           }}
         />
         
@@ -89,10 +90,11 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           step={step}
           value={localValue[1]}
           onChange={(e) => handleMaxChange(Number(e.target.value))}
-          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer z-20"
+          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer range-slider-max"
           style={{
             background: 'transparent',
             pointerEvents: 'auto',
+            zIndex: localValue[1] < localValue[0] + (max - min) * 0.05 ? 25 : 20,
           }}
         />
       </div>
@@ -122,6 +124,12 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
           position: relative;
           z-index: 100;
+          pointer-events: auto;
+        }
+        
+        input[type="range"]:focus::-webkit-slider-thumb {
+          z-index: 101;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
         }
         
         input[type="range"]::-moz-range-track {
@@ -139,6 +147,8 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           border: 2px solid white;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
           border: none;
+          pointer-events: auto;
+          z-index: 100;
         }
         
         input[type="range"]::-ms-track {
@@ -156,6 +166,8 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           cursor: pointer;
           border: 2px solid white;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          pointer-events: auto;
+          z-index: 100;
         }
       `}</style>
     </div>

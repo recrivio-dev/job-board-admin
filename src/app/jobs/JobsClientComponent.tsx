@@ -430,26 +430,30 @@ const handlePageSizeChange = useCallback(
       );
     }
     
-    // Apply salary range filter
-    if (filters.salaryRange) {
+    // Apply salary range filter (check for overlap)
+    if (filters.salaryRange && (filters.salaryRange.min > 0 || filters.salaryRange.max < 200000)) {
       filteredJobs = filteredJobs.filter((job) => {
         const jobMinSalary = job.salary_min || 0;
-        const jobMaxSalary = job.salary_max || 0;
+        const jobMaxSalary = job.salary_max || 999999; // Default high value if not set
+        
+        // Check for overlap: job range overlaps with filter range
         return (
-          jobMinSalary >= filters.salaryRange!.min &&
-          jobMaxSalary <= filters.salaryRange!.max
+          jobMinSalary <= filters.salaryRange!.max &&
+          jobMaxSalary >= filters.salaryRange!.min
         );
       });
     }
     
-    // Apply experience range filter
-    if (filters.experienceRange) {
+    // Apply experience range filter (check for overlap)
+    if (filters.experienceRange && (filters.experienceRange.min > 0 || filters.experienceRange.max < 20)) {
       filteredJobs = filteredJobs.filter((job) => {
         const jobMinExp = job.min_experience_needed || 0;
-        const jobMaxExp = job.max_experience_needed || 0;
+        const jobMaxExp = job.max_experience_needed || 20; // Default high value if not set
+        
+        // Check for overlap: job range overlaps with filter range
         return (
-          jobMinExp >= filters.experienceRange!.min &&
-          jobMaxExp <= filters.experienceRange!.max
+          jobMinExp <= filters.experienceRange!.max &&
+          jobMaxExp >= filters.experienceRange!.min
         );
       });
     }
