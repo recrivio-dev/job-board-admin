@@ -386,6 +386,10 @@ const handlePageSizeChange = useCallback(
   const transformedJobs = useMemo(() => {
     let filteredJobs = [...paginatedJobs];
     
+    // Debug logging for filters
+    console.log('Current filters:', filters);
+    console.log('Total jobs before filtering:', filteredJobs.length);
+    
     // Apply search filter
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase().trim();
@@ -409,30 +413,46 @@ const handlePageSizeChange = useCallback(
       });
     }
     
-    // Apply client-side multiselect filters
-    if (filters.status && Array.isArray(filters.status) && filters.status.length > 0) {
-      filteredJobs = filteredJobs.filter((job) => 
-        filters.status!.includes(job.status || "")
-      );
+    // Apply client-side multiselect filters - handle both string and array values
+    if (filters.status) {
+      const statusArray = Array.isArray(filters.status) ? filters.status : [filters.status];
+      if (statusArray.length > 0) {
+        console.log('Applying status filter:', statusArray);
+        filteredJobs = filteredJobs.filter((job) => 
+          statusArray.includes(job.status || "")
+        );
+        console.log('Jobs after status filter:', filteredJobs.length);
+      }
     }
     
-    if (filters.location && Array.isArray(filters.location) && filters.location.length > 0) {
-      filteredJobs = filteredJobs.filter((job) => 
-        filters.location!.includes(job.location || "")
-      );
+    if (filters.location) {
+      const locationArray = Array.isArray(filters.location) ? filters.location : [filters.location];
+      if (locationArray.length > 0) {
+        filteredJobs = filteredJobs.filter((job) => 
+          locationArray.includes(job.location || "")
+        );
+      }
     }
     
-    if (filters.company && Array.isArray(filters.company) && filters.company.length > 0) {
-      filteredJobs = filteredJobs.filter((job) => 
-        filters.company!.includes(job.company_name || "")
-      );
+    if (filters.company) {
+      const companyArray = Array.isArray(filters.company) ? filters.company : [filters.company];
+      if (companyArray.length > 0) {
+        console.log('Applying company filter:', companyArray);
+        filteredJobs = filteredJobs.filter((job) => 
+          companyArray.includes(job.company_name || "")
+        );
+        console.log('Jobs after company filter:', filteredJobs.length);
+      }
     }
     
-    if (filters.jobType && Array.isArray(filters.jobType) && filters.jobType.length > 0) {
-      filteredJobs = filteredJobs.filter((job) => 
-        filters.jobType!.includes(job.job_type || "") ||
-        filters.jobType!.includes(job.working_type || "")
-      );
+    if (filters.jobType) {
+      const jobTypeArray = Array.isArray(filters.jobType) ? filters.jobType : [filters.jobType];
+      if (jobTypeArray.length > 0) {
+        filteredJobs = filteredJobs.filter((job) => 
+          jobTypeArray.includes(job.job_type || "") ||
+          jobTypeArray.includes(job.working_type || "")
+        );
+      }
     }
     
     // Apply salary range filter (check for overlap)
@@ -509,6 +529,7 @@ const handlePageSizeChange = useCallback(
       created_at: job.created_at || "",
     }));
 
+    console.log('Final filtered jobs count:', filteredJobs.length);
     return { forCards, forList };
   }, [paginatedJobs, sortBy, searchTerm, filters]);
 
