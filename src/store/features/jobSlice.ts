@@ -103,12 +103,16 @@ export interface JobAccessControl {
 
 // Job filters
 export interface JobFilters {
-  status?: string;
-  location?: string;
-  company?: string;
-  jobType?: string;
+  status?: string | string[]; // Support both single and multi-select
+  location?: string | string[]; // Support both single and multi-select
+  company?: string | string[]; // Support both single and multi-select
+  jobType?: string | string[]; // Support both single and multi-select
   experienceLevel?: string;
   salaryRange?: {
+    min: number;
+    max: number;
+  };
+  experienceRange?: {
     min: number;
     max: number;
   };
@@ -282,20 +286,30 @@ export const fetchJobs = createAsyncThunk(
       }
 
       // Call the RPC function
+      // Helper function to handle array or single value filters
+      const prepareFilterValue = (filter: string | string[] | undefined): string | undefined => {
+        if (!filter) return undefined;
+        if (Array.isArray(filter)) {
+          // For now, take the first value if it's an array (backend doesn't support arrays yet)
+          return filter.length > 0 ? filter[0] : undefined;
+        }
+        return filter;
+      };
+
       const { data, error } = await supabase.rpc("fetch_jobs_with_access", {
         p_user_id: userId,
         p_user_role: userRole,
         p_organization_id: organizationId,
         p_page: page,
         p_limit: limit,
-        p_status: filters.status || undefined,
-        p_location: filters.location || undefined,
-        p_company: filters.company || undefined,
-        p_job_type: filters.jobType || undefined,
+        p_status: prepareFilterValue(filters.status),
+        p_location: prepareFilterValue(filters.location),
+        p_company: prepareFilterValue(filters.company),
+        p_job_type: prepareFilterValue(filters.jobType),
         p_salary_min: filters.salaryRange?.min || undefined,
         p_salary_max: filters.salaryRange?.max || undefined,
-        p_experience_min: filters.experienceLevel ? parseExperienceMin(filters.experienceLevel) : undefined,
-        p_experience_max: filters.experienceLevel ? parseExperienceMax(filters.experienceLevel) : undefined,
+        p_experience_min: filters.experienceLevel ? parseExperienceMin(filters.experienceLevel) : (filters.experienceRange?.min || undefined),
+        p_experience_max: filters.experienceLevel ? parseExperienceMax(filters.experienceLevel) : (filters.experienceRange?.max || undefined),
       });
 
       if (error) {

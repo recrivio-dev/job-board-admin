@@ -38,7 +38,7 @@ import {
   FilterDropdown,
 } from "./job_utils";
 import Pagination from "@/components/pagination";
-import FiltersModal from "@/components/filters-modal";
+import EnhancedFiltersModal from "@/components/enhanced-filters-modal";
 
 // Constants
 const INITIAL_PAGE_SIZE = 30;
@@ -120,108 +120,7 @@ export default function JobsClientComponent({
     return Boolean(userRole && userId && organizationId);
   }, [userRole, userId, organizationId]);
 
-  // Create filter options for the modal
-  const modalFilterOptions = useMemo(() => {
-    return [
-      {
-        id: "status",
-        label: "Job Status",
-        type: "checkbox" as const,
-        options: filterOptions.statuses,
-        selected: filters.status ? [filters.status] : [],
-        onChange: (option: string) => {
-          const isSelected = filters.status === option;
-          const newFilters = {
-            ...filters,
-            status: isSelected ? undefined : option
-          };
-          dispatch(setFilters(newFilters));
-        },
-      },
-      {
-        id: "location",
-        label: "Location",
-        type: "checkbox" as const,
-        options: filterOptions.locations,
-        selected: filters.location ? [filters.location] : [],
-        onChange: (option: string) => {
-          const isSelected = filters.location === option;
-          const newFilters = {
-            ...filters,
-            location: isSelected ? undefined : option
-          };
-          dispatch(setFilters(newFilters));
-        },
-      },
-      {
-        id: "company",
-        label: "Company",
-        type: "checkbox" as const,
-        options: filterOptions.companies,
-        selected: filters.company ? [filters.company] : [],
-        onChange: (option: string) => {
-          const isSelected = filters.company === option;
-          const newFilters = {
-            ...filters,
-            company: isSelected ? undefined : option
-          };
-          dispatch(setFilters(newFilters));
-        },
-      },
-      {
-        id: "salary",
-        label: "Salary Range",
-        type: "checkbox" as const,
-        options: [
-          "0-50000",
-          "50000-100000", 
-          "100000-150000",
-          "150000-200000",
-          "200000+"
-        ],
-        selected: filters.salaryRange ? [`${filters.salaryRange.min}-${filters.salaryRange.max}`] : [],
-        onChange: (option: string) => {
-          const isSelected = filters.salaryRange && 
-            `${filters.salaryRange.min}-${filters.salaryRange.max}` === option;
-          
-          const newFilters = { ...filters };
-          
-          if (isSelected) {
-            delete newFilters.salaryRange;
-          } else {
-            if (option === "200000+") {
-              newFilters.salaryRange = { min: 200000, max: 999999999 };
-            } else {
-              const [min, max] = option.split('-').map(Number);
-              newFilters.salaryRange = { min, max };
-            }
-          }
-          dispatch(setFilters(newFilters));
-        },
-      },
-      {
-        id: "experience",
-        label: "Years of Experience",
-        type: "checkbox" as const,
-        options: [
-          "0-1",
-          "1-3",
-          "3-5",
-          "5-8",
-          "8+"
-        ],
-        selected: filters.experienceLevel ? [filters.experienceLevel] : [],
-        onChange: (option: string) => {
-          const isSelected = filters.experienceLevel === option;
-          const newFilters = {
-            ...filters,
-            experienceLevel: isSelected ? undefined : option
-          };
-          dispatch(setFilters(newFilters));
-        },
-      },
-    ];
-  }, [filterOptions, filters, dispatch]);
+
 
   // Initialize data with better error handling
  useEffect(() => {
@@ -283,8 +182,8 @@ export default function JobsClientComponent({
     [dispatch]
   );
 
-const handleFilterChange = useMemo(
-  () => debounce(async (filterType: string, value: string) => {
+const handleFilterChange = useCallback(
+  debounce(async (filterType: string, value: string) => {
     if (!isValidProps) return;
 
     try {
@@ -452,7 +351,7 @@ const handlePageSizeChange = useCallback(
   const handleOpenFiltersModal = () => setShowFiltersModal(true);
   const handleCloseFiltersModal = () => setShowFiltersModal(false);
   
-  const handleClearAllFilters = () => {
+  const handleClearAllFilters = useCallback(() => {
     const clearedFilters = {};
     dispatch(setFilters(clearedFilters));
     setFilterDropdowns({
@@ -461,7 +360,8 @@ const handlePageSizeChange = useCallback(
       company: "",
       isOpen: false,
     });
-  };
+    setSearchTerm(""); // Clear search term as well
+  }, [dispatch]);
 
   const handleApplyFilters = () => {
     handleCloseFiltersModal();
@@ -818,7 +718,7 @@ const handlePageSizeChange = useCallback(
               <Pagination
                 currentPage={pagination.currentPage}
                 totalPages={pagination.totalPages}
-                totalItems={pagination.totalCount}
+                totalItems={searchTerm.trim() ? transformedJobs.forCards.length : pagination.totalCount}
                 itemsPerPage={pagination.pageSize}
                 onPageChange={handlePageChange}
                 onItemsPerPageChange={handlePageSizeChange}
@@ -831,11 +731,42 @@ const handlePageSizeChange = useCallback(
         )}
       </div>
 
-      {/* Filters Modal */}
-      <FiltersModal
+      {/* Enhanced Filters Modal */}
+      <EnhancedFiltersModal
         show={showFiltersModal}
         onClose={handleCloseFiltersModal}
-        filterOptions={modalFilterOptions}
+        filters={{
+          status: Array.isArray(filters.status) ? filters.status : (filters.status ? [filters.status] : []),
+          location: Array.isArray(filters.location) ? filters.location : (filters.location ? [filters.location] : []),
+          company: Array.isArray(filters.company) ? filters.company : (filters.company ? [filters.company] : []),
+          jobType: Array.isArray(filters.jobType) ? filters.jobType : (filters.jobType ? [filters.jobType] : []),
+          salaryRange: filters.salaryRange ? [filters.salaryRange.min, filters.salaryRange.max] : [0, 200000],
+          experienceRange: filters.experienceRange ? [filters.experienceRange.min, filters.experienceRange.max] : [0, 20],
+        }}
+        filterOptions={{
+          statuses: filterOptions.statuses,
+          locations: filterOptions.locations,
+          companies: filterOptions.companies,
+          jobTypes: ["Full-time", "Part-time", "Contract", "Temporary", "Internship"],
+        }}
+        onFiltersChange={(newFilters) => {
+          const updatedFilters = {
+            ...filters,
+            status: newFilters.status.length === 0 ? undefined : (newFilters.status.length === 1 ? newFilters.status[0] : newFilters.status),
+            location: newFilters.location.length === 0 ? undefined : (newFilters.location.length === 1 ? newFilters.location[0] : newFilters.location),
+            company: newFilters.company.length === 0 ? undefined : (newFilters.company.length === 1 ? newFilters.company[0] : newFilters.company),
+            jobType: newFilters.jobType.length === 0 ? undefined : (newFilters.jobType.length === 1 ? newFilters.jobType[0] : newFilters.jobType),
+            salaryRange: newFilters.salaryRange[0] === 0 && newFilters.salaryRange[1] === 200000 ? undefined : {
+              min: newFilters.salaryRange[0],
+              max: newFilters.salaryRange[1],
+            },
+            experienceRange: newFilters.experienceRange[0] === 0 && newFilters.experienceRange[1] === 20 ? undefined : {
+              min: newFilters.experienceRange[0],
+              max: newFilters.experienceRange[1],
+            },
+          };
+          dispatch(setFilters(updatedFilters));
+        }}
         onClearAll={handleClearAllFilters}
         onApply={handleApplyFilters}
       />

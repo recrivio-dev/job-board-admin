@@ -244,7 +244,8 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
         p_max_experience: filters.maxExperience || undefined,
         p_date_from: filters.dateFrom || undefined,
         p_date_to: filters.dateTo || undefined,
-        p_job_id: filters.jobId || undefined
+        p_job_id: filters.jobId || undefined,
+        p_search_term: filters.searchTerm || undefined // Add global search term
       };
 
       // Call the PostgreSQL function using Supabase RPC
