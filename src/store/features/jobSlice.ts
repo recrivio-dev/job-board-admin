@@ -190,6 +190,35 @@ const transformRawJob = (rawJob: RawJob): Job => ({
   updated_at: rawJob.updated_at,
 });
 
+// Helper functions to parse experience levels safely
+const parseExperienceMin = (experienceLevel: string): number | undefined => {
+  try {
+    if (experienceLevel === "8+") return 8;
+    const parts = experienceLevel.split('-');
+    if (parts.length >= 1) {
+      const min = parseInt(parts[0]);
+      return isNaN(min) ? undefined : min;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const parseExperienceMax = (experienceLevel: string): number | undefined => {
+  try {
+    if (experienceLevel === "8+") return 999; // Large number for "8+"
+    const parts = experienceLevel.split('-');
+    if (parts.length >= 2) {
+      const max = parseInt(parts[1]);
+      return isNaN(max) ? undefined : max;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 // Type definition for RPC response
 interface FetchJobsRPCResponse {
   jobs: Job[];
@@ -264,8 +293,8 @@ export const fetchJobs = createAsyncThunk(
         p_job_type: filters.jobType || undefined,
         p_salary_min: filters.salaryRange?.min || undefined,
         p_salary_max: filters.salaryRange?.max || undefined,
-        p_experience_min: filters.experienceLevel ? parseInt(filters.experienceLevel.split('-')[0]) : undefined,
-        p_experience_max: filters.experienceLevel ? parseInt(filters.experienceLevel.split('-')[1]) : undefined,
+        p_experience_min: filters.experienceLevel ? parseExperienceMin(filters.experienceLevel) : undefined,
+        p_experience_max: filters.experienceLevel ? parseExperienceMax(filters.experienceLevel) : undefined,
       });
 
       if (error) {
@@ -382,9 +411,13 @@ export const fetchFilterOptions = createAsyncThunk(
       const uniqueCompanies = Array.from(new Set((data.companies || []))).sort();
       const uniqueLocations = Array.from(new Set((data.locations || []))).sort();
 
+      // Additional deduplication step
+      const deduplicatedCompanies = uniqueCompanies.filter((company, index, self) => self.indexOf(company) === index);
+      const deduplicatedLocations = uniqueLocations.filter((location, index, self) => self.indexOf(location) === index);
+
       return {
-        companies: uniqueCompanies,
-        locations: uniqueLocations,
+        companies: deduplicatedCompanies,
+        locations: deduplicatedLocations,
         statuses: defaultStatuses,
         cached: false,
       };

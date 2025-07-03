@@ -432,10 +432,24 @@ const handlePageSizeChange = useCallback(
     }
   };
 
-  // Optimized job transformations - now using paginated jobs
-  
+  // Optimized job transformations - now using paginated jobs with sorting
   const transformedJobs = useMemo(() => {
-    const forCards = paginatedJobs.map((job) => ({
+    const sortedJobs = [...paginatedJobs];
+    
+    // Apply client-side sorting
+    if (sortBy === "az") {
+      sortedJobs.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+    } else if (sortBy === "za") {
+      sortedJobs.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
+    } else if (sortBy === "recent") {
+      sortedJobs.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA; // Most recent first
+      });
+    }
+    
+    const forCards = sortedJobs.map((job) => ({
       id: job.id,
       title: job.title,
       company_name: job.company_name ?? "",
@@ -445,7 +459,7 @@ const handlePageSizeChange = useCallback(
       company_logo_url: job.company_logo_url || "/demo.png",
     }));
 
-    const forList = paginatedJobs.map((job) => ({
+    const forList = sortedJobs.map((job) => ({
       job_id: job.id,
       job_title: job.title,
       company_name: job.company_name || "",
@@ -469,7 +483,7 @@ const handlePageSizeChange = useCallback(
     }));
 
     return { forCards, forList };
-  }, [paginatedJobs]);
+  }, [paginatedJobs, sortBy]);
 
   // Enhanced loading component
   const LoadingView = () => (
