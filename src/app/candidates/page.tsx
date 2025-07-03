@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { IoSearchSharp } from "react-icons/io5";
-import { HiOutlineArrowCircleLeft } from "react-icons/hi";
-import Link from "next/link";
 import CandidatesList from "@/components/candidates_list_component";
 import { RootState } from "@/store/store";
 import {
@@ -24,6 +22,7 @@ import { initializeAuth } from "@/store/features/userSlice";
 
 import { User } from "@supabase/supabase-js";
 import { Organization, UserRole } from "@/types/custom";
+import Breadcrumb from "@/components/Breadcrumb";
 
 // Debounce utility function
 function debounce<T extends (...args: never[]) => unknown>(
@@ -107,7 +106,7 @@ const CandidatesContent = ({
     return {
       userId: user.id,
       organizationId: organization.id,
-      roles: roles.map(role => role.role.name).join(', '),
+      roles: roles.map((role) => role.role.name).join(", "),
     };
   }, [user?.id, organization?.id, roles]);
 
@@ -193,21 +192,7 @@ const CandidatesContent = ({
     >
       <div className="w-full mx-auto px-0 md:px-4 py-4 md:py-2">
         {/* Back Navigation and Title */}
-        <div className="flex items-center gap-1 mb-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center text-neutral-500 hover:text-neutral-700 font-medium text-sm transition-colors"
-          >
-            <HiOutlineArrowCircleLeft className="w-6 h-6 mr-1" />
-            <span>Back to Dashboard</span>
-          </Link>
-          <span className="text-sm text-neutral-500 font-light">
-            /
-          </span>
-          <span className="text-sm font-medium text-neutral-900">
-            Candidates
-          </span>
-        </div>
+        <Breadcrumb segments={[{ label: "Candidates" }]} />
 
         {/* Header with Role-based Content */}
         <div className="flex items-center flex-wrap justify-between mb-10">
@@ -218,12 +203,12 @@ const CandidatesContent = ({
               </h1>
             </div>
 
-              <p className="text-sm text-neutral-500">
-                Manage all candidates and their applications with ease.
-              </p>
+            <p className="text-sm text-neutral-500">
+              Manage all candidates and their applications with ease.
+            </p>
 
-              {/* Organization and role info */}
-              {/* <div className="flex flex-wrap gap-4 text-xs text-neutral-500 mt-1">
+            {/* Organization and role info */}
+            {/* <div className="flex flex-wrap gap-4 text-xs text-neutral-500 mt-1">
                 <span>
                   Organization: {organization.name || "Current Organization"}
                 </span>

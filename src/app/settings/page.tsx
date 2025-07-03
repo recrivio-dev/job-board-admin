@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { HiOutlineArrowCircleLeft } from "react-icons/hi";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { FaPlus, FaRegEdit, FaCaretDown, FaCheck } from "react-icons/fa";
 import { Overlay } from "@/components/settings-overlay";
@@ -20,6 +19,7 @@ import {
 } from "@/store/features/organisationSlice";
 import { initializeAuth } from "@/store/features/userSlice";
 import { RootState } from "@/store/store";
+import Breadcrumb from "@/components/Breadcrumb";
 
 // Types for better type safety
 interface TeamMember {
@@ -54,10 +54,16 @@ export default function Settings() {
   const collapsed = useAppSelector((state) => state.ui.sidebar.collapsed);
 
   // Redux selectors
-  const members = useAppSelector((state: RootState) => selectMembers(state as RootState));
-  const loading = useAppSelector((state: RootState) => selectOrganisationLoading(state as RootState));
+  const members = useAppSelector((state: RootState) =>
+    selectMembers(state as RootState)
+  );
+  const loading = useAppSelector((state: RootState) =>
+    selectOrganisationLoading(state as RootState)
+  );
   // Error handling
-  const error = useAppSelector((state: RootState) => selectOrganisationError(state as RootState));
+  const error = useAppSelector((state: RootState) =>
+    selectOrganisationError(state as RootState)
+  );
 
   // Get current user and organization from your auth/user state
   const currentUser = useAppSelector((state: RootState) => state.user.user);
@@ -358,7 +364,7 @@ export default function Settings() {
           jobTitles: jobTitles,
           memberUuid: member.id,
           grantedBy: currentUser?.id || "",
-          organization_id: currentOrgId || "",  
+          organization_id: currentOrgId || "",
         })
       ).unwrap();
     },
@@ -369,7 +375,9 @@ export default function Settings() {
   const handleAssignCompany = useCallback(
     (member: TeamMember, companies: string[]) => {
       // Logic to assign company to the member
-      console.log(`Assigning company ${companies.join(", ")} to ${member.name}`);
+      console.log(
+        `Assigning company ${companies.join(", ")} to ${member.name}`
+      );
       if (!currentOrgId || !currentUser?.id) {
         console.error("Missing organization ID or user ID");
         return;
@@ -542,17 +550,7 @@ export default function Settings() {
         )}
 
         {/* Header section with back link and title */}
-        <div className="flex items-center gap-2 mb-4">
-          <Link
-            href="/dashboard"
-            className="flex items-center text-neutral-500 hover:text-neutral-700 font-semibold text-lg transition-colors"
-          >
-            <HiOutlineArrowCircleLeft className="w-8 h-8 mr-2" />
-            <span>Back to Dashboard</span>
-          </Link>
-          <span className="text-lg text-neutral-300">/</span>
-          <span className="text-lg font-bold text-neutral-900">Settings</span>
-        </div>
+        <Breadcrumb segments={[{ label: "Settings" }]} className="mb-4" />
 
         {/* Main content area with title and description */}
         <div className="flex items-center justify-between mt-6 mb-3">
@@ -592,7 +590,7 @@ export default function Settings() {
           </div>
         </div>
 
-      {/* Unsaved changes notification */}
+        {/* Unsaved changes notification */}
         {hasUnsavedChanges && step === 0 && (
           <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
             <div className="flex">
@@ -638,7 +636,11 @@ export default function Settings() {
                     className="flex items-center border border-blue-600 justify-center gap-2 px-4 py-2 text-blue-600 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleAddMember}
                     type="button"
-                    disabled={loading || savingChanges || currentUserRole === "admin" ? false : true}
+                    disabled={
+                      loading || savingChanges || currentUserRole === "admin"
+                        ? false
+                        : true
+                    }
                   >
                     <FaPlus className="w-4 h-4" />
                     <span>Add Member</span>
@@ -694,16 +696,21 @@ export default function Settings() {
                               {member.assignedJobs?.length
                                 ? (() => {
                                     const jobs = member.assignedJobs;
-                                    const displayJobs = jobs.slice(0, 2).map((job) => job.title).join(", ");
+                                    const displayJobs = jobs
+                                      .slice(0, 2)
+                                      .map((job) => job.title)
+                                      .join(", ");
                                     const remainingCount = jobs.length - 2;
-                                    
+
                                     if (jobs.length > 2) {
                                       return (
                                         <span className="relative">
-                                          {displayJobs} & 
-                                          <span 
+                                          {displayJobs} &
+                                          <span
                                             className="relative group cursor-help ml-1"
-                                            title={jobs.map(job => job.title).join(', ')}
+                                            title={jobs
+                                              .map((job) => job.title)
+                                              .join(", ")}
                                           >
                                             <span className="text-blue-600">
                                               {remainingCount} More
@@ -712,7 +719,7 @@ export default function Settings() {
                                         </span>
                                       );
                                     }
-                                    
+
                                     return displayJobs;
                                   })()
                                 : "No jobs assigned"}
@@ -720,11 +727,11 @@ export default function Settings() {
                           );
                         },
                       },
-                          {
-                          key: "role",
-                          header: "Role",
-                          width: "200px",
-                          render: (member) => {
+                      {
+                        key: "role",
+                        header: "Role",
+                        width: "200px",
+                        render: (member) => {
                           const hasChange = pendingRoleChanges.some(
                             (change) => change.memberId === member.id
                           );
@@ -732,9 +739,15 @@ export default function Settings() {
                             <div className="relative inline-block w-full">
                               <select
                                 value={member.role}
-                                disabled={loading || savingChanges || currentUserRole === "admin" ? false : true}
+                                disabled={
+                                  loading ||
+                                  savingChanges ||
+                                  currentUserRole === "admin"
+                                    ? false
+                                    : true
+                                }
                                 onChange={(e) => {
-                                  handleRoleChange(member, e.target.value)
+                                  handleRoleChange(member, e.target.value);
                                 }}
                                 className={`w-full border px-3 pr-8 rounded-md py-2 text-sm bg-white appearance-none focus:outline-none focus:ring-2 truncate focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                                   hasChange
@@ -771,7 +784,13 @@ export default function Settings() {
                           <button
                             type="button"
                             onClick={() => handleEditMember(member)}
-                            disabled={loading || savingChanges || currentUserRole === "admin" ? false : true}
+                            disabled={
+                              loading ||
+                              savingChanges ||
+                              currentUserRole === "admin"
+                                ? false
+                                : true
+                            }
                             className="p-2 text-neutral-600 hover:text-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md cursor-pointer transition-colors"
                             aria-label={`Edit ${member.name}`}
                           >

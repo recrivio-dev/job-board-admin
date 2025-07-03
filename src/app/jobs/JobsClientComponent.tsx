@@ -39,6 +39,7 @@ import {
 } from "./job_utils";
 import Pagination from "@/components/pagination";
 import EnhancedFiltersModal from "@/components/enhanced-filters-modal";
+import Breadcrumb from "@/components/Breadcrumb";
 
 // Constants
 const INITIAL_PAGE_SIZE = 30;
@@ -89,7 +90,9 @@ export default function JobsClientComponent({
   const dispatch = useAppDispatch();
   const router = useRouter();
   // Redux selectors
-  const collapsed = useAppSelector((state: RootState) => state.ui.sidebar.collapsed);
+  const collapsed = useAppSelector(
+    (state: RootState) => state.ui.sidebar.collapsed
+  );
   // const jobs = useAppSelector(selectJobs);
   const paginatedJobs = useAppSelector(selectJobs);
   const pagination = useAppSelector(selectJobPagination);
@@ -98,7 +101,7 @@ export default function JobsClientComponent({
   const viewMode = useAppSelector(selectJobViewMode);
   const filters = useAppSelector(selectJobFilters);
 
-   // New filter options selectors
+  // New filter options selectors
   const filterOptions = useAppSelector(selectFilterOptions);
   const filterOptionsLoading = useAppSelector(selectFilterOptionsLoading);
 
@@ -124,34 +127,48 @@ export default function JobsClientComponent({
     return Boolean(userRole && userId && organizationId);
   }, [userRole, userId, organizationId]);
 
-
-
   // Initialize data with better error handling
- useEffect(() => {
+  useEffect(() => {
     const initializeData = async () => {
-      if (initState.initialized || !isValidProps || !userRole || !userId || !organizationId) return;
+      if (
+        initState.initialized ||
+        !isValidProps ||
+        !userRole ||
+        !userId ||
+        !organizationId
+      )
+        return;
 
       // Type guard to ensure required values are strings
-      if (typeof userRole !== 'string' || typeof userId !== 'string' || typeof organizationId !== 'string') return;
+      if (
+        typeof userRole !== "string" ||
+        typeof userId !== "string" ||
+        typeof organizationId !== "string"
+      )
+        return;
 
       try {
         setInitState((prev) => ({ ...prev, error: null }));
 
         // Fetch filter options first (they're cached, so this is efficient)
-        await dispatch(fetchFilterOptions({
-          userRole: userRole!,
-          userId: userId!,
-          organizationId: organizationId!,
-        })).unwrap();
+        await dispatch(
+          fetchFilterOptions({
+            userRole: userRole!,
+            userId: userId!,
+            organizationId: organizationId!,
+          })
+        ).unwrap();
 
         // Then fetch jobs
-        await dispatch(fetchJobs({
-          page: 1,
-          limit: pagination.pageSize,
-          userRole: userRole!,
-          userId: userId!,
-          organizationId: organizationId!,
-        })).unwrap();
+        await dispatch(
+          fetchJobs({
+            page: 1,
+            limit: pagination.pageSize,
+            userRole: userRole!,
+            userId: userId!,
+            organizationId: organizationId!,
+          })
+        ).unwrap();
 
         setInitState({ initialized: true, error: null });
       } catch (err) {
@@ -163,8 +180,15 @@ export default function JobsClientComponent({
     };
 
     initializeData();
-  }, [dispatch, userRole, userId, organizationId, initState.initialized, isValidProps, pagination.pageSize]);
-
+  }, [
+    dispatch,
+    userRole,
+    userId,
+    organizationId,
+    initState.initialized,
+    isValidProps,
+    pagination.pageSize,
+  ]);
 
   // Optimized handlers with better error handling
   const handleAddJob = useCallback(() => {
@@ -186,99 +210,104 @@ export default function JobsClientComponent({
     [dispatch]
   );
 
-const handleFilterChange = useCallback(
-  (filterType: string, value: string) => {
-    const debouncedFn = debounce(async (fType: string, fValue: string) => {
-      if (!isValidProps) return;
+  const handleFilterChange = useCallback(
+    (filterType: string, value: string) => {
+      const debouncedFn = debounce(async (fType: string, fValue: string) => {
+        if (!isValidProps) return;
 
-      try {
-        const newFilters = {
-          ...filters,
-          [fType]: fValue || undefined,
-        };
+        try {
+          const newFilters = {
+            ...filters,
+            [fType]: fValue || undefined,
+          };
 
-        // Remove undefined values
-        Object.keys(newFilters).forEach(key => {
-          if (newFilters[key as keyof JobFilters] === undefined) {
-            delete newFilters[key as keyof JobFilters];
-          }
-        });
+          // Remove undefined values
+          Object.keys(newFilters).forEach((key) => {
+            if (newFilters[key as keyof JobFilters] === undefined) {
+              delete newFilters[key as keyof JobFilters];
+            }
+          });
 
-        // Update filters immediately without loading state
-        dispatch(setFilters(newFilters));
-        
-        // Update local dropdown state immediately
-        setFilterDropdowns((prev) => ({
-          ...prev,
-          [fType]: fValue,
-          isOpen: false,
-        }));
+          // Update filters immediately without loading state
+          dispatch(setFilters(newFilters));
 
-        // Apply filters with server-side filtering (this will trigger loading)
-        await dispatch(applyFilters({
-          filters: newFilters,
-          userRole: userRole!,
-          userId: userId!,
-          organizationId: organizationId!,
-          page: 1, // Reset to first page on filter change
-        })).unwrap();
+          // Update local dropdown state immediately
+          setFilterDropdowns((prev) => ({
+            ...prev,
+            [fType]: fValue,
+            isOpen: false,
+          }));
 
-      } catch (err) {
-        console.error("Failed to apply filter:", err);
-      }
-    }, 500);
-    
-    debouncedFn(filterType, value);
-  },
-  [dispatch, filters, userRole, userId, organizationId, isValidProps] // Dependencies
-);
+          // Apply filters with server-side filtering (this will trigger loading)
+          await dispatch(
+            applyFilters({
+              filters: newFilters,
+              userRole: userRole!,
+              userId: userId!,
+              organizationId: organizationId!,
+              page: 1, // Reset to first page on filter change
+            })
+          ).unwrap();
+        } catch (err) {
+          console.error("Failed to apply filter:", err);
+        }
+      }, 500);
 
-// Debounced search function
-const debouncedSearch = useCallback(
-  (searchValue: string) => {
-    const debouncedFn = debounce(async (sValue: string) => {
-      if (!isValidProps) return;
+      debouncedFn(filterType, value);
+    },
+    [dispatch, filters, userRole, userId, organizationId, isValidProps] // Dependencies
+  );
 
-      try {
-        const newFilters = {
-          ...filters,
-          searchTerm: sValue || undefined,
-        };
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    (searchValue: string) => {
+      const debouncedFn = debounce(async (sValue: string) => {
+        if (!isValidProps) return;
 
-        // Remove undefined values
-        Object.keys(newFilters).forEach(key => {
-          if (newFilters[key as keyof JobFilters] === undefined) {
-            delete newFilters[key as keyof JobFilters];
-          }
-        });
+        try {
+          const newFilters = {
+            ...filters,
+            searchTerm: sValue || undefined,
+          };
 
-        // Update filters immediately
-        dispatch(setFilters(newFilters));
+          // Remove undefined values
+          Object.keys(newFilters).forEach((key) => {
+            if (newFilters[key as keyof JobFilters] === undefined) {
+              delete newFilters[key as keyof JobFilters];
+            }
+          });
 
-        // Apply filters with server-side filtering
-        await dispatch(applyFilters({
-          filters: newFilters,
-          userRole: userRole!,
-          userId: userId!,
-          organizationId: organizationId!,
-          page: 1, // Reset to first page on search
-        })).unwrap();
+          // Update filters immediately
+          dispatch(setFilters(newFilters));
 
-      } catch (err) {
-        console.error("Failed to apply search:", err);
-      }
-    }, 500);
-    
-    debouncedFn(searchValue);
-  },
-  [dispatch, filters, userRole, userId, organizationId, isValidProps]
-);
+          // Apply filters with server-side filtering
+          await dispatch(
+            applyFilters({
+              filters: newFilters,
+              userRole: userRole!,
+              userId: userId!,
+              organizationId: organizationId!,
+              page: 1, // Reset to first page on search
+            })
+          ).unwrap();
+        } catch (err) {
+          console.error("Failed to apply search:", err);
+        }
+      }, 500);
 
-// Search handler that updates local state immediately and triggers debounced search
-const handleSearchChange = useCallback((searchValue: string) => {
-  setSearchTerm(searchValue); // Update local state immediately for UI responsiveness
-  debouncedSearch(searchValue); // Trigger debounced search
-}, [debouncedSearch]);
+      debouncedFn(searchValue);
+    },
+    [dispatch, filters, userRole, userId, organizationId, isValidProps]
+  );
+
+  // Search handler that updates local state immediately and triggers debounced search
+  const handleSearchChange = useCallback(
+    (searchValue: string) => {
+      setSearchTerm(searchValue); // Update local state immediately for UI responsiveness
+      debouncedSearch(searchValue); // Trigger debounced search
+    },
+    [debouncedSearch]
+  );
 
   const handleRetry = useCallback(async () => {
     if (!isValidProps || !userRole || !userId || !organizationId) return;
@@ -303,51 +332,52 @@ const handleSearchChange = useCallback((searchValue: string) => {
 
   // Pagination handlers
   const handlePageChange = useCallback(
-  (page: number) => {
-    dispatch(fetchJobs({
-      page,
-      limit: pagination.pageSize,
-      filters,
-      userRole: userRole!,
-      userId: userId!,
-      organizationId: organizationId!,
-    }));
-  },
-  [dispatch, pagination.pageSize, filters, userRole, userId, organizationId]
-);
+    (page: number) => {
+      dispatch(
+        fetchJobs({
+          page,
+          limit: pagination.pageSize,
+          filters,
+          userRole: userRole!,
+          userId: userId!,
+          organizationId: organizationId!,
+        })
+      );
+    },
+    [dispatch, pagination.pageSize, filters, userRole, userId, organizationId]
+  );
 
-// Let's add comprehensive debugging to understand the exact flow
+  // Let's add comprehensive debugging to understand the exact flow
 
-const handlePageSizeChange = useCallback(
-  async (pageSize: number) => {
-    if (!isValidProps || !userRole || !userId || !organizationId) {
-      console.log('Invalid props, returning early');
-      return;
-    }
+  const handlePageSizeChange = useCallback(
+    async (pageSize: number) => {
+      if (!isValidProps || !userRole || !userId || !organizationId) {
+        console.log("Invalid props, returning early");
+        return;
+      }
 
-    try {
-      // Step 1: Update page size in Redux
-      dispatch(setPageSize(pageSize));
-      
-      // Step 2: Log what we're about to send to fetchJobs
-      const fetchJobsParams = {
-        page: 1,
-        limit: pageSize, // This should be the new pageSize
-        filters,
-        userRole: userRole!,
-        userId: userId!,
-        organizationId: organizationId!,
-      };
-      
-      // Step 3: Fetch jobs
-      await dispatch(fetchJobs(fetchJobsParams)).unwrap();
-      
-    } catch (err) {
-      console.error("Failed to change page size:", err);
-    }
-  },
-  [dispatch, filters, userRole, userId, organizationId, isValidProps] // Added pagination to deps
-);
+      try {
+        // Step 1: Update page size in Redux
+        dispatch(setPageSize(pageSize));
+
+        // Step 2: Log what we're about to send to fetchJobs
+        const fetchJobsParams = {
+          page: 1,
+          limit: pageSize, // This should be the new pageSize
+          filters,
+          userRole: userRole!,
+          userId: userId!,
+          organizationId: organizationId!,
+        };
+
+        // Step 3: Fetch jobs
+        await dispatch(fetchJobs(fetchJobsParams)).unwrap();
+      } catch (err) {
+        console.error("Failed to change page size:", err);
+      }
+    },
+    [dispatch, filters, userRole, userId, organizationId, isValidProps] // Added pagination to deps
+  );
 
   const toggleFilterDropdown = useCallback(
     (filterType: "status" | "location" | "company") => {
@@ -362,7 +392,7 @@ const handlePageSizeChange = useCallback(
   // Modal handlers
   const handleOpenFiltersModal = () => setShowFiltersModal(true);
   const handleCloseFiltersModal = () => setShowFiltersModal(false);
-  
+
   const handleClearAllFilters = useCallback(() => {
     const clearedFilters = {};
     dispatch(setFilters(clearedFilters));
@@ -379,17 +409,17 @@ const handlePageSizeChange = useCallback(
     handleCloseFiltersModal();
     // Filters are already applied through client-side filtering in transformedJobs
     // No need to make server calls since we're doing client-side multiselect filtering
-    console.log('Applying filters - filters are handled client-side');
+    console.log("Applying filters - filters are handled client-side");
   };
 
   // Optimized job transformations - now using paginated jobs with search and sorting
   const transformedJobs = useMemo(() => {
     let filteredJobs = [...paginatedJobs];
-    
+
     // Debug logging for filters
-    console.log('Current filters:', filters);
-    console.log('Total jobs before filtering:', filteredJobs.length);
-    
+    console.log("Current filters:", filters);
+    console.log("Total jobs before filtering:", filteredJobs.length);
+
     // Apply search filter
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase().trim();
@@ -398,7 +428,8 @@ const handlePageSizeChange = useCallback(
           // Search in job title
           (job.title && job.title.toLowerCase().includes(searchLower)) ||
           // Search in company name
-          (job.company_name && job.company_name.toLowerCase().includes(searchLower)) ||
+          (job.company_name &&
+            job.company_name.toLowerCase().includes(searchLower)) ||
           // Search in location
           (job.location && job.location.toLowerCase().includes(searchLower)) ||
           // Search in job ID
@@ -406,68 +437,85 @@ const handlePageSizeChange = useCallback(
           // Search in job type
           (job.job_type && job.job_type.toLowerCase().includes(searchLower)) ||
           // Search in working type
-          (job.working_type && job.working_type.toLowerCase().includes(searchLower)) ||
+          (job.working_type &&
+            job.working_type.toLowerCase().includes(searchLower)) ||
           // Search in description
-          (job.description && job.description.toLowerCase().includes(searchLower))
+          (job.description &&
+            job.description.toLowerCase().includes(searchLower))
         );
       });
     }
-    
+
     // Apply client-side multiselect filters - handle both string and array values
     if (filters.status) {
-      const statusArray = Array.isArray(filters.status) ? filters.status : [filters.status];
+      const statusArray = Array.isArray(filters.status)
+        ? filters.status
+        : [filters.status];
       if (statusArray.length > 0) {
-        console.log('Applying status filter:', statusArray);
-        filteredJobs = filteredJobs.filter((job) => 
+        console.log("Applying status filter:", statusArray);
+        filteredJobs = filteredJobs.filter((job) =>
           statusArray.includes(job.status || "")
         );
-        console.log('Jobs after status filter:', filteredJobs.length);
+        console.log("Jobs after status filter:", filteredJobs.length);
       }
     }
-    
+
     if (filters.location) {
-      const locationArray = Array.isArray(filters.location) ? filters.location : [filters.location];
+      const locationArray = Array.isArray(filters.location)
+        ? filters.location
+        : [filters.location];
       if (locationArray.length > 0) {
-        filteredJobs = filteredJobs.filter((job) => 
+        filteredJobs = filteredJobs.filter((job) =>
           locationArray.includes(job.location || "")
         );
       }
     }
-    
+
     if (filters.company) {
-      const companyArray = Array.isArray(filters.company) ? filters.company : [filters.company];
+      const companyArray = Array.isArray(filters.company)
+        ? filters.company
+        : [filters.company];
       if (companyArray.length > 0) {
-        console.log('Applying company filter:', companyArray);
-        filteredJobs = filteredJobs.filter((job) => 
+        console.log("Applying company filter:", companyArray);
+        filteredJobs = filteredJobs.filter((job) =>
           companyArray.includes(job.company_name || "")
         );
-        console.log('Jobs after company filter:', filteredJobs.length);
+        console.log("Jobs after company filter:", filteredJobs.length);
       }
     }
-    
+
     if (filters.jobType) {
-      const jobTypeArray = Array.isArray(filters.jobType) ? filters.jobType : [filters.jobType];
+      const jobTypeArray = Array.isArray(filters.jobType)
+        ? filters.jobType
+        : [filters.jobType];
       if (jobTypeArray.length > 0) {
-        console.log('Applying job type filter:', jobTypeArray);
-        console.log('Sample job types in data:', filteredJobs.slice(0, 3).map(job => ({ 
-          id: job.id, 
-          job_type: job.job_type, 
-          working_type: job.working_type 
-        })));
-        filteredJobs = filteredJobs.filter((job) => 
-          jobTypeArray.includes(job.job_type || "") ||
-          jobTypeArray.includes(job.working_type || "")
+        console.log("Applying job type filter:", jobTypeArray);
+        console.log(
+          "Sample job types in data:",
+          filteredJobs.slice(0, 3).map((job) => ({
+            id: job.id,
+            job_type: job.job_type,
+            working_type: job.working_type,
+          }))
         );
-        console.log('Jobs after job type filter:', filteredJobs.length);
+        filteredJobs = filteredJobs.filter(
+          (job) =>
+            jobTypeArray.includes(job.job_type || "") ||
+            jobTypeArray.includes(job.working_type || "")
+        );
+        console.log("Jobs after job type filter:", filteredJobs.length);
       }
     }
-    
+
     // Apply salary range filter (check for overlap)
-    if (filters.salaryRange && (filters.salaryRange.min > 0 || filters.salaryRange.max < 5000000)) {
+    if (
+      filters.salaryRange &&
+      (filters.salaryRange.min > 0 || filters.salaryRange.max < 5000000)
+    ) {
       filteredJobs = filteredJobs.filter((job) => {
         const jobMinSalary = job.salary_min || 0;
         const jobMaxSalary = job.salary_max || 999999; // Default high value if not set
-        
+
         // Check for overlap: job range overlaps with filter range
         return (
           jobMinSalary <= filters.salaryRange!.max &&
@@ -475,13 +523,16 @@ const handlePageSizeChange = useCallback(
         );
       });
     }
-    
+
     // Apply experience range filter (check for overlap)
-    if (filters.experienceRange && (filters.experienceRange.min > 0 || filters.experienceRange.max < 20)) {
+    if (
+      filters.experienceRange &&
+      (filters.experienceRange.min > 0 || filters.experienceRange.max < 20)
+    ) {
       filteredJobs = filteredJobs.filter((job) => {
         const jobMinExp = job.min_experience_needed || 0;
         const jobMaxExp = job.max_experience_needed || 20; // Default high value if not set
-        
+
         // Check for overlap: job range overlaps with filter range
         return (
           jobMinExp <= filters.experienceRange!.max &&
@@ -489,7 +540,7 @@ const handlePageSizeChange = useCallback(
         );
       });
     }
-    
+
     // Apply client-side sorting
     if (sortBy === "az") {
       filteredJobs.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
@@ -502,7 +553,7 @@ const handlePageSizeChange = useCallback(
         return dateB - dateA; // Most recent first
       });
     }
-    
+
     const forCards = filteredJobs.map((job) => ({
       id: job.id,
       title: job.title,
@@ -536,7 +587,7 @@ const handlePageSizeChange = useCallback(
       created_at: job.created_at || "",
     }));
 
-    console.log('Final filtered jobs count:', filteredJobs.length);
+    console.log("Final filtered jobs count:", filteredJobs.length);
     return { forCards, forList };
   }, [paginatedJobs, sortBy, searchTerm, filters]);
 
@@ -571,7 +622,7 @@ const handlePageSizeChange = useCallback(
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: SKELETON_COUNT }).map((_, index) => (
             <JobCardSkeleton key={`skeleton-${index}`} />
           ))}
@@ -611,17 +662,7 @@ const handlePageSizeChange = useCallback(
     >
       <div className="mt-4 px-2">
         {/* Header section */}
-        <div className="flex items-center gap-1 mb-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center text-neutral-500 hover:text-neutral-700 font-medium text-base transition-colors"
-          >
-            <HiOutlineArrowCircleLeft className="w-6 h-6 mr-1" />
-            <p className="text-sm">Back to Dashboard</p>
-          </Link>
-          <span className="text-sm text-neutral-500 font-light">/</span>
-          <span className="text-sm font-medium text-neutral-900">Jobs</span>
-        </div>
+        <Breadcrumb segments={[{ label: "Jobs" }]} />
 
         {/* Title and Add Job section */}
         <div className="flex items-center flex-wrap justify-between mb-6">
@@ -633,7 +674,8 @@ const handlePageSizeChange = useCallback(
               Manage your job listings and applications with ease.
               {transformedJobs.forCards.length > 0 && (
                 <span className="ml-1 font-medium">
-                  ({transformedJobs.forCards.length} job{transformedJobs.forCards.length !== 1 ? "s" : ""} found)
+                  ({transformedJobs.forCards.length} job
+                  {transformedJobs.forCards.length !== 1 ? "s" : ""} found)
                 </span>
               )}
             </p>
@@ -790,7 +832,7 @@ const handlePageSizeChange = useCallback(
         ) : (
           <>
             {viewMode === "board" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {transformedJobs.forCards.map((job) => (
                   <JobCard key={job.id} job={job} />
                 ))}
@@ -822,12 +864,32 @@ const handlePageSizeChange = useCallback(
         show={showFiltersModal}
         onClose={handleCloseFiltersModal}
         filters={{
-          status: Array.isArray(filters.status) ? filters.status : (filters.status ? [filters.status] : []),
-          location: Array.isArray(filters.location) ? filters.location : (filters.location ? [filters.location] : []),
-          company: Array.isArray(filters.company) ? filters.company : (filters.company ? [filters.company] : []),
-          jobType: Array.isArray(filters.jobType) ? filters.jobType : (filters.jobType ? [filters.jobType] : []),
-          salaryRange: filters.salaryRange ? [filters.salaryRange.min, filters.salaryRange.max] : [0, 5000000],
-          experienceRange: filters.experienceRange ? [filters.experienceRange.min, filters.experienceRange.max] : [0, 20],
+          status: Array.isArray(filters.status)
+            ? filters.status
+            : filters.status
+            ? [filters.status]
+            : [],
+          location: Array.isArray(filters.location)
+            ? filters.location
+            : filters.location
+            ? [filters.location]
+            : [],
+          company: Array.isArray(filters.company)
+            ? filters.company
+            : filters.company
+            ? [filters.company]
+            : [],
+          jobType: Array.isArray(filters.jobType)
+            ? filters.jobType
+            : filters.jobType
+            ? [filters.jobType]
+            : [],
+          salaryRange: filters.salaryRange
+            ? [filters.salaryRange.min, filters.salaryRange.max]
+            : [0, 5000000],
+          experienceRange: filters.experienceRange
+            ? [filters.experienceRange.min, filters.experienceRange.max]
+            : [0, 20],
         }}
         filterOptions={{
           statuses: filterOptions.statuses,
@@ -835,9 +897,15 @@ const handlePageSizeChange = useCallback(
           companies: filterOptions.companies,
           jobTypes: [
             // Common job types
-            "Full-time", "Part-time", "Contract", "Temporary", "Internship",
+            "Full-time",
+            "Part-time",
+            "Contract",
+            "Temporary",
+            "Internship",
             // Working types from the database
-            "Day", "Night", "Flexible"
+            "Day",
+            "Night",
+            "Flexible",
           ],
         }}
         onFiltersChange={(newFilters) => {
@@ -846,20 +914,34 @@ const handlePageSizeChange = useCallback(
           const updatedFilters = {
             ...filters,
             // Keep arrays for multiselect functionality
-            status: newFilters.status.length === 0 ? undefined : newFilters.status,
-            location: newFilters.location.length === 0 ? undefined : newFilters.location,
-            company: newFilters.company.length === 0 ? undefined : newFilters.company,
-            jobType: newFilters.jobType.length === 0 ? undefined : newFilters.jobType,
-            salaryRange: newFilters.salaryRange[0] === 0 && newFilters.salaryRange[1] === 5000000 ? undefined : {
-              min: newFilters.salaryRange[0],
-              max: newFilters.salaryRange[1],
-            },
-            experienceRange: newFilters.experienceRange[0] === 0 && newFilters.experienceRange[1] === 20 ? undefined : {
-              min: newFilters.experienceRange[0],
-              max: newFilters.experienceRange[1],
-            },
+            status:
+              newFilters.status.length === 0 ? undefined : newFilters.status,
+            location:
+              newFilters.location.length === 0
+                ? undefined
+                : newFilters.location,
+            company:
+              newFilters.company.length === 0 ? undefined : newFilters.company,
+            jobType:
+              newFilters.jobType.length === 0 ? undefined : newFilters.jobType,
+            salaryRange:
+              newFilters.salaryRange[0] === 0 &&
+              newFilters.salaryRange[1] === 5000000
+                ? undefined
+                : {
+                    min: newFilters.salaryRange[0],
+                    max: newFilters.salaryRange[1],
+                  },
+            experienceRange:
+              newFilters.experienceRange[0] === 0 &&
+              newFilters.experienceRange[1] === 20
+                ? undefined
+                : {
+                    min: newFilters.experienceRange[0],
+                    max: newFilters.experienceRange[1],
+                  },
           };
-          
+
           // Only update Redux state - client-side filtering handles the display
           dispatch(setFilters(updatedFilters));
         }}

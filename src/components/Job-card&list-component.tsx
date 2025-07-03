@@ -22,7 +22,7 @@ interface Job {
 
 const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
   const router = useRouter();
-  
+
   // Table customization state
   const [tableColumns, setTableColumns] = useState<TableColumn[]>([
     { key: "job_title", label: "Job", visible: true },
@@ -36,13 +36,13 @@ const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
 
   // Load column preferences from localStorage on mount
   useEffect(() => {
-    const savedColumns = localStorage.getItem('jobs-table-columns');
+    const savedColumns = localStorage.getItem("jobs-table-columns");
     if (savedColumns) {
       try {
         const parsedColumns = JSON.parse(savedColumns);
         setTableColumns(parsedColumns);
       } catch (error) {
-        console.error('Failed to parse saved column preferences:', error);
+        console.error("Failed to parse saved column preferences:", error);
       }
     }
   }, []);
@@ -60,7 +60,6 @@ const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
   //   setTableColumns(updatedColumns);
   //   localStorage.setItem('candidates-table-columns', JSON.stringify(updatedColumns));
   // }, []);
-
 
   // const handleResetColumns = useCallback(() => {
   //   const defaultColumns: TableColumn[] = [
@@ -95,18 +94,21 @@ const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
 
   const getStatusBadge = useCallback((status?: string) => {
     if (!status) return <span className="text-gray-500">—</span>;
-    
+
     const statusStyles = {
       active: "bg-green-100 text-green-800 border-green-200",
       paused: "bg-yellow-100 text-yellow-800 border-yellow-200",
       closed: "bg-red-100 text-red-800 border-red-200",
     };
-    
-    const style = statusStyles[status.toLowerCase() as keyof typeof statusStyles] || 
-                  "bg-gray-100 text-gray-800 border-gray-200";
-    
+
+    const style =
+      statusStyles[status.toLowerCase() as keyof typeof statusStyles] ||
+      "bg-gray-100 text-gray-800 border-gray-200";
+
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${style}`}>
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-medium border ${style}`}
+      >
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     );
@@ -117,7 +119,9 @@ const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
     const allColumns = [
       {
         key: "checkbox",
-        header: <input type="checkbox" className="rounded border-neutral-300" />,
+        header: (
+          <input type="checkbox" className="rounded border-neutral-300" />
+        ),
         width: "48px",
         render: (job: Job) => (
           <input
@@ -191,8 +195,8 @@ const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
     ];
 
     // Filter columns based on visibility settings
-    return allColumns.filter(column => {
-      const columnConfig = tableColumns.find(col => col.key === column.key);
+    return allColumns.filter((column) => {
+      const columnConfig = tableColumns.find((col) => col.key === column.key);
       return columnConfig?.visible !== false;
     });
   }, [tableColumns, formatSalary, formatDate, getStatusBadge, router]);
@@ -249,16 +253,16 @@ const JobCard = ({ job }: { job: JobCardProps }) => {
   return (
     <div
       onClick={handleCardClick}
-      className="bg-white rounded-2xl shadow-sm p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col"
+      className="bg-white rounded-2xl shadow-sm p-3 hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col w-64"
     >
-      <div className="flex items-start gap-4 mb-4">
+      <div className="flex items-start space-x-4">
         <div className="flex-shrink-0">
           <Image
             src={job.company_logo_url || "/demo.png"}
             alt={`${job.company_name} logo`}
-            width={56}
-            height={56}
-            className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-cover"
+            width={48}
+            height={48}
+            className="w-12 h-12 rounded-xl object-cover"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = "/demo.png";
@@ -266,24 +270,22 @@ const JobCard = ({ job }: { job: JobCardProps }) => {
           />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg md:text-xl font-semibold text-neutral-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
+          <h2 className="font-semibold text-neutral-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
             {job.title}
           </h2>
-          <p className="text-sm text-neutral-500 mt-1 truncate">
-            {job.company_name}
-          </p>
+          <p className="text-xs text-neutral-500 mt-1">{job.company_name}</p>
         </div>
       </div>
 
       <div className="space-y-2 mt-auto">
         <div className="flex flex-col gap-2">
-          <div className="inline-flex items-center gap-2 bg-neutral-100 px-3 py-1.5 rounded-lg w-fit">
+          <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg w-fit">
             <MdCurrencyRupee className="w-4 h-4 text-blue-600 flex-shrink-0" />
-            <p className="text-sm text-neutral-600 truncate">
+            <p className="text-sm text-neutral-600">
               {formatSalary(job.min_salary, job.max_salary)}
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 bg-neutral-100 px-3 py-1.5 rounded-lg w-fit">
+          <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg w-fit">
             <IoLocationOutline className="w-4 h-4 text-blue-600 flex-shrink-0" />
             <p className="text-sm text-neutral-600 truncate">{job.location}</p>
           </div>
