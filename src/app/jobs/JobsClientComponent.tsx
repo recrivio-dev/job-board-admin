@@ -38,7 +38,7 @@ import {
   FilterDropdown,
 } from "./job_utils";
 import Pagination from "@/components/pagination";
-import EnhancedFiltersModal from "@/components/enhanced-filters-modal";
+import FiltersModal from "@/components/filters-modal";
 
 // Constants
 const INITIAL_PAGE_SIZE = 30;
@@ -114,16 +114,6 @@ export default function JobsClientComponent({
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [sortBy, setSortBy] = useState<string>("recent");
   const [searchTerm, setSearchTerm] = useState<string>("");
-  
-  // Enhanced filter state
-  const [enhancedFilters, setEnhancedFilters] = useState({
-    status: [] as string[],
-    location: [] as string[],
-    company: [] as string[],
-    jobType: [] as string[],
-    salaryRange: [0, 200000] as [number, number],
-    experienceRange: [0, 20] as [number, number],
-  });
 
   // Validation helper
   const isValidProps = useMemo(() => {
@@ -562,7 +552,7 @@ const handlePageSizeChange = useCallback(
     }));
 
     return { forCards, forList };
-  }, [paginatedJobs, sortBy]);
+  }, [paginatedJobs, sortBy, searchTerm]);
 
   // Enhanced loading component
   const LoadingView = () => (

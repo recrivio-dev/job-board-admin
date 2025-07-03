@@ -197,7 +197,14 @@ interface EnhancedFiltersModalProps {
     companies: string[];
     jobTypes: string[];
   };
-  onFiltersChange: (filters: any) => void;
+  onFiltersChange: (filters: {
+    status: string[];
+    location: string[];
+    company: string[];
+    jobType: string[];
+    salaryRange: [number, number];
+    experienceRange: [number, number];
+  }) => void;
   onClearAll: () => void;
   onApply: () => void;
 }
