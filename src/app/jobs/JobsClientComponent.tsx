@@ -369,17 +369,9 @@ const handlePageSizeChange = useCallback(
 
   const handleApplyFilters = () => {
     handleCloseFiltersModal();
-    // Filters are already applied through individual onChange handlers
-    // Just trigger a fresh fetch with current filters
-    if (isValidProps && userRole && userId && organizationId) {
-      dispatch(applyFilters({
-        filters,
-        userRole,
-        userId,
-        organizationId,
-        page: 1,
-      }));
-    }
+    // Filters are already applied through client-side filtering in transformedJobs
+    // No need to make server calls since we're doing client-side multiselect filtering
+    console.log('Applying filters - filters are handled client-side');
   };
 
   // Optimized job transformations - now using paginated jobs with search and sorting
