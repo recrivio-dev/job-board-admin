@@ -34,8 +34,7 @@ interface InitializationState {
   error: string | null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function debounce<T extends (...args: any[]) => any>(
+function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): ((...args: Parameters<T>) => void) & { cancel: () => void } {
@@ -157,7 +156,10 @@ export default function CandidatesList({
   const filters = useAppSelector(selectFilters);
   const userContext = useAppSelector(selectUserContext);
   const filterOptions = useAppSelector(selectFilterOptions);
-  const allCandidates = useAppSelector(state => state.candidates.candidates) || [];
+  const allCandidatesRaw = useAppSelector(state => state.candidates.candidates);
+  
+  // Memoize allCandidates to fix the dependency warning
+  const allCandidates = useMemo(() => allCandidatesRaw || [], [allCandidatesRaw]);
 
   // Client-side filtering for search
   const filteredCandidates = useMemo(() => {

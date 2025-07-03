@@ -187,82 +187,90 @@ export default function JobsClientComponent({
   );
 
 const handleFilterChange = useCallback(
-  debounce(async (filterType: string, value: string) => {
-    if (!isValidProps) return;
+  (filterType: string, value: string) => {
+    const debouncedFn = debounce(async (fType: string, fValue: string) => {
+      if (!isValidProps) return;
 
-    try {
-      const newFilters = {
-        ...filters,
-        [filterType]: value || undefined,
-      };
+      try {
+        const newFilters = {
+          ...filters,
+          [fType]: fValue || undefined,
+        };
 
-      // Remove undefined values
-      Object.keys(newFilters).forEach(key => {
-        if (newFilters[key as keyof JobFilters] === undefined) {
-          delete newFilters[key as keyof JobFilters];
-        }
-      });
+        // Remove undefined values
+        Object.keys(newFilters).forEach(key => {
+          if (newFilters[key as keyof JobFilters] === undefined) {
+            delete newFilters[key as keyof JobFilters];
+          }
+        });
 
-      // Update filters immediately without loading state
-      dispatch(setFilters(newFilters));
-      
-      // Update local dropdown state immediately
-      setFilterDropdowns((prev) => ({
-        ...prev,
-        [filterType]: value,
-        isOpen: false,
-      }));
+        // Update filters immediately without loading state
+        dispatch(setFilters(newFilters));
+        
+        // Update local dropdown state immediately
+        setFilterDropdowns((prev) => ({
+          ...prev,
+          [fType]: fValue,
+          isOpen: false,
+        }));
 
-      // Apply filters with server-side filtering (this will trigger loading)
-      await dispatch(applyFilters({
-        filters: newFilters,
-        userRole: userRole!,
-        userId: userId!,
-        organizationId: organizationId!,
-        page: 1, // Reset to first page on filter change
-      })).unwrap();
+        // Apply filters with server-side filtering (this will trigger loading)
+        await dispatch(applyFilters({
+          filters: newFilters,
+          userRole: userRole!,
+          userId: userId!,
+          organizationId: organizationId!,
+          page: 1, // Reset to first page on filter change
+        })).unwrap();
 
-    } catch (err) {
-      console.error("Failed to apply filter:", err);
-    }
-  }, 500), // Increased debounce time to 500ms
+      } catch (err) {
+        console.error("Failed to apply filter:", err);
+      }
+    }, 500);
+    
+    debouncedFn(filterType, value);
+  },
   [dispatch, filters, userRole, userId, organizationId, isValidProps] // Dependencies
 );
 
 // Debounced search function
 const debouncedSearch = useCallback(
-  debounce(async (searchValue: string) => {
-    if (!isValidProps) return;
+  (searchValue: string) => {
+    const debouncedFn = debounce(async (sValue: string) => {
+      if (!isValidProps) return;
 
-    try {
-      const newFilters = {
-        ...filters,
-        searchTerm: searchValue || undefined,
-      };
+      try {
+        const newFilters = {
+          ...filters,
+          searchTerm: sValue || undefined,
+        };
 
-      // Remove undefined values
-      Object.keys(newFilters).forEach(key => {
-        if (newFilters[key as keyof JobFilters] === undefined) {
-          delete newFilters[key as keyof JobFilters];
-        }
-      });
+        // Remove undefined values
+        Object.keys(newFilters).forEach(key => {
+          if (newFilters[key as keyof JobFilters] === undefined) {
+            delete newFilters[key as keyof JobFilters];
+          }
+        });
 
-      // Update filters immediately
-      dispatch(setFilters(newFilters));
+        // Update filters immediately
+        dispatch(setFilters(newFilters));
 
-      // Apply filters with server-side filtering
-      await dispatch(applyFilters({
-        filters: newFilters,
-        userRole: userRole!,
-        userId: userId!,
-        organizationId: organizationId!,
-        page: 1, // Reset to first page on search
-      })).unwrap();
+        // Apply filters with server-side filtering
+        await dispatch(applyFilters({
+          filters: newFilters,
+          userRole: userRole!,
+          userId: userId!,
+          organizationId: organizationId!,
+          page: 1, // Reset to first page on search
+        })).unwrap();
 
-    } catch (err) {
-      console.error("Failed to apply search:", err);
-    }
-  }, 500),
+      } catch (err) {
+        console.error("Failed to apply search:", err);
+      }
+    }, 500);
+    
+    debouncedFn(searchValue);
+  },
   [dispatch, filters, userRole, userId, organizationId, isValidProps]
 );
 

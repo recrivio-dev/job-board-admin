@@ -3,7 +3,7 @@ import { RxCross2 } from "react-icons/rx";
 import { FaCheck } from "react-icons/fa6";
 
 // Debounce utility function
-function debounce<T extends (...args: any[]) => any>(
+function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -42,9 +42,12 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
 
   // Debounced onChange to reduce flicker
   const debouncedOnChange = useCallback(
-    debounce((newValue: [number, number]) => {
-      onChange(newValue);
-    }, 100),
+    (newValue: [number, number]) => {
+      const debouncedFn = debounce((value: [number, number]) => {
+        onChange(value);
+      }, 100);
+      debouncedFn(newValue);
+    },
     [onChange]
   );
 

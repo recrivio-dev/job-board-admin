@@ -26,8 +26,7 @@ import { User } from "@supabase/supabase-js";
 import { Organization, UserRole } from "@/types/custom";
 
 // Debounce utility function
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function debounce<T extends (...args: any[]) => any>(
+function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -142,37 +141,41 @@ const CandidatesContent = ({
 
   // Debounced search function
   const debouncedSearch = useCallback(
-    debounce((searchValue: string) => {
-      if (!memoizedUserContext) return;
+    (searchValue: string) => {
+      const debouncedFn = debounce((sValue: string) => {
+        if (!memoizedUserContext) return;
 
-      const newFilters: Partial<CandidateFilters> = {
-        ...filters,
-        searchTerm: searchValue || undefined,
-      };
+        const newFilters: Partial<CandidateFilters> = {
+          ...filters,
+          searchTerm: sValue || undefined,
+        };
 
-      // Remove undefined values
-      Object.keys(newFilters).forEach(key => {
-        if (newFilters[key as keyof CandidateFilters] === undefined) {
-          delete newFilters[key as keyof CandidateFilters];
-        }
-      });
+        // Remove undefined values
+        Object.keys(newFilters).forEach(key => {
+          if (newFilters[key as keyof CandidateFilters] === undefined) {
+            delete newFilters[key as keyof CandidateFilters];
+          }
+        });
 
-      // Update filters
-      dispatch(setFilters(newFilters));
+        // Update filters
+        dispatch(setFilters(newFilters));
 
-      // Fetch candidates with new search term
-      // Load more candidates when searching to search across all data
-      const limit = searchValue && searchValue.trim() !== "" ? 10000 : 50;
+        // Fetch candidates with new search term
+        // Load more candidates when searching to search across all data
+        const limit = sValue && sValue.trim() !== "" ? 10000 : 50;
+        
+        dispatch(
+          fetchJobApplicationsWithAccess({
+            filters: newFilters,
+            userContext: memoizedUserContext,
+            page: 1, // Reset to first page on search
+            limit: limit, // Load more candidates when searching
+          })
+        );
+      }, 500);
       
-      dispatch(
-        fetchJobApplicationsWithAccess({
-          filters: newFilters,
-          userContext: memoizedUserContext,
-          page: 1, // Reset to first page on search
-          limit: limit, // Load more candidates when searching
-        })
-      );
-    }, 500),
+      debouncedFn(searchValue);
+    },
     [dispatch, filters, memoizedUserContext]
   );
 
