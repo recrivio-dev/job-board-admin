@@ -161,11 +161,15 @@ const CandidatesContent = ({
       dispatch(setFilters(newFilters));
 
       // Fetch candidates with new search term
+      // Load more candidates when searching to search across all data
+      const limit = searchValue && searchValue.trim() !== "" ? 10000 : 50;
+      
       dispatch(
         fetchJobApplicationsWithAccess({
           filters: newFilters,
           userContext: memoizedUserContext,
           page: 1, // Reset to first page on search
+          limit: limit, // Load more candidates when searching
         })
       );
     }, 500),

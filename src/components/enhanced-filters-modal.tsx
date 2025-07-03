@@ -78,7 +78,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           style={{
             background: 'transparent',
             pointerEvents: 'auto',
-            zIndex: localValue[0] > localValue[1] - (max - min) * 0.05 ? 25 : 20,
+            zIndex: Math.abs(localValue[0] - localValue[1]) < (max - min) * 0.05 ? 25 : 20,
           }}
         />
         
@@ -94,7 +94,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           style={{
             background: 'transparent',
             pointerEvents: 'auto',
-            zIndex: localValue[1] < localValue[0] + (max - min) * 0.05 ? 25 : 20,
+            zIndex: 20,
           }}
         />
       </div>
@@ -119,16 +119,20 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           width: 20px;
           border-radius: 50%;
           background: #3b82f6;
-          cursor: pointer;
+          cursor: grab;
           border: 2px solid white;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
           position: relative;
-          z-index: 100;
           pointer-events: auto;
+          margin-top: -6px;
+        }
+        
+        input[type="range"]:active::-webkit-slider-thumb {
+          cursor: grabbing;
+          transform: scale(1.1);
         }
         
         input[type="range"]:focus::-webkit-slider-thumb {
-          z-index: 101;
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
         }
         
@@ -143,12 +147,16 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           width: 20px;
           border-radius: 50%;
           background: #3b82f6;
-          cursor: pointer;
+          cursor: grab;
           border: 2px solid white;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
           border: none;
           pointer-events: auto;
-          z-index: 100;
+        }
+        
+        input[type="range"]:active::-moz-range-thumb {
+          cursor: grabbing;
+          transform: scale(1.1);
         }
         
         input[type="range"]::-ms-track {
@@ -163,11 +171,15 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           width: 20px;
           border-radius: 50%;
           background: #3b82f6;
-          cursor: pointer;
+          cursor: grab;
           border: 2px solid white;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
           pointer-events: auto;
-          z-index: 100;
+        }
+        
+        input[type="range"]:active::-ms-thumb {
+          cursor: grabbing;
+          transform: scale(1.1);
         }
       `}</style>
     </div>

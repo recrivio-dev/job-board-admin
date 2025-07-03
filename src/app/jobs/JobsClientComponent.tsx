@@ -426,7 +426,8 @@ const handlePageSizeChange = useCallback(
     
     if (filters.jobType && Array.isArray(filters.jobType) && filters.jobType.length > 0) {
       filteredJobs = filteredJobs.filter((job) => 
-        filters.jobType!.includes(job.job_type || "")
+        filters.jobType!.includes(job.job_type || "") ||
+        filters.jobType!.includes(job.working_type || "")
       );
     }
     
@@ -820,6 +821,17 @@ const handlePageSizeChange = useCallback(
             },
           };
           dispatch(setFilters(updatedFilters));
+          
+          // Trigger a new fetch with the updated filters
+          if (isValidProps && userRole && userId && organizationId) {
+            dispatch(applyFilters({
+              filters: updatedFilters,
+              userRole,
+              userId,
+              organizationId,
+              page: 1,
+            }));
+          }
         }}
         onClearAll={handleClearAllFilters}
         onApply={handleApplyFilters}

@@ -167,7 +167,7 @@ export default function CandidatesList({
 
     const searchLower = filters.searchTerm.toLowerCase().trim();
     
-    return allCandidates.filter((candidate) => {
+    const filtered = allCandidates.filter((candidate) => {
       // Search across multiple fields
       const searchFields = [
         candidate.name,
@@ -183,6 +183,13 @@ export default function CandidatesList({
         field && field.toString().toLowerCase().includes(searchLower)
       );
     });
+
+    // Debug logging
+    console.log(`Search term: "${filters.searchTerm}"`);
+    console.log(`Total candidates: ${allCandidates.length}`);
+    console.log(`Filtered candidates: ${filtered.length}`);
+    
+    return filtered;
   }, [allCandidates, filters.searchTerm]);
 
   // Client-side pagination for filtered results
@@ -368,6 +375,31 @@ const handleFilterChange = useCallback((filterType: string, value: string | stri
   let newFilters = { ...filters };
   if (jobId) {
     newFilters.jobId = jobId; // Ensure jobId is included in filters
+  }
+
+  if (filterType === "searchTerm") {
+    // For search, load all candidates to search across all data
+    newFilters.searchTerm = value as string;
+    dispatch(setFilters(newFilters));
+    
+    // Load all candidates when searching
+    if (value && (value as string).trim() !== "") {
+      dispatch(fetchJobApplicationsWithAccess({
+        filters: newFilters,
+        userContext,
+        page: 1,
+        limit: 1000, // Load a large number to get all candidates for search
+      }));
+    } else {
+      // Reset to normal pagination when clearing search
+      dispatch(fetchJobApplicationsWithAccess({
+        filters: newFilters,
+        userContext,
+        page: 1,
+        limit: 50,
+      }));
+    }
+    return;
   }
 
   if (filterType === "sortBy") {
