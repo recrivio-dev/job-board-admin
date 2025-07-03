@@ -440,15 +440,22 @@ const handlePageSizeChange = useCallback(
     if (filters.jobType) {
       const jobTypeArray = Array.isArray(filters.jobType) ? filters.jobType : [filters.jobType];
       if (jobTypeArray.length > 0) {
+        console.log('Applying job type filter:', jobTypeArray);
+        console.log('Sample job types in data:', filteredJobs.slice(0, 3).map(job => ({ 
+          id: job.id, 
+          job_type: job.job_type, 
+          working_type: job.working_type 
+        })));
         filteredJobs = filteredJobs.filter((job) => 
           jobTypeArray.includes(job.job_type || "") ||
           jobTypeArray.includes(job.working_type || "")
         );
+        console.log('Jobs after job type filter:', filteredJobs.length);
       }
     }
     
     // Apply salary range filter (check for overlap)
-    if (filters.salaryRange && (filters.salaryRange.min > 0 || filters.salaryRange.max < 200000)) {
+    if (filters.salaryRange && (filters.salaryRange.min > 0 || filters.salaryRange.max < 5000000)) {
       filteredJobs = filteredJobs.filter((job) => {
         const jobMinSalary = job.salary_min || 0;
         const jobMaxSalary = job.salary_max || 999999; // Default high value if not set
@@ -811,14 +818,19 @@ const handlePageSizeChange = useCallback(
           location: Array.isArray(filters.location) ? filters.location : (filters.location ? [filters.location] : []),
           company: Array.isArray(filters.company) ? filters.company : (filters.company ? [filters.company] : []),
           jobType: Array.isArray(filters.jobType) ? filters.jobType : (filters.jobType ? [filters.jobType] : []),
-          salaryRange: filters.salaryRange ? [filters.salaryRange.min, filters.salaryRange.max] : [0, 200000],
+          salaryRange: filters.salaryRange ? [filters.salaryRange.min, filters.salaryRange.max] : [0, 5000000],
           experienceRange: filters.experienceRange ? [filters.experienceRange.min, filters.experienceRange.max] : [0, 20],
         }}
         filterOptions={{
           statuses: filterOptions.statuses,
           locations: filterOptions.locations,
           companies: filterOptions.companies,
-          jobTypes: ["Full-time", "Part-time", "Contract", "Temporary", "Internship"],
+          jobTypes: [
+            // Common job types
+            "Full-time", "Part-time", "Contract", "Temporary", "Internship",
+            // Working types from the database
+            "Day", "Night", "Flexible"
+          ],
         }}
         onFiltersChange={(newFilters) => {
           // Only update Redux state for client-side filtering
@@ -830,7 +842,7 @@ const handlePageSizeChange = useCallback(
             location: newFilters.location.length === 0 ? undefined : newFilters.location,
             company: newFilters.company.length === 0 ? undefined : newFilters.company,
             jobType: newFilters.jobType.length === 0 ? undefined : newFilters.jobType,
-            salaryRange: newFilters.salaryRange[0] === 0 && newFilters.salaryRange[1] === 200000 ? undefined : {
+            salaryRange: newFilters.salaryRange[0] === 0 && newFilters.salaryRange[1] === 5000000 ? undefined : {
               min: newFilters.salaryRange[0],
               max: newFilters.salaryRange[1],
             },

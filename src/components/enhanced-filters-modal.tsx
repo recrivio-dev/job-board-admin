@@ -359,9 +359,9 @@ const EnhancedFiltersModal: React.FC<EnhancedFiltersModalProps> = ({
 
   const formatSalary = (value: number) => {
     if (value >= 100000) {
-      return `$${(value / 1000).toFixed(0)}k`;
+      return `₹${(value / 1000).toFixed(0)}k`;
     }
-    return `$${value.toLocaleString()}`;
+    return `₹${value.toLocaleString()}`;
   };
 
   const formatExperience = (value: number) => {
@@ -427,10 +427,10 @@ const EnhancedFiltersModal: React.FC<EnhancedFiltersModalProps> = ({
 
             {/* Salary Range */}
             <RangeSlider
-              label="Salary Range"
+              label="Salary Range (INR)"
               min={0}
-              max={200000}
-              step={5000}
+              max={5000000}
+              step={50000}
               value={filters.salaryRange}
               onChange={(value) => onFiltersChange({ ...filters, salaryRange: value })}
               formatValue={formatSalary}
