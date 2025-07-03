@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { IoSearchSharp } from "react-icons/io5";
 import { HiOutlineArrowCircleLeft } from "react-icons/hi";
@@ -14,13 +14,34 @@ import {
   selectCandidatesError,
   selectCandidatesLoading,
   selectUserContext,
+  selectFilters,
+  setFilters,
   UserContext,
+  CandidateFilters,
 } from "@/store/features/candidatesSlice";
 
 import { initializeAuth } from "@/store/features/userSlice";
 
 import { User } from "@supabase/supabase-js";
 import { Organization, UserRole } from "@/types/custom";
+
+// Debounce utility function
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  
+  return (...args: Parameters<T>) => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    timeout = setTimeout(() => {
+      func(...args);
+    }, wait);
+  };
+}
 
 // Loading component for better UX
 const LoadingSpinner = ({ message = "Loading..." }: { message?: string }) => (
@@ -67,6 +88,10 @@ const CandidatesContent = ({
   const error = useAppSelector(selectCandidatesError);
   const loading = useAppSelector(selectCandidatesLoading);
   const userContext = useAppSelector(selectUserContext);
+  const filters = useAppSelector(selectFilters);
+
+  // Local state for search
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Memoize user context to prevent unnecessary re-renders
   const memoizedUserContext = useMemo((): UserContext | null => {
@@ -115,6 +140,44 @@ const CandidatesContent = ({
     };
   }, [dispatch, error]);
 
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((searchValue: string) => {
+      if (!memoizedUserContext) return;
+
+      const newFilters: Partial<CandidateFilters> = {
+        ...filters,
+        searchTerm: searchValue || undefined,
+      };
+
+      // Remove undefined values
+      Object.keys(newFilters).forEach(key => {
+        if (newFilters[key as keyof CandidateFilters] === undefined) {
+          delete newFilters[key as keyof CandidateFilters];
+        }
+      });
+
+      // Update filters
+      dispatch(setFilters(newFilters));
+
+      // Fetch candidates with new search term
+      dispatch(
+        fetchJobApplicationsWithAccess({
+          filters: newFilters,
+          userContext: memoizedUserContext,
+          page: 1, // Reset to first page on search
+        })
+      );
+    }, 500),
+    [dispatch, filters, memoizedUserContext]
+  );
+
+  // Search handler that updates local state immediately and triggers debounced search
+  const handleSearchChange = useCallback((searchValue: string) => {
+    setSearchTerm(searchValue); // Update local state immediately for UI responsiveness
+    debouncedSearch(searchValue); // Trigger debounced search
+  }, [debouncedSearch]);
+
   return (
     <div
       className={`transition-all duration-300 h-full px-3 md:px-6 ${
@@ -162,7 +225,7 @@ const CandidatesContent = ({
           </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Global Search Bar */}
         <div className="w-full md:w-125 mb-8">
           <div className="relative">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -170,7 +233,9 @@ const CandidatesContent = ({
             </span>
             <input
               type="text"
-              placeholder="Search"
+              placeholder="Search candidates by name, job, company, location, or ID..."
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="block w-full pl-10 pr-4 py-2 rounded-lg bg-neutral-200 text-neutral-700 text-sm font-medium placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
               aria-label="Search candidates"
             />

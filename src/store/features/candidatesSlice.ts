@@ -169,6 +169,7 @@ export interface CandidateFilters {
   jobId?: string;
   sortBy?: 'name' | 'application_status' | 'experience_years' | 'company_name' | 'applied_date' | 'created_at' | 'updated_at' | 'current_ctc' | 'expected_ctc';
   sortOrder?: 'asc' | 'desc';
+  searchTerm?: string; // Global search term
 }
 // Enhanced async thunk with role-based access control
 export const fetchJobApplicationsWithAccess = createAsyncThunk(

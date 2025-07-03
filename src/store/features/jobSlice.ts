@@ -103,16 +103,20 @@ export interface JobAccessControl {
 
 // Job filters
 export interface JobFilters {
-  status?: string;
-  location?: string;
-  company?: string;
-  jobType?: string;
-  experienceLevel?: string;
+  status?: string[];
+  location?: string[];
+  company?: string[];
+  jobType?: string[];
+  experienceRange?: {
+    min: number;
+    max: number;
+  };
   salaryRange?: {
     min: number;
     max: number;
   };
   accessibleOnly?: boolean;
+  searchTerm?: string; // Global search term
 }
 
 interface JobState {
@@ -287,14 +291,14 @@ export const fetchJobs = createAsyncThunk(
         p_organization_id: organizationId,
         p_page: page,
         p_limit: limit,
-        p_status: filters.status || undefined,
-        p_location: filters.location || undefined,
-        p_company: filters.company || undefined,
-        p_job_type: filters.jobType || undefined,
+        p_status: filters.status?.join(',') || undefined,
+        p_location: filters.location?.join(',') || undefined,
+        p_company: filters.company?.join(',') || undefined,
+        p_job_type: filters.jobType?.join(',') || undefined,
         p_salary_min: filters.salaryRange?.min || undefined,
         p_salary_max: filters.salaryRange?.max || undefined,
-        p_experience_min: filters.experienceLevel ? parseExperienceMin(filters.experienceLevel) : undefined,
-        p_experience_max: filters.experienceLevel ? parseExperienceMax(filters.experienceLevel) : undefined,
+        p_experience_min: filters.experienceRange?.min || undefined,
+        p_experience_max: filters.experienceRange?.max || undefined,
       });
 
       if (error) {

@@ -8,6 +8,7 @@ import { GoPlus } from "react-icons/go";
 import { IoList } from "react-icons/io5";
 import { CiFilter } from "react-icons/ci";
 import { HiOutlineArrowCircleLeft } from "react-icons/hi";
+import { IoSearchSharp } from "react-icons/io5";
 import {
   fetchJobs,
   fetchFilterOptions,
@@ -37,7 +38,7 @@ import {
   FilterDropdown,
 } from "./job_utils";
 import Pagination from "@/components/pagination";
-import FiltersModal from "@/components/filters-modal";
+import EnhancedFiltersModal from "@/components/enhanced-filters-modal";
 
 // Constants
 const INITIAL_PAGE_SIZE = 30;
@@ -112,6 +113,17 @@ export default function JobsClientComponent({
 
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [sortBy, setSortBy] = useState<string>("recent");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  
+  // Enhanced filter state
+  const [enhancedFilters, setEnhancedFilters] = useState({
+    status: [] as string[],
+    location: [] as string[],
+    company: [] as string[],
+    jobType: [] as string[],
+    salaryRange: [0, 200000] as [number, number],
+    experienceRange: [0, 20] as [number, number],
+  });
 
   // Validation helper
   const isValidProps = useMemo(() => {
@@ -324,6 +336,49 @@ const handleFilterChange = useMemo(
   [dispatch, filters, userRole, userId, organizationId, isValidProps] // Dependencies
 );
 
+// Debounced search function
+const debouncedSearch = useCallback(
+  debounce(async (searchValue: string) => {
+    if (!isValidProps) return;
+
+    try {
+      const newFilters = {
+        ...filters,
+        searchTerm: searchValue || undefined,
+      };
+
+      // Remove undefined values
+      Object.keys(newFilters).forEach(key => {
+        if (newFilters[key as keyof JobFilters] === undefined) {
+          delete newFilters[key as keyof JobFilters];
+        }
+      });
+
+      // Update filters immediately
+      dispatch(setFilters(newFilters));
+
+      // Apply filters with server-side filtering
+      await dispatch(applyFilters({
+        filters: newFilters,
+        userRole: userRole!,
+        userId: userId!,
+        organizationId: organizationId!,
+        page: 1, // Reset to first page on search
+      })).unwrap();
+
+    } catch (err) {
+      console.error("Failed to apply search:", err);
+    }
+  }, 500),
+  [dispatch, filters, userRole, userId, organizationId, isValidProps]
+);
+
+// Search handler that updates local state immediately and triggers debounced search
+const handleSearchChange = useCallback((searchValue: string) => {
+  setSearchTerm(searchValue); // Update local state immediately for UI responsiveness
+  debouncedSearch(searchValue); // Trigger debounced search
+}, [debouncedSearch]);
+
   const handleRetry = useCallback(async () => {
     if (!isValidProps || !userRole || !userId || !organizationId) return;
 
@@ -433,24 +488,47 @@ const handlePageSizeChange = useCallback(
     }
   };
 
-  // Optimized job transformations - now using paginated jobs with sorting
+  // Optimized job transformations - now using paginated jobs with search and sorting
   const transformedJobs = useMemo(() => {
-    const sortedJobs = [...paginatedJobs];
+    let filteredJobs = [...paginatedJobs];
+    
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filteredJobs = filteredJobs.filter((job) => {
+        return (
+          // Search in job title
+          (job.title && job.title.toLowerCase().includes(searchLower)) ||
+          // Search in company name
+          (job.company_name && job.company_name.toLowerCase().includes(searchLower)) ||
+          // Search in location
+          (job.location && job.location.toLowerCase().includes(searchLower)) ||
+          // Search in job ID
+          (job.id && job.id.toLowerCase().includes(searchLower)) ||
+          // Search in job type
+          (job.job_type && job.job_type.toLowerCase().includes(searchLower)) ||
+          // Search in working type
+          (job.working_type && job.working_type.toLowerCase().includes(searchLower)) ||
+          // Search in description
+          (job.description && job.description.toLowerCase().includes(searchLower))
+        );
+      });
+    }
     
     // Apply client-side sorting
     if (sortBy === "az") {
-      sortedJobs.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+      filteredJobs.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
     } else if (sortBy === "za") {
-      sortedJobs.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
+      filteredJobs.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
     } else if (sortBy === "recent") {
-      sortedJobs.sort((a, b) => {
+      filteredJobs.sort((a, b) => {
         const dateA = new Date(a.created_at || 0).getTime();
         const dateB = new Date(b.created_at || 0).getTime();
         return dateB - dateA; // Most recent first
       });
     }
     
-    const forCards = sortedJobs.map((job) => ({
+    const forCards = filteredJobs.map((job) => ({
       id: job.id,
       title: job.title,
       company_name: job.company_name ?? "",
@@ -460,7 +538,7 @@ const handlePageSizeChange = useCallback(
       company_logo_url: job.company_logo_url || "/demo.png",
     }));
 
-    const forList = sortedJobs.map((job) => ({
+    const forList = filteredJobs.map((job) => ({
       job_id: job.id,
       job_title: job.title,
       company_name: job.company_name || "",
@@ -594,6 +672,23 @@ const handlePageSizeChange = useCallback(
               <GoPlus className="h-6 w-6" />
               Add Job
             </button>
+          </div>
+        </div>
+
+        {/* Global Search Bar */}
+        <div className="w-full md:w-96 mb-6">
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <IoSearchSharp className="w-5 h-5 text-neutral-500" />
+            </span>
+            <input
+              type="text"
+              placeholder="Search jobs by title, company, location, or job ID..."
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="block w-full pl-10 pr-4 py-2 rounded-lg bg-neutral-200 text-neutral-700 text-sm font-medium placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
+              aria-label="Search jobs"
+            />
           </div>
         </div>
 
