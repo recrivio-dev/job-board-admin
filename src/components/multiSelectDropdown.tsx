@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FaCaretDown } from 'react-icons/fa';
+import { BiCheck } from 'react-icons/bi';
+import { div } from 'motion/react-client';
 
 const MultiSelectDropdown = ({
   options,
@@ -76,7 +78,7 @@ const MultiSelectDropdown = ({
           flex items-center justify-between gap-2 font-medium cursor-pointer
           border px-4 py-2 rounded-3xl transition-all duration-200 min-w-[120px]
           ${currentValues.length > 0
-            ? 'border-blue-500 bg-blue-50 text-blue-700 hover:border-blue-600' 
+            ? 'border-blue-500 bg-blue-600 text-white hover:border-blue-600' 
             : 'border-neutral-500 text-neutral-700 hover:border-neutral-700 hover:bg-neutral-50'
           }
           hover:shadow-sm
@@ -90,8 +92,10 @@ const MultiSelectDropdown = ({
         </span>
         <div className="flex items-center gap-1">
           <FaCaretDown 
-            className={`w-4 h-4 text-neutral-500 transition-transform duration-200 ${
-              isOpen ? 'rotate-180' : ''
+            className={`w-4 h-4 transition-transform duration-200 ${
+                  isOpen ? 'rotate-180' : ''}
+                  ${
+                  currentValues.length > 0 ? 'text-white' : 'text-neutral-500'
             }`} 
           />
         </div>
@@ -112,7 +116,7 @@ const MultiSelectDropdown = ({
                 placeholder={searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm bg-neutral-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           )}
@@ -128,18 +132,27 @@ const MultiSelectDropdown = ({
                 <label
                   key={index}
                   className={`
-                    flex items-center px-4 py-2.5 text-sm transition-colors cursor-pointer
-                    hover:bg-neutral-50
-                    ${currentValues.includes(option.value) ? 'font-medium bg-blue-50 text-blue-700' : ''}
+                  flex items-center px-4 py-2.5 text-sm transition-colors cursor-pointer
+                  hover:bg-neutral-50
+                  ${currentValues.includes(option.value) ? 'font-medium bg-blue-50 text-blue-700' : ''}
                   `}
                 >
-                  <input
-                    type="checkbox"
-                    checked={currentValues.includes(option.value)}
-                    onChange={() => handleOptionToggle(option.value)}
-                    className="mr-3 rounded border-neutral-300 focus:ring-blue-300"
-                  />
+                  <div className="mr-3 flex items-center">
+                  {currentValues.includes(option.value) ? (
+                    <div className="w-5 h-5 bg-green-500 rounded flex items-center justify-center">
+                      <BiCheck className="w-5 h-5 text-white" />
+                    </div>
+                  ) : (
+                    <div className="w-5 h-5 border border-neutral-300 rounded"></div>
+                  )}
+                  </div>
                   <span className="truncate">{option.label}</span>
+                  <input
+                  type="checkbox"
+                  checked={currentValues.includes(option.value)}
+                  onChange={() => handleOptionToggle(option.value)}
+                  className="sr-only"
+                  />
                 </label>
               ))
             ) : (
