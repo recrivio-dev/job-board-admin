@@ -2,7 +2,11 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { IoMdClose } from "react-icons/io";
 import { FaExclamationCircle } from "react-icons/fa";
-import { fetchFilterOptions, FilterOption, UserContext } from "@/store/features/candidatesSlice";
+import {
+  fetchFilterOptions,
+  FilterOption,
+  UserContext,
+} from "@/store/features/candidatesSlice";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { RootState } from "@/store/store";
 import { FaChevronDown, FaSearch } from "react-icons/fa";
@@ -22,7 +26,10 @@ interface OverlayProps {
   onSave: (member: TeamMember) => void;
   jobs?: FilterOption[];
   company?: FilterOption[];
-  handleAssignJobsWithJobTitle: (member: TeamMember, jobTitles: string[]) => void;
+  handleAssignJobsWithJobTitle: (
+    member: TeamMember,
+    jobTitles: string[]
+  ) => void;
   handleAssignCompany: (member: TeamMember, companyNames: string[]) => void;
 }
 
@@ -125,242 +132,272 @@ const InputField = memo(
 InputField.displayName = "InputField";
 
 // Improved MultiSelectDropdown with better performance and UX
-const MultiSelectDropdown = memo(({
-  id,
-  label,
-  options,
-  selectedValues,
-  onChange,
-  onBlur,
-  error,
-  isSubmitting,
-  placeholder,
-  required = false,
-}: {
-  id: string;
-  label: string;
-  options: FilterOption[];
-  selectedValues: string[];
-  onChange: (values: string[]) => void;
-  onBlur: () => void;
-  error?: string;
-  isSubmitting: boolean;
-  placeholder: string;
-  required?: boolean;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const dropdownRef = useRef<HTMLDivElement>(null);
+const MultiSelectDropdown = memo(
+  ({
+    id,
+    label,
+    options,
+    selectedValues,
+    onChange,
+    onBlur,
+    error,
+    isSubmitting,
+    placeholder,
+    required = false,
+  }: {
+    id: string;
+    label: string;
+    options: FilterOption[];
+    selectedValues: string[];
+    onChange: (values: string[]) => void;
+    onBlur: () => void;
+    error?: string;
+    isSubmitting: boolean;
+    placeholder: string;
+    required?: boolean;
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Memoize filtered options for better performance
-  const filteredOptions = React.useMemo(() => 
-    options.filter(option =>
-      option.label.toLowerCase().includes(searchTerm.toLowerCase())
-    ), [options, searchTerm]
-  );
+    // Memoize filtered options for better performance
+    const filteredOptions = React.useMemo(
+      () =>
+        options.filter((option) =>
+          option.label.toLowerCase().includes(searchTerm.toLowerCase())
+        ),
+      [options, searchTerm]
+    );
 
-  const handleToggleOption = useCallback((value: string) => {
-    const newValues = selectedValues.includes(value)
-      ? selectedValues.filter(v => v !== value)
-      : [...selectedValues, value];
-    onChange(newValues);
-  }, [selectedValues, onChange]);
+    const handleToggleOption = useCallback(
+      (value: string) => {
+        const newValues = selectedValues.includes(value)
+          ? selectedValues.filter((v) => v !== value)
+          : [...selectedValues, value];
+        onChange(newValues);
+      },
+      [selectedValues, onChange]
+    );
 
-  const handleSelectAll = useCallback(() => {
-    const allFilteredValues = filteredOptions.map(option => option.value);
-    const allSelected = allFilteredValues.every(value => selectedValues.includes(value));
-    
-    if (allSelected) {
-      // Deselect all filtered options
-      const newValues = selectedValues.filter(value => 
-        !allFilteredValues.includes(value)
+    const handleSelectAll = useCallback(() => {
+      const allFilteredValues = filteredOptions.map((option) => option.value);
+      const allSelected = allFilteredValues.every((value) =>
+        selectedValues.includes(value)
       );
-      onChange(newValues);
-    } else {
-      // Select all filtered options
-      const newValues = [...new Set([...selectedValues, ...allFilteredValues])];
-      onChange(newValues);
-    }
-  }, [filteredOptions, selectedValues, onChange]);
 
-  const handleClearAll = useCallback(() => {
-    onChange([]);
-  }, [onChange]);
+      if (allSelected) {
+        // Deselect all filtered options
+        const newValues = selectedValues.filter(
+          (value) => !allFilteredValues.includes(value)
+        );
+        onChange(newValues);
+      } else {
+        // Select all filtered options
+        const newValues = [
+          ...new Set([...selectedValues, ...allFilteredValues]),
+        ];
+        onChange(newValues);
+      }
+    }, [filteredOptions, selectedValues, onChange]);
 
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-      setIsOpen(false);
-      setSearchTerm(''); // Clear search when closing
-      onBlur();
-    }
-  }, [onBlur]);
+    const handleClearAll = useCallback(() => {
+      onChange([]);
+    }, [onChange]);
 
-  useEffect(() => {
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [handleClickOutside]);
+    const handleClickOutside = useCallback(
+      (event: MouseEvent) => {
+        if (
+          dropdownRef.current &&
+          !dropdownRef.current.contains(event.target as Node)
+        ) {
+          setIsOpen(false);
+          setSearchTerm(""); // Clear search when closing
+          onBlur();
+        }
+      },
+      [onBlur]
+    );
 
-  // Get selected option labels for display
-  const selectedLabels = React.useMemo(() => {
-    return selectedValues.map(value => {
-      const option = options.find(opt => opt.value === value);
-      return option ? option.label : value;
-    });
-  }, [selectedValues, options]);
+    useEffect(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }, [handleClickOutside]);
 
-  const displayText = selectedValues.length > 0 
-    ? selectedValues.length === 1 
-      ? selectedLabels[0]
-      : `${selectedValues.length} selected`
-    : placeholder;
+    // Get selected option labels for display
+    const selectedLabels = React.useMemo(() => {
+      return selectedValues.map((value) => {
+        const option = options.find((opt) => opt.value === value);
+        return option ? option.label : value;
+      });
+    }, [selectedValues, options]);
 
-  const allFilteredSelected = filteredOptions.length > 0 && 
-    filteredOptions.every(option => selectedValues.includes(option.value));
+    const displayText =
+      selectedValues.length > 0
+        ? selectedValues.length === 1
+          ? selectedLabels[0]
+          : `${selectedValues.length} selected`
+        : placeholder;
 
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <label
-        htmlFor={id}
-        className="block text-sm font-medium text-neutral-800 mb-2"
-      >
-        {label}
-        {required && (
-          <span className="text-red-500 ml-1" aria-label="required">
-            *
-          </span>
-        )}
-      </label>
-      
-      <button
-        type="button"
-        id={id}
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 text-left flex items-center justify-between ${
-          error
-            ? "border-red-400 focus:ring-red-500 bg-red-50"
-            : "border-neutral-300 focus:ring-blue-500 hover:border-neutral-400"
-        } bg-white`}
-        aria-describedby={error ? `${id}-error` : undefined}
-        disabled={isSubmitting}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-      >
-        <span className={`truncate ${selectedValues.length === 0 ? "text-gray-500" : "text-gray-900"}`}>
-          {displayText}
-        </span>
-        <FaChevronDown 
-          className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ml-2 ${
-            isOpen ? 'rotate-180' : ''
-          }`}
-        />
-      </button>
+    const allFilteredSelected =
+      filteredOptions.length > 0 &&
+      filteredOptions.every((option) => selectedValues.includes(option.value));
 
-      {/* Selected items display */}
-      {selectedValues.length > 1 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {selectedLabels.slice(0, 3).map((label, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md"
-            >
-              {label}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const valueToRemove = selectedValues[index];
-                  handleToggleOption(valueToRemove);
-                }}
-                className="ml-1 text-blue-600 hover:text-blue-800"
-              >
-                ×
-              </button>
-            </span>
-          ))}
-          {selectedValues.length > 3 && (
-            <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md">
-              +{selectedValues.length - 3} more
+    return (
+      <div className="relative" ref={dropdownRef}>
+        <label
+          htmlFor={id}
+          className="block text-sm font-medium text-neutral-800 mb-2"
+        >
+          {label}
+          {required && (
+            <span className="text-red-500 ml-1" aria-label="required">
+              *
             </span>
           )}
-        </div>
-      )}
+        </label>
 
-      {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-hidden">
-          {/* Search and actions */}
-          <div className="p-3 border-b border-gray-100 space-y-2">
-            <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search options..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            
-            {/* Action buttons */}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleSelectAll}
-                className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
-                disabled={filteredOptions.length === 0}
+        <button
+          type="button"
+          id={id}
+          onClick={() => setIsOpen(!isOpen)}
+          className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 text-left flex items-center justify-between ${
+            error
+              ? "border-red-400 focus:ring-red-500 bg-red-50"
+              : "border-neutral-300 focus:ring-blue-500 hover:border-neutral-400"
+          } bg-white`}
+          aria-describedby={error ? `${id}-error` : undefined}
+          disabled={isSubmitting}
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+        >
+          <span
+            className={`truncate ${
+              selectedValues.length === 0
+                ? "text-neutral-500"
+                : "text-neutral-900"
+            }`}
+          >
+            {displayText}
+          </span>
+          <FaChevronDown
+            className={`w-4 h-4 text-neutral-400 transition-transform duration-200 flex-shrink-0 ml-2 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {/* Selected items display */}
+        {selectedValues.length > 1 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {selectedLabels.slice(0, 3).map((label, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md"
               >
-                {allFilteredSelected ? 'Deselect All' : 'Select All'}
-              </button>
-              {selectedValues.length > 0 && (
+                {label}
                 <button
                   type="button"
-                  onClick={handleClearAll}
-                  className="text-xs px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const valueToRemove = selectedValues[index];
+                    handleToggleOption(valueToRemove);
+                  }}
+                  className="ml-1 text-blue-600 hover:text-blue-800"
                 >
-                  Clear All
+                  ×
                 </button>
+              </span>
+            ))}
+            {selectedValues.length > 3 && (
+              <span className="inline-flex items-center px-2 py-1 bg-neutral-100 text-neutral-600 text-xs rounded-md">
+                +{selectedValues.length - 3} more
+              </span>
+            )}
+          </div>
+        )}
+
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg max-h-80 overflow-hidden">
+            {/* Search and actions */}
+            <div className="p-3 border-b border-neutral-100 space-y-2">
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder="Search options..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                  disabled={filteredOptions.length === 0}
+                >
+                  {allFilteredSelected ? "Deselect All" : "Select All"}
+                </button>
+                {selectedValues.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    className="text-xs px-2 py-1 bg-neutral-50 text-neutral-600 rounded hover:bg-neutral-100 transition-colors"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Options list */}
+            <div className="max-h-48 overflow-y-auto">
+              {filteredOptions.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-neutral-500 text-center">
+                  {searchTerm
+                    ? "No options match your search"
+                    : "No options available"}
+                </div>
+              ) : (
+                filteredOptions.map((option, index) => (
+                  <label
+                    key={index}
+                    className="flex items-center px-4 py-3 hover:bg-neutral-50 cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedValues.includes(option.value)}
+                      onChange={() => handleToggleOption(option.value)}
+                      className="w-4 h-4 text-blue-600 border-neutral-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="ml-3 text-sm text-neutral-700 flex-1">
+                      {option.label}
+                    </span>
+                  </label>
+                ))
               )}
             </div>
           </div>
+        )}
 
-          {/* Options list */}
-          <div className="max-h-48 overflow-y-auto">
-            {filteredOptions.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                {searchTerm ? 'No options match your search' : 'No options available'}
-              </div>
-            ) : (
-              filteredOptions.map((option, index) => (
-                <label
-                  key={index}
-                  className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedValues.includes(option.value)}
-                    onChange={() => handleToggleOption(option.value)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="ml-3 text-sm text-gray-700 flex-1">{option.label}</span>
-                </label>
-              ))
-            )}
+        {error && (
+          <div
+            id={`${id}-error`}
+            className="flex items-center gap-1 text-red-600 text-sm mt-1"
+            role="alert"
+          >
+            <FaExclamationCircle className="w-3 h-3 flex-shrink-0" />
+            <span>{error}</span>
           </div>
-        </div>
-      )}
-
-      {error && (
-        <div
-          id={`${id}-error`}
-          className="flex items-center gap-1 text-red-600 text-sm mt-1"
-          role="alert"
-        >
-          <FaExclamationCircle className="w-3 h-3 flex-shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-    </div>
-  );
-});
+        )}
+      </div>
+    );
+  }
+);
 
 MultiSelectDropdown.displayName = "MultiSelectDropdown";
 
@@ -385,14 +422,16 @@ const FormSection = memo(
     company: FilterOption[];
     jobs: FilterOption[];
     isEditing: boolean;
-    handleInputChange: (field: keyof TeamMember, value: string | string[]) => void;
+    handleInputChange: (
+      field: keyof TeamMember,
+      value: string | string[]
+    ) => void;
     validateField: (field: keyof TeamMember) => void;
     assignedCompanies: string[];
     assignedJobs: string[];
     handleAssignedCompaniesChange: (values: string[]) => void;
     handleAssignedJobsChange: (values: string[]) => void;
   }) => {
-
     return (
       <div className="space-y-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -454,10 +493,10 @@ const FormSection = memo(
             )}
           </div>
         </div>
-        
+
         {/* Assignment fields - only show when editing */}
         {isEditing && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-neutral-100">
             <MultiSelectDropdown
               id="member-assigned-company"
               label="Assigned Companies"
@@ -489,12 +528,12 @@ const FormSection = memo(
 
 FormSection.displayName = "FormSection";
 
-export const Overlay = ({ 
-  setShowOverlay, 
-  member, 
-  onSave, 
-  handleAssignJobsWithJobTitle, 
-  handleAssignCompany 
+export const Overlay = ({
+  setShowOverlay,
+  member,
+  onSave,
+  handleAssignJobsWithJobTitle,
+  handleAssignCompany,
 }: OverlayProps) => {
   // Form state
   const [formData, setFormData] = useState<TeamMember>({
@@ -515,7 +554,7 @@ export const Overlay = ({
   );
 
   const dispatch = useAppDispatch();
-  
+
   // Form validation and UI state
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -527,10 +566,17 @@ export const Overlay = ({
   const firstFocusableRef = useRef<HTMLInputElement>(null);
   const lastFocusableRef = useRef<HTMLButtonElement>(null);
 
-  const jobs = useAppSelector((state: RootState) => state.candidates.filterOptions.jobTitles);
-  const company = useAppSelector((state: RootState) => state.candidates.filterOptions.companies);
-  const organizationId = useAppSelector((state: RootState) => state.user.organization?.id) || "";
-  const roles = useAppSelector((state: RootState) => state.user.roles[0]?.role?.name || "Guest");
+  const jobs = useAppSelector(
+    (state: RootState) => state.candidates.filterOptions.jobTitles
+  );
+  const company = useAppSelector(
+    (state: RootState) => state.candidates.filterOptions.companies
+  );
+  const organizationId =
+    useAppSelector((state: RootState) => state.user.organization?.id) || "";
+  const roles = useAppSelector(
+    (state: RootState) => state.user.roles[0]?.role?.name || "Guest"
+  );
 
   // Track if form has been modified
   const isEditing = Boolean(member?.id);
@@ -561,10 +607,12 @@ export const Overlay = ({
       formData.email !== initialData.current.email ||
       formData.role !== initialData.current.role;
 
-    const hasAssignmentChanges = isEditing && (
-      JSON.stringify(assignedCompanies.sort()) !== JSON.stringify(initialData.current.assigned_company.sort()) ||
-      JSON.stringify(assignedJobs.sort()) !== JSON.stringify(initialData.current.assigned_jobs.sort())
-    );
+    const hasAssignmentChanges =
+      isEditing &&
+      (JSON.stringify(assignedCompanies.sort()) !==
+        JSON.stringify(initialData.current.assigned_company.sort()) ||
+        JSON.stringify(assignedJobs.sort()) !==
+          JSON.stringify(initialData.current.assigned_jobs.sort()));
 
     setHasUnsavedChanges(hasBasicChanges || hasAssignmentChanges);
   }, [formData, assignedCompanies, assignedJobs, isEditing]);
@@ -596,18 +644,20 @@ export const Overlay = ({
     if (isEditing) {
       // Validate that selected companies exist in options
       const invalidCompanies = assignedCompanies.filter(
-        companyId => !company.some(comp => comp.value === companyId)
+        (companyId) => !company.some((comp) => comp.value === companyId)
       );
       if (invalidCompanies.length > 0) {
-        newErrors.assigned_company = "Some selected companies are no longer available";
+        newErrors.assigned_company =
+          "Some selected companies are no longer available";
       }
 
       // Validate that selected jobs exist in options
       const invalidJobs = assignedJobs.filter(
-        jobId => !jobs.some(job => job.value === jobId)
+        (jobId) => !jobs.some((job) => job.value === jobId)
       );
       if (invalidJobs.length > 0) {
-        newErrors.assigned_jobs = "Some selected job titles are no longer available";
+        newErrors.assigned_jobs =
+          "Some selected job titles are no longer available";
       }
     }
 
@@ -625,7 +675,8 @@ export const Overlay = ({
           if (!formData.email.trim()) {
             newErrors.email = "Email is required";
           } else {
-            const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+            const emailRegex =
+              /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
             if (!emailRegex.test(formData.email)) {
               newErrors.email = "Please enter a valid email address";
             } else if (formData.email.length > 100) {
@@ -736,13 +787,13 @@ export const Overlay = ({
   const handleAssignedCompaniesChange = useCallback((values: string[]) => {
     setAssignedCompanies(values);
     // Clear any related errors
-    setErrors(prev => ({ ...prev, assigned_company: undefined }));
+    setErrors((prev) => ({ ...prev, assigned_company: undefined }));
   }, []);
 
   const handleAssignedJobsChange = useCallback((values: string[]) => {
     setAssignedJobs(values);
     // Clear any related errors
-    setErrors(prev => ({ ...prev, assigned_jobs: undefined }));
+    setErrors((prev) => ({ ...prev, assigned_jobs: undefined }));
   }, []);
 
   // Handle form submission with improved assignment logic
@@ -771,9 +822,12 @@ export const Overlay = ({
         assigned_jobs: assignedJobs,
       };
 
-
       // Handle job and company assignments separately if functions are provided
-      if (isEditing && handleAssignJobsWithJobTitle && assignedJobs.length > 0) {
+      if (
+        isEditing &&
+        handleAssignJobsWithJobTitle &&
+        assignedJobs.length > 0
+      ) {
         try {
           handleAssignJobsWithJobTitle(memberData, assignedJobs);
         } catch (error) {

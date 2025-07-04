@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FaCaretDown } from 'react-icons/fa';
 import { BiCheck } from 'react-icons/bi';
-import { div } from 'motion/react-client';
 
 const MultiSelectDropdown = ({
   options,

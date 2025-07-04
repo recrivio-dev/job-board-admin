@@ -18,7 +18,7 @@ const UserManagementPage = () => {
         <Breadcrumb segments={[{ label: "User Management" }]} />
         <h1 className="text-2xl font-bold mb-4">User Management</h1>
         <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-gray-600">
+          <p className="text-neutral-600">
             User management functionality coming soon...
           </p>
         </div>

@@ -25,9 +25,11 @@ import { ErrorMessage } from "@/components/errorMessage";
 import { User } from "@supabase/supabase-js";
 import { Organization, UserRole } from "@/types/custom";
 import Breadcrumb from "@/components/Breadcrumb";
+import { Suspense } from "react";
+import CandidatesSkeleton, {TableSkeleton} from "@/components/CandidatesSkeleton";
 
 // Debounce utility function
-function debounce<T extends (...args: any[]) => unknown>(
+function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): T & { cancel: () => void } {
@@ -51,14 +53,6 @@ function debounce<T extends (...args: any[]) => unknown>(
   
   return debounced as T & { cancel: () => void };
 }
-
-// Loading component for better UX
-const LoadingSpinner = ({ message = "Loading..." }: { message?: string }) => (
-  <div className="flex items-center justify-center min-h-[200px]">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-    <span className="ml-2 text-neutral-600">{message}</span>
-  </div>
-);
 
 // Error/Info message component
 const InfoMessage = ({
@@ -101,7 +95,7 @@ const CandidatesContent = ({
   const pagination = useAppSelector(selectPagination);
 
   // Local state for search
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>(filters.searchTerm || "");
 
   // Memoize user context to prevent unnecessary re-renders
   const memoizedUserContext = useMemo((): UserContext | null => {
@@ -239,102 +233,18 @@ const CandidatesContent = ({
         )}
 
         {/* Candidates List Component */}
-        <CandidatesList
-          showHeader={false}
-          showFilters={true}
-          showSorting={true}
-        />
+        <Suspense fallback={<TableSkeleton />}>
+          <CandidatesList
+            showHeader={false}
+            showFilters={true}
+            showSorting={true}
+          />
+        </Suspense>
 
         {/* Loading State */}
         {loading && (
-          <div className="animate-pulse">
-            <table className="min-w-full divide-y divide-neutral-200">
-              <thead className="bg-neutral-50">
-                <tr>
-                  {/* Checkbox column skeleton */}
-                  <th className="sticky left-0 z-20 bg-neutral-50 shadow-[1px_0_0_0_#e5e7eb] px-6 py-3" style={{ width: "48px", minWidth: "48px" }}>
-                    <div className="w-4 h-4 bg-neutral-300 rounded"></div>
-                  </th>
-                  {/* ID column skeleton */}
-                  <th className="px-6 py-3">
-                    <div className="h-3 bg-neutral-300 rounded w-8"></div>
-                  </th>
-                  {/* Applied Date column skeleton */}
-                  <th className="px-6 py-3">
-                    <div className="h-3 bg-neutral-300 rounded w-20"></div>
-                  </th>
-                  {/* Candidate Name column skeleton */}
-                  <th className="px-6 py-3">
-                    <div className="h-3 bg-neutral-300 rounded w-28"></div>
-                  </th>
-                  {/* Job column skeleton */}
-                  <th className="px-6 py-3">
-                    <div className="h-3 bg-neutral-300 rounded w-12"></div>
-                  </th>
-                  {/* Company column skeleton */}
-                  <th className="px-6 py-3">
-                    <div className="h-3 bg-neutral-300 rounded w-16"></div>
-                  </th>
-                  {/* Location column skeleton */}
-                  <th className="px-6 py-3">
-                    <div className="h-3 bg-neutral-300 rounded w-16"></div>
-                  </th>
-                  {/* Status column skeleton */}
-                  <th className="sticky z-20 bg-neutral-50 shadow-[-1px_0_0_0_#e5e7eb] px-6 py-3 text-center" style={{ width: "140px", minWidth: "140px", right: "120px" }}>
-                    <div className="h-3 bg-neutral-300 rounded w-12 mx-auto"></div>
-                  </th>
-                  {/* Actions column skeleton */}
-                  <th className="sticky right-0 z-20 bg-neutral-50 shadow-[-1px_0_0_0_#e5e7eb] px-6 py-3" style={{ width: "120px", minWidth: "120px" }}>
-                    <div className="h-3 bg-neutral-300 rounded w-12"></div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-neutral-200">
-                {[...Array(5)].map((_, index) => (
-                  <tr key={index}>
-                    {/* Checkbox skeleton */}
-                    <td className="sticky left-0 z-10 bg-white shadow-[1px_0_0_0_#e5e7eb] px-6 py-4" style={{ width: "48px", minWidth: "48px" }}>
-                      <div className="w-4 h-4 bg-neutral-200 rounded"></div>
-                    </td>
-                    {/* ID skeleton */}
-                    <td className="px-6 py-4">
-                      <div className="h-4 bg-neutral-200 rounded w-12"></div>
-                    </td>
-                    {/* Applied Date skeleton */}
-                    <td className="px-6 py-4">
-                      <div className="h-4 bg-neutral-200 rounded w-20"></div>
-                    </td>
-                    {/* Candidate Name skeleton */}
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="h-4 bg-neutral-200 rounded w-32"></div>
-                        <div className="h-3 bg-neutral-200 rounded w-28"></div>
-                      </div>
-                    </td>
-                    {/* Job skeleton */}
-                    <td className="px-6 py-4">
-                      <div className="h-4 bg-neutral-200 rounded w-24"></div>
-                    </td>
-                    {/* Company skeleton */}
-                    <td className="px-6 py-4">
-                      <div className="h-4 bg-neutral-200 rounded w-20"></div>
-                    </td>
-                    {/* Location skeleton */}
-                    <td className="px-6 py-4">
-                      <div className="h-4 bg-neutral-200 rounded w-24"></div>
-                    </td>
-                    {/* Status skeleton */}
-                    <td className="sticky z-10 bg-white shadow-[-1px_0_0_0_#e5e7eb] px-6 py-4 text-center" style={{ width: "140px", minWidth: "140px", right: "120px" }}>
-                      <div className="h-6 bg-neutral-200 rounded-full w-16 mx-auto"></div>
-                    </td>
-                    {/* Actions skeleton */}
-                    <td className="sticky right-0 z-10 bg-white shadow-[-1px_0_0_0_#e5e7eb] px-6 py-4" style={{ width: "120px", minWidth: "120px" }}>
-                      <div className="h-8 bg-neutral-200 rounded w-12"></div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="w-full">
+            <TableSkeleton/>
           </div>
         )}
       </div>
@@ -393,9 +303,7 @@ export default function Candidates() {
           collapsed ? "md:ml-20" : "md:ml-60"
         } pt-18`}
       >
-        <div className="max-w-8xl mx-auto px-2 py-4">
-          <LoadingSpinner message="Loading user authentication..." />
-        </div>
+        <CandidatesSkeleton />
       </div>
     );
   }

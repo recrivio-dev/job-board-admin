@@ -3,17 +3,14 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import type { RootState } from "@/store/store";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { GoPlus } from "react-icons/go";
 import { IoList } from "react-icons/io5";
 import { CiFilter } from "react-icons/ci";
-import { HiOutlineArrowCircleLeft } from "react-icons/hi";
 import { IoSearchSharp } from "react-icons/io5";
 import {
   fetchJobs,
   fetchFilterOptions,
   selectJobs,
-  selectJobsLoading,
   selectJobsError,
   selectJobPagination,
   selectJobViewMode,
@@ -31,19 +28,13 @@ import {
   JobCard,
 } from "@/components/Job-card&list-component";
 import { FilterState, JobsClientComponentProps } from "@/types/custom";
-import {
-  JobCardSkeleton,
-  EmptyState,
-  ErrorState,
-  FilterDropdown,
-} from "./job_utils";
+import { EmptyState, ErrorState, FilterDropdown } from "./job_utils";
 import Pagination from "@/components/pagination";
 import EnhancedFiltersModal from "@/components/enhanced-filters-modal";
 import Breadcrumb from "@/components/Breadcrumb";
 
 // Constants
 const INITIAL_PAGE_SIZE = 30;
-const SKELETON_COUNT = 6;
 
 export interface JobFilters {
   status?: string | string[];
@@ -96,7 +87,6 @@ export default function JobsClientComponent({
   // const jobs = useAppSelector(selectJobs);
   const paginatedJobs = useAppSelector(selectJobs);
   const pagination = useAppSelector(selectJobPagination);
-  const loading = useAppSelector(selectJobsLoading);
   const error = useAppSelector(selectJobsError);
   const viewMode = useAppSelector(selectJobViewMode);
   const filters = useAppSelector(selectJobFilters);
@@ -591,51 +581,6 @@ export default function JobsClientComponent({
     return { forCards, forList };
   }, [paginatedJobs, sortBy, searchTerm, filters]);
 
-  // Enhanced loading component
-  const LoadingView = () => (
-    <div
-      className={`transition-all duration-300 min-h-full md:pb-0 px-3 md:px-6 ${
-        collapsed ? "md:ml-20" : "md:ml-60"
-      } pt-18`}
-    >
-      <div className="mt-4 px-2">
-        <div className="flex items-center gap-1 mb-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center text-neutral-500 hover:text-neutral-700 font-medium text-base"
-          >
-            <HiOutlineArrowCircleLeft className="w-6 h-6 mr-1" />
-            <p className="text-sm">Back to Dashboard</p>
-          </Link>
-          <span className="text-sm text-neutral-500 font-light">/</span>
-          <span className="text-sm font-medium text-neutral-900">Jobs</span>
-        </div>
-
-        <div className="flex items-center justify-between my-6">
-          <div>
-            <h1 className="text-xl font-semibold text-neutral-900">
-              Manage All Jobs
-            </h1>
-            <p className="text-sm text-neutral-500 mt-2">
-              Loading your job listings...
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: SKELETON_COUNT }).map((_, index) => (
-            <JobCardSkeleton key={`skeleton-${index}`} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  // Show loading state
-  if (!initState.initialized || loading) {
-    return <LoadingView />;
-  }
-
   // Show initialization error
   if (initState.error) {
     return (
@@ -660,54 +605,52 @@ export default function JobsClientComponent({
         collapsed ? "md:ml-20" : "md:ml-60"
       } pt-18`}
     >
-      <div className="mt-4 px-2">
+      <div className="w-full mx-auto px-0 md:px-4 py-4 md:py-2">
         {/* Header section */}
         <Breadcrumb segments={[{ label: "Jobs" }]} />
 
-        {/* Title and Add Job section */}
-        <div className="flex items-center flex-wrap justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-semibold text-neutral-900">
-              Manage All Jobs
-            </h1>
-            <p className="text-sm text-neutral-500 mb-2">
-              Manage your job listings and applications with ease.
-              {transformedJobs.forCards.length > 0 && (
-                <span className="ml-1 font-medium">
-                  ({transformedJobs.forCards.length} job
-                  {transformedJobs.forCards.length !== 1 ? "s" : ""} found)
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="w-full md:w-auto mt-4 md:mt-0">
-            <button
-              type="button"
-              onClick={handleAddJob}
-              aria-label="Add New Job"
-              className="bg-blue-600 w-full sm:w-auto hover:bg-blue-700 text-white font-medium rounded-lg py-2 transition-colors cursor-pointer px-4 flex items-center justify-center md:justify-start gap-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              <GoPlus className="h-6 w-6" />
-              Add Job
-            </button>
-          </div>
+        {/* Title section */}
+        <div className="mb-9.5">
+          <h1 className="text-xl font-semibold text-neutral-900">
+            Manage All Jobs
+          </h1>
+          <p className="text-sm text-neutral-500 mb-2">
+            Manage your job listings and applications with ease.
+            {transformedJobs.forCards.length > 0 && (
+              <span className="ml-1 font-medium">
+                ({transformedJobs.forCards.length} job
+                {transformedJobs.forCards.length !== 1 ? "s" : ""} found)
+              </span>
+            )}
+          </p>
         </div>
 
-        {/* Global Search Bar */}
-        <div className="w-full md:w-96 mb-6">
-          <div className="relative">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <IoSearchSharp className="w-5 h-5 text-neutral-500" />
-            </span>
-            <input
-              type="text"
-              placeholder="Search jobs by title, company, location, or job ID..."
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="block w-full pl-10 pr-4 py-2 rounded-lg bg-neutral-200 text-neutral-700 text-sm font-medium placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
-              aria-label="Search jobs"
-            />
+        {/* Global Search Bar and Add Job Button */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="w-full md:w-125">
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <IoSearchSharp className="w-5 h-5 text-neutral-500" />
+              </span>
+              <input
+                type="text"
+                placeholder="Search"
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="block w-full pl-10 pr-4 py-2 rounded-lg bg-neutral-200 text-neutral-700 text-sm font-medium placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
+                aria-label="Search jobs"
+              />
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={handleAddJob}
+            aria-label="Add New Job"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg py-2 transition-colors cursor-pointer px-4 flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+          >
+            <GoPlus className="h-6 w-6" />
+            Add Job
+          </button>
         </div>
 
         {/* View mode toggle and filters */}
@@ -832,7 +775,7 @@ export default function JobsClientComponent({
         ) : (
           <>
             {viewMode === "board" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 {transformedJobs.forCards.map((job) => (
                   <JobCard key={job.id} job={job} />
                 ))}
