@@ -10,7 +10,6 @@ import {
   setUserContext,
   clearError,
   selectCandidatesError,
-  selectCandidatesLoading,
   selectUserContext,
   selectFilters,
   setFilters,
@@ -23,6 +22,8 @@ import { initializeAuth } from "@/store/features/userSlice";
 import { User } from "@supabase/supabase-js";
 import { Organization, UserRole } from "@/types/custom";
 import Breadcrumb from "@/components/Breadcrumb";
+import CandidatesSkeleton from "@/components/CandidatesSkeleton";
+import { Suspense } from "react";
 
 // Debounce utility function
 function debounce<T extends (...args: never[]) => unknown>(
@@ -30,7 +31,7 @@ function debounce<T extends (...args: never[]) => unknown>(
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | null = null;
-  
+
   return (...args: Parameters<T>) => {
     if (timeout) {
       clearTimeout(timeout);
@@ -40,14 +41,6 @@ function debounce<T extends (...args: never[]) => unknown>(
     }, wait);
   };
 }
-
-// Loading component for better UX
-const LoadingSpinner = ({ message = "Loading..." }: { message?: string }) => (
-  <div className="flex items-center justify-center min-h-[200px]">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-    <span className="ml-2 text-neutral-600">{message}</span>
-  </div>
-);
 
 // Error/Info message component
 const InfoMessage = ({
@@ -84,7 +77,6 @@ const CandidatesContent = ({
 
   // Candidates selectors
   const error = useAppSelector(selectCandidatesError);
-  const loading = useAppSelector(selectCandidatesLoading);
   const userContext = useAppSelector(selectUserContext);
   const filters = useAppSelector(selectFilters);
 
@@ -150,7 +142,7 @@ const CandidatesContent = ({
         };
 
         // Remove undefined values
-        Object.keys(newFilters).forEach(key => {
+        Object.keys(newFilters).forEach((key) => {
           if (newFilters[key as keyof CandidateFilters] === undefined) {
             delete newFilters[key as keyof CandidateFilters];
           }
@@ -162,7 +154,7 @@ const CandidatesContent = ({
         // Fetch candidates with new search term
         // Load more candidates when searching to search across all data
         const limit = sValue && sValue.trim() !== "" ? 10000 : 50;
-        
+
         dispatch(
           fetchJobApplicationsWithAccess({
             filters: newFilters,
@@ -172,17 +164,20 @@ const CandidatesContent = ({
           })
         );
       }, 500);
-      
+
       debouncedFn(searchValue);
     },
     [dispatch, filters, memoizedUserContext]
   );
 
   // Search handler that updates local state immediately and triggers debounced search
-  const handleSearchChange = useCallback((searchValue: string) => {
-    setSearchTerm(searchValue); // Update local state immediately for UI responsiveness
-    debouncedSearch(searchValue); // Trigger debounced search
-  }, [debouncedSearch]);
+  const handleSearchChange = useCallback(
+    (searchValue: string) => {
+      setSearchTerm(searchValue); // Update local state immediately for UI responsiveness
+      debouncedSearch(searchValue); // Trigger debounced search
+    },
+    [debouncedSearch]
+  );
 
   return (
     <div
@@ -225,7 +220,7 @@ const CandidatesContent = ({
             </span>
             <input
               type="text"
-              placeholder="Search candidates by name, job, company, location, or ID..."
+              placeholder="Search"
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="block w-full pl-10 pr-4 py-2 rounded-lg bg-neutral-200 text-neutral-700 text-sm font-medium placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
@@ -270,21 +265,13 @@ const CandidatesContent = ({
         )}
 
         {/* Candidates List Component */}
-        <CandidatesList
-          showHeader={false}
-          showFilters={true}
-          showSorting={true}
-        />
-
-        {/* Loading State */}
-        {loading && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
-              <p className="text-blue-800 text-sm">Loading candidates...</p>
-            </div>
-          </div>
-        )}
+        <Suspense fallback={<CandidatesSkeleton />}>
+          <CandidatesList
+            showHeader={false}
+            showFilters={true}
+            showSorting={true}
+          />
+        </Suspense>
       </div>
     </div>
   );
@@ -333,21 +320,6 @@ export default function Candidates() {
     );
   }
 
-  // Handle loading state
-  if (isLoading || !user) {
-    return (
-      <div
-        className={`transition-all duration-300 h-full px-3 md:px-0 ${
-          collapsed ? "md:ml-20" : "md:ml-60"
-        } pt-18`}
-      >
-        <div className="max-w-8xl mx-auto px-2 py-4">
-          <LoadingSpinner message="Loading user authentication..." />
-        </div>
-      </div>
-    );
-  }
-
   // Handle missing organization
   if (isLoading || !organization) {
     return (
@@ -385,7 +357,7 @@ export default function Candidates() {
   }
 
   // Additional validation for required data
-  if (!user.id || !organization.id) {
+  if (!user || !user.id || !organization.id) {
     return (
       <div
         className={`transition-all duration-300 h-full px-3 md:px-0 ${

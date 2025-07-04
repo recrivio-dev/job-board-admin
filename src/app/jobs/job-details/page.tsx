@@ -25,7 +25,7 @@ import {
 } from "@/store/features/candidatesSlice";
 import { initializeAuth } from "@/store/features/userSlice";
 import { JobMetadata, JobStatus } from "@/types/custom";
-import { STEPS } from "@/types/custom";
+// import { STEPS } from "@/types/custom";
 import {
   JobDetailsSkeleton,
   ErrorState,
@@ -39,6 +39,7 @@ import {
   JobInfoTags,
 } from "./utils";
 import { RootState } from "@/store/store";
+import { Suspense } from "react";
 
 // Main Component - Optimized Version
 export default function JobDetailsComponent() {
@@ -50,9 +51,11 @@ export default function JobDetailsComponent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Redux selectors - moved up for better organization
-  const collapsed = useAppSelector((state: RootState) => state.ui.sidebar.collapsed);
+  const collapsed = useAppSelector(
+    (state: RootState) => state.ui.sidebar.collapsed
+  );
   const jobs = useAppSelector(selectJobs);
-  const selectedJob = useAppSelector(selectSelectedJob);  
+  const selectedJob = useAppSelector(selectSelectedJob);
   const loading = useAppSelector(selectJobsLoading);
   const error = useAppSelector(selectJobsError);
   const userContext = useAppSelector(selectUserContext);
@@ -345,27 +348,9 @@ export default function JobDetailsComponent() {
   // Early returns for different states
   if (loading) {
     return (
-      <div className={containerClassName}>
-        <div className="w-full mx-auto mt-4 px-2 py-4">
-          <div className="flex items-center gap-2 mb-4 animate-pulse">
-            <div className="w-40 h-6 bg-neutral-300 rounded" />
-            <div className="w-4 h-6 bg-neutral-300 rounded" />
-            <div className="w-16 h-6 bg-neutral-300 rounded" />
-            <div className="w-4 h-6 bg-neutral-300 rounded" />
-            <div className="w-32 h-6 bg-neutral-300 rounded" />
-          </div>
-          <div className="flex gap-4 mb-6 animate-pulse">
-            <div className="flex gap-4 border-b border-neutral-300 w-fit">
-              {STEPS.map((_, i) => (
-                <div key={i} className="w-24 h-10 bg-neutral-300 rounded-t" />
-              ))}
-            </div>
-          </div>
-          <div className="flex justify-center items-center w-full">
-            <JobDetailsSkeleton />
-          </div>
-        </div>
-      </div>
+      <Suspense fallback={<JobDetailsSkeleton />}>
+        <JobDetailsSkeleton />
+      </Suspense>
     );
   }
 

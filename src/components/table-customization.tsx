@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { BiCheck } from 'react-icons/bi';
+import React, { useState, useRef, useEffect } from "react";
+import { BiCheck } from "react-icons/bi";
 import { MdAddCircleOutline } from "react-icons/md";
-import { FiSearch, FiX } from 'react-icons/fi';
+import { FiSearch, FiX } from "react-icons/fi";
 
 export interface TableColumn {
   key: string;
@@ -21,7 +21,7 @@ const TableCustomization: React.FC<TableCustomizationProps> = ({
   onColumnsUpdate,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [tempColumns, setTempColumns] = useState<TableColumn[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -34,20 +34,23 @@ const TableCustomization: React.FC<TableCustomizationProps> = ({
   }, [isOpen, columns]);
 
   // Filter columns based on search term
-  const filteredColumns = tempColumns.filter(column =>
+  const filteredColumns = tempColumns.filter((column) =>
     column.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Focus search input when dropdown opens
@@ -60,18 +63,16 @@ const TableCustomization: React.FC<TableCustomizationProps> = ({
   }, [isOpen]);
 
   const handleToggle = (columnKey: string) => {
-    setTempColumns(prev => 
-      prev.map(col => 
-        col.key === columnKey 
-          ? { ...col, visible: !col.visible }
-          : col
+    setTempColumns((prev) =>
+      prev.map((col) =>
+        col.key === columnKey ? { ...col, visible: !col.visible } : col
       )
     );
   };
 
   const handleClose = () => {
     setIsOpen(false);
-    setSearchTerm(''); // Clear search when closing
+    setSearchTerm(""); // Clear search when closing
     setTempColumns([]); // Reset temp columns
   };
 
@@ -85,13 +86,13 @@ const TableCustomization: React.FC<TableCustomizationProps> = ({
       onColumnsUpdate(tempColumns);
     } else {
       // Fallback: Apply changes sequentially (less efficient but maintains compatibility)
-      const changedColumns = tempColumns.filter(tempCol => {
-        const originalCol = columns.find(col => col.key === tempCol.key);
+      const changedColumns = tempColumns.filter((tempCol) => {
+        const originalCol = columns.find((col) => col.key === tempCol.key);
         return originalCol && originalCol.visible !== tempCol.visible;
       });
-      
+
       // Apply changes one by one
-      changedColumns.forEach(changedCol => {
+      changedColumns.forEach((changedCol) => {
         onColumnToggle(changedCol.key);
       });
     }
@@ -99,7 +100,7 @@ const TableCustomization: React.FC<TableCustomizationProps> = ({
   };
 
   const clearSearch = () => {
-    setSearchTerm('');
+    setSearchTerm("");
     searchInputRef.current?.focus();
   };
 
@@ -110,20 +111,22 @@ const TableCustomization: React.FC<TableCustomizationProps> = ({
         className="flex item-center text-neutral-700 rounded-full hover:text-neutral-900 transition-colors focus:outline-none cursor-pointer"
         aria-label="Customize table columns"
       >
-        <MdAddCircleOutline className='w-8 h-8'/>
+        <MdAddCircleOutline className="w-8 h-8" />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg z-50 overflow-hidden">
           {/* Header */}
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="px-4 py-3 border-b border-neutral-200 bg-neutral-50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-lg font-semibold text-gray-900">Add Column</span>
+                <span className="text-lg font-semibold text-neutral-900">
+                  Add Column
+                </span>
               </div>
               <button
                 onClick={handleClose}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-neutral-500 hover:text-neutral-700 transition-colors"
                 aria-label="Close"
               >
                 <FiX className="w-5 h-5" />
@@ -132,10 +135,10 @@ const TableCustomization: React.FC<TableCustomizationProps> = ({
           </div>
 
           {/* Search Bar */}
-          <div className="px-4 py-3 border-b border-gray-200">
+          <div className="px-4 py-3 border-b border-neutral-200">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiSearch className="h-4 w-4 text-gray-400" />
+                <FiSearch className="h-4 w-4 text-neutral-400" />
               </div>
               <input
                 ref={searchInputRef}
@@ -143,14 +146,14 @@ const TableCustomization: React.FC<TableCustomizationProps> = ({
                 placeholder="Search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-10 py-2.5 bg-[#E5E6E8] border-0 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                className="block w-full pl-10 pr-10 py-2.5 bg-[#E5E6E8] border-0 rounded-lg text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
               {searchTerm && (
                 <button
                   onClick={clearSearch}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
-                  <FiX className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                  <FiX className="h-4 w-4 text-neutral-400 hover:text-neutral-600" />
                 </button>
               )}
             </div>
@@ -162,7 +165,7 @@ const TableCustomization: React.FC<TableCustomizationProps> = ({
               filteredColumns.map((column) => (
                 <label
                   key={column.key}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors cursor-pointer"
                 >
                   <div className="relative">
                     <input
@@ -171,41 +174,48 @@ const TableCustomization: React.FC<TableCustomizationProps> = ({
                       onChange={() => handleToggle(column.key)}
                       className="sr-only"
                     />
-                    <div className={`
+                    <div
+                      className={`
                       w-5 h-5 border-2 rounded transition-all duration-200
-                      ${column.visible
-                        ? 'bg-[#359A57] border-[#359A57] hover:border-[#2a7c45]'
-                        : 'border-gray-300'
+                      ${
+                        column.visible
+                          ? "bg-[#359A57] border-[#359A57] hover:border-[#2a7c45]"
+                          : "border-neutral-300"
                       }
-                    `}>
+                    `}
+                    >
                       {column.visible && (
                         <BiCheck className="w-4 h-4 text-white absolute" />
                       )}
                     </div>
                   </div>
-                                
+
                   <div className="flex items-center gap-2 flex-1">
-                    <span className={`text-sm ${
-                      column.visible ? 'font-medium text-gray-900' : 'text-gray-600'
-                    }`}>
+                    <span
+                      className={`text-sm ${
+                        column.visible
+                          ? "font-medium text-neutral-900"
+                          : "text-neutral-600"
+                      }`}
+                    >
                       {column.label}
                     </span>
                   </div>
                 </label>
               ))
             ) : (
-              <div className="px-4 py-8 text-center text-gray-500 text-sm">
+              <div className="px-4 py-8 text-center text-neutral-500 text-sm">
                 No columns found matching &quot;{searchTerm}&quot;
               </div>
             )}
           </div>
 
           {/* Footer with Action Buttons */}
-          <div className="px-4 py-3 border-t border-gray-200">
+          <div className="px-4 py-3 border-t border-neutral-200">
             <div className="flex items-center justify-end gap-2">
               <button
                 onClick={handleCancel}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                className="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-800 font-medium border border-neutral-300 rounded-lg hover:bg-neutral-100 transition-colors"
               >
                 Cancel
               </button>

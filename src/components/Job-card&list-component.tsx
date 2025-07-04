@@ -93,7 +93,7 @@ const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
   }, []);
 
   const getStatusBadge = useCallback((status?: string) => {
-    if (!status) return <span className="text-gray-500">—</span>;
+    if (!status) return <span className="text-neutral-500">—</span>;
 
     const statusStyles = {
       active: "bg-green-100 text-green-800 border-green-200",
@@ -103,7 +103,7 @@ const JobListComponent = ({ jobsFromStore }: { jobsFromStore: Job[] }) => {
 
     const style =
       statusStyles[status.toLowerCase() as keyof typeof statusStyles] ||
-      "bg-gray-100 text-gray-800 border-gray-200";
+      "bg-neutral-100 text-neutral-800 border-neutral-200";
 
     return (
       <span
@@ -253,7 +253,7 @@ const JobCard = ({ job }: { job: JobCardProps }) => {
   return (
     <div
       onClick={handleCardClick}
-      className="bg-white rounded-2xl shadow-sm p-3 hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col w-64"
+      className="bg-white rounded-2xl shadow-sm p-3 hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col min-w-64"
     >
       <div className="flex items-start space-x-4">
         <div className="flex-shrink-0">
