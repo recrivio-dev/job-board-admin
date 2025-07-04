@@ -546,6 +546,7 @@ export type Database = {
           p_date_from?: string
           p_date_to?: string
           p_job_id?: string
+          p_search_term?: string
         }
         Returns: Json
       }

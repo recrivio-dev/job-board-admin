@@ -103,16 +103,21 @@ export interface JobAccessControl {
 
 // Job filters
 export interface JobFilters {
-  status?: string;
-  location?: string;
-  company?: string;
-  jobType?: string;
+  status?: string | string[]; // Support both single and multi-select
+  location?: string | string[]; // Support both single and multi-select
+  company?: string | string[]; // Support both single and multi-select
+  jobType?: string | string[]; // Support both single and multi-select
   experienceLevel?: string;
   salaryRange?: {
     min: number;
     max: number;
   };
+  experienceRange?: {
+    min: number;
+    max: number;
+  };
   accessibleOnly?: boolean;
+  searchTerm?: string; // Global search term
 }
 
 interface JobState {
@@ -190,6 +195,35 @@ const transformRawJob = (rawJob: RawJob): Job => ({
   updated_at: rawJob.updated_at,
 });
 
+// Helper functions to parse experience levels safely
+const parseExperienceMin = (experienceLevel: string): number | undefined => {
+  try {
+    if (experienceLevel === "8+") return 8;
+    const parts = experienceLevel.split('-');
+    if (parts.length >= 1) {
+      const min = parseInt(parts[0]);
+      return isNaN(min) ? undefined : min;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const parseExperienceMax = (experienceLevel: string): number | undefined => {
+  try {
+    if (experienceLevel === "8+") return 999; // Large number for "8+"
+    const parts = experienceLevel.split('-');
+    if (parts.length >= 2) {
+      const max = parseInt(parts[1]);
+      return isNaN(max) ? undefined : max;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 // Type definition for RPC response
 interface FetchJobsRPCResponse {
   jobs: Job[];
@@ -252,20 +286,30 @@ export const fetchJobs = createAsyncThunk(
       }
 
       // Call the RPC function
+      // Helper function to handle array or single value filters
+      const prepareFilterValue = (filter: string | string[] | undefined): string | undefined => {
+        if (!filter) return undefined;
+        if (Array.isArray(filter)) {
+          // For now, take the first value if it's an array (backend doesn't support arrays yet)
+          return filter.length > 0 ? filter[0] : undefined;
+        }
+        return filter;
+      };
+
       const { data, error } = await supabase.rpc("fetch_jobs_with_access", {
         p_user_id: userId,
         p_user_role: userRole,
         p_organization_id: organizationId,
         p_page: page,
         p_limit: limit,
-        p_status: filters.status || undefined,
-        p_location: filters.location || undefined,
-        p_company: filters.company || undefined,
-        p_job_type: filters.jobType || undefined,
+        p_status: prepareFilterValue(filters.status),
+        p_location: prepareFilterValue(filters.location),
+        p_company: prepareFilterValue(filters.company),
+        p_job_type: prepareFilterValue(filters.jobType),
         p_salary_min: filters.salaryRange?.min || undefined,
         p_salary_max: filters.salaryRange?.max || undefined,
-        p_experience_min: filters.experienceLevel ? parseInt(filters.experienceLevel.split('-')[0]) : undefined,
-        p_experience_max: filters.experienceLevel ? parseInt(filters.experienceLevel.split('-')[1]) : undefined,
+        p_experience_min: filters.experienceLevel ? parseExperienceMin(filters.experienceLevel) : (filters.experienceRange?.min || undefined),
+        p_experience_max: filters.experienceLevel ? parseExperienceMax(filters.experienceLevel) : (filters.experienceRange?.max || undefined),
       });
 
       if (error) {
@@ -382,9 +426,13 @@ export const fetchFilterOptions = createAsyncThunk(
       const uniqueCompanies = Array.from(new Set((data.companies || []))).sort();
       const uniqueLocations = Array.from(new Set((data.locations || []))).sort();
 
+      // Additional deduplication step
+      const deduplicatedCompanies = uniqueCompanies.filter((company, index, self) => self.indexOf(company) === index);
+      const deduplicatedLocations = uniqueLocations.filter((location, index, self) => self.indexOf(location) === index);
+
       return {
-        companies: uniqueCompanies,
-        locations: uniqueLocations,
+        companies: deduplicatedCompanies,
+        locations: deduplicatedLocations,
         statuses: defaultStatuses,
         cached: false,
       };

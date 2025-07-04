@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { HiOutlineArrowCircleLeft } from "react-icons/hi";
 import Image from "next/image";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import type { RootState } from "@/store/store";
@@ -19,6 +18,7 @@ import { initializeAuth } from "@/store/features/userSlice";
 import type { RawJob } from "@/store/features/jobSlice";
 import type { FormErrors, JobFormData } from "@/types/custom";
 import { computeChecksum, renderError } from "../add-job/utils";
+import Breadcrumb from "@/components/Breadcrumb";
 
 const steps = ["Company", "Job Details", "Job Description"];
 
@@ -396,24 +396,9 @@ export default function EditJob() {
     >
       <div className="w-full mx-auto mt-4 px-2">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1 mb-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center text-neutral-500 hover:text-neutral-700 font-medium text-sm"
-          >
-            <HiOutlineArrowCircleLeft className="w-6 h-6 mr-1" />
-            <span>Back to Dashboard</span>
-          </Link>
-          <span className="text-sm text-neutral-500 font-light">/</span>
-          <Link
-            href="/jobs"
-            className="text-neutral-500 hover:text-neutral-700 font-medium text-sm"
-          >
-            Jobs
-          </Link>
-          <span className="text-sm text-neutral-500 font-light">/</span>
-          <span className="text-sm font-medium text-neutral-900">Edit Job</span>
-        </div>
+        <Breadcrumb
+          segments={[{ label: "Jobs", href: "/jobs" }, { label: "Edit Job" }]}
+        />
 
         {/* Header */}
         <h1 className="text-xl font-semibold mb-1">Edit Job</h1>

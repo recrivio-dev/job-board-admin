@@ -1,13 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { HiOutlineArrowCircleLeft } from "react-icons/hi";
 import Image from "next/image";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import type { RootState } from "@/store/store";
 import { FiUpload } from "react-icons/fi";
 import { FaArrowRight } from "react-icons/fa6";
-import Link from "next/link";
 import LexicalEditor from "@/components/LexicalEditor";
 import { getSignedURL } from "@/app/jobs/actions";
 import { createJob } from "@/store/features/jobSlice";
@@ -15,6 +13,7 @@ import { initializeAuth } from "@/store/features/userSlice";
 import type { RawJob } from "@/store/features/jobSlice";
 import type { FormErrors, JobFormData } from "@/types/custom";
 import { computeChecksum, renderError } from "./utils";
+import Breadcrumb from "@/components/Breadcrumb";
 
 const steps = ["Company", "Job Details", "Job Description"];
 
@@ -301,26 +300,12 @@ export default function AddJob() {
     >
       <div className="w-full mx-auto mt-4 px-2">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1 mb-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center text-neutral-500 hover:text-neutral-700 font-medium text-sm"
-          >
-            <HiOutlineArrowCircleLeft className="w-5 h-5 mr-1" />
-            <span>Back to Dashboard</span>
-          </Link>
-          <span className="text-sm text-neutral-500 font-light">/</span>
-          <Link
-            href="/jobs"
-            className="text-neutral-500 hover:text-neutral-700 font-medium text-sm"
-          >
-            Jobs
-          </Link>
-          <span className="text-sm text-neutral-500 font-light">/</span>
-          <span className="text-sm font-medium text-neutral-900">
-            Add a New Job
-          </span>
-        </div>
+        <Breadcrumb
+          segments={[
+            { label: "Jobs", href: "/jobs" },
+            { label: "Add a New Job" },
+          ]}
+        />
 
         {/* Header */}
         <h1 className="text-xl font-semibold mb-1">Add a New Job</h1>
@@ -370,9 +355,7 @@ export default function AddJob() {
               {/* Step 0: Company */}
               {step === 0 && (
                 <div>
-                  <label className="block font-medium mb-2">
-                    Company Logo
-                  </label>
+                  <label className="block font-medium mb-2">Company Logo</label>
                   <label
                     className={`flex flex-col items-center justify-center rounded-lg p-6 my-8 cursor-pointer transition max-w-sm mx-auto ${
                       errors.companyLogo

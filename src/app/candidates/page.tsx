@@ -1,27 +1,56 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { IoSearchSharp } from "react-icons/io5";
-import { HiOutlineArrowCircleLeft } from "react-icons/hi";
-import Link from "next/link";
 import CandidatesList from "@/components/candidates_list_component";
 import { RootState } from "@/store/store";
 import {
-  // fetchJobApplicationsWithAccess,
+  fetchJobApplicationsWithAccess,
   setUserContext,
   clearError,
   selectCandidatesError,
   selectCandidatesLoading,
   selectUserContext,
+  selectFilters,
+  selectPagination,
+  setFilters,
   UserContext,
-  // selectFilters,
+  CandidateFilters,
 } from "@/store/features/candidatesSlice";
 
 import { initializeAuth } from "@/store/features/userSlice";
+import { ErrorMessage } from "@/components/errorMessage";
 
 import { User } from "@supabase/supabase-js";
 import { Organization, UserRole } from "@/types/custom";
+import Breadcrumb from "@/components/Breadcrumb";
+
+// Debounce utility function
+function debounce<T extends (...args: any[]) => unknown>(
+  func: T,
+  wait: number
+): T & { cancel: () => void } {
+  let timeout: NodeJS.Timeout | null = null;
+  
+  const debounced = (...args: Parameters<T>) => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    timeout = setTimeout(() => {
+      func(...args);
+    }, wait);
+  };
+  
+  debounced.cancel = () => {
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+  };
+  
+  return debounced as T & { cancel: () => void };
+}
 
 // Loading component for better UX
 const LoadingSpinner = ({ message = "Loading..." }: { message?: string }) => (
@@ -68,16 +97,14 @@ const CandidatesContent = ({
   const error = useAppSelector(selectCandidatesError);
   const loading = useAppSelector(selectCandidatesLoading);
   const userContext = useAppSelector(selectUserContext);
-  // const filters = useAppSelector(selectFilters);
+  const filters = useAppSelector(selectFilters);
+  const pagination = useAppSelector(selectPagination);
+
+  // Local state for search
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Memoize user context to prevent unnecessary re-renders
   const memoizedUserContext = useMemo((): UserContext | null => {
-    console.log("Memoizing user context:", {
-      userId: user?.id,
-      organizationId: organization?.id,
-      roles: roles,
-    });
-
     if (!user?.id || !organization?.id || !roles) {
       return null;
     }
@@ -85,7 +112,7 @@ const CandidatesContent = ({
     return {
       userId: user.id,
       organizationId: organization.id,
-      roles: roles.map(role => role.role.name).join(', '),
+      roles: roles.map((role) => role.role.name).join(", "),
     };
   }, [user?.id, organization?.id, roles]);
 
@@ -96,18 +123,6 @@ const CandidatesContent = ({
     }
   }, [memoizedUserContext, userContext, dispatch]);
 
-  // Load candidates when user context is available
-  // useEffect(() => {
-  //   if (memoizedUserContext) {
-  //     dispatch(
-  //       fetchJobApplicationsWithAccess({
-  //         filters: filters, // You can add default filters here if needed
-  //         userContext: memoizedUserContext,
-  //       })
-  //     );
-  //   }
-  // }, [dispatch, memoizedUserContext, filters]);
-
   // Clear error when component unmounts
   useEffect(() => {
     return () => {
@@ -117,31 +132,74 @@ const CandidatesContent = ({
     };
   }, [dispatch, error]);
 
+  // Stable debounced search function using useRef
+  const debouncedSearchRef = useRef<((searchValue: string) => void) | null>(null);
+
+  // Initialize debounced function only once
+  useEffect(() => {
+    debouncedSearchRef.current = debounce((searchValue: string) => {
+      if (!memoizedUserContext) return;
+
+      const newFilters: Partial<CandidateFilters> = {
+        ...filters,
+        searchTerm: searchValue || undefined,
+      };
+
+      // Remove undefined values
+      Object.keys(newFilters).forEach(key => {
+        if (newFilters[key as keyof CandidateFilters] === undefined) {
+          delete newFilters[key as keyof CandidateFilters];
+        }
+      });
+
+      // Update filters
+      dispatch(setFilters(newFilters));
+
+      // Fetch candidates with new search term
+      dispatch(
+        fetchJobApplicationsWithAccess({
+          filters: newFilters,
+          userContext: memoizedUserContext,
+          page: 1, // Reset to first page on search
+          limit: pagination.candidatesPerPage,
+        })
+      );
+    }, 500);
+
+    // The timeout will be automatically cleared when component unmounts
+  }, [dispatch, filters, memoizedUserContext, pagination.candidatesPerPage]);
+
+  // Search handler that updates local state immediately and triggers debounced search
+  const handleSearchChange = useCallback((searchValue: string) => {
+    setSearchTerm(searchValue); // Update local state immediately for UI responsiveness
+    if (debouncedSearchRef.current) {
+      debouncedSearchRef.current(searchValue);
+    }
+  }, []); // Empty dependency array since we're using ref
+
+  // Memoize the input change handler to prevent unnecessary re-renders
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleSearchChange(e.target.value);
+  }, [handleSearchChange]);
+
+  // Memoize the main container className to prevent recalculation
+  const containerClassName = useMemo(() => 
+    `transition-all duration-300 h-full px-3 md:px-6 ${
+      collapsed ? "md:ml-20" : "md:ml-60"
+    } pt-18`,
+    [collapsed]
+  );
+
+  // Memoize breadcrumb segments to prevent recreation
+  const breadcrumbSegments = useMemo(() => [{ label: "Candidates" }], []);
+
   return (
-    <div
-      className={`transition-all duration-300 h-full px-3 md:px-6 ${
-        collapsed ? "md:ml-20" : "md:ml-60"
-      } pt-18`}
-    >
+    <div className={containerClassName}>
       <div className="w-full mx-auto px-0 md:px-4 py-4 md:py-2">
         {/* Back Navigation and Title */}
-        <div className="flex items-center gap-1 mb-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center text-neutral-500 hover:text-neutral-700 font-medium text-sm transition-colors"
-          >
-            <HiOutlineArrowCircleLeft className="w-6 h-6 mr-1" />
-            <span>Back to Dashboard</span>
-          </Link>
-          <span className="text-sm text-neutral-500 font-light">
-            /
-          </span>
-          <span className="text-sm font-medium text-neutral-900">
-            Candidates
-          </span>
-        </div>
+        <Breadcrumb segments={breadcrumbSegments} />
 
-        {/* Header with Role-based Content */}
+        {/* Header */}
         <div className="flex items-center flex-wrap justify-between mb-10">
           <div>
             <div className="flex items-center gap-3">
@@ -150,21 +208,13 @@ const CandidatesContent = ({
               </h1>
             </div>
 
-              <p className="text-sm text-neutral-500">
-                Manage all candidates and their applications with ease.
-              </p>
-
-              {/* Organization and role info */}
-              {/* <div className="flex flex-wrap gap-4 text-xs text-neutral-500 mt-1">
-                <span>
-                  Organization: {organization.name || "Current Organization"}
-                </span>
-                <span>Role: {primaryRole}</span>
-              </div> */}
+            <p className="text-sm text-neutral-500">
+              Manage all candidates and their applications with ease.
+            </p>
           </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Global Search Bar */}
         <div className="w-full md:w-125 mb-8">
           <div className="relative">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -172,7 +222,9 @@ const CandidatesContent = ({
             </span>
             <input
               type="text"
-              placeholder="Search"
+              placeholder="Search candidates"
+              value={searchTerm}
+              onChange={handleInputChange}
               className="block w-full pl-10 pr-4 py-2 rounded-lg bg-neutral-200 text-neutral-700 text-sm font-medium placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
               aria-label="Search candidates"
             />
@@ -181,37 +233,9 @@ const CandidatesContent = ({
 
         {/* Error Display */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-red-400"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  Error loading candidates
-                </h3>
-                <p className="text-sm text-red-700 mt-1">{error}</p>
-              </div>
-              <div className="ml-auto pl-3">
-                <button
-                  onClick={() => dispatch(clearError())}
-                  className="text-red-800 hover:text-red-900 text-sm underline"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-          </div>
+         <ErrorMessage
+            message={`Error loading candidates: ${error}`}
+          />
         )}
 
         {/* Candidates List Component */}
@@ -223,11 +247,94 @@ const CandidatesContent = ({
 
         {/* Loading State */}
         {loading && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
-              <p className="text-blue-800 text-sm">Loading candidates...</p>
-            </div>
+          <div className="animate-pulse">
+            <table className="min-w-full divide-y divide-neutral-200">
+              <thead className="bg-neutral-50">
+                <tr>
+                  {/* Checkbox column skeleton */}
+                  <th className="sticky left-0 z-20 bg-neutral-50 shadow-[1px_0_0_0_#e5e7eb] px-6 py-3" style={{ width: "48px", minWidth: "48px" }}>
+                    <div className="w-4 h-4 bg-neutral-300 rounded"></div>
+                  </th>
+                  {/* ID column skeleton */}
+                  <th className="px-6 py-3">
+                    <div className="h-3 bg-neutral-300 rounded w-8"></div>
+                  </th>
+                  {/* Applied Date column skeleton */}
+                  <th className="px-6 py-3">
+                    <div className="h-3 bg-neutral-300 rounded w-20"></div>
+                  </th>
+                  {/* Candidate Name column skeleton */}
+                  <th className="px-6 py-3">
+                    <div className="h-3 bg-neutral-300 rounded w-28"></div>
+                  </th>
+                  {/* Job column skeleton */}
+                  <th className="px-6 py-3">
+                    <div className="h-3 bg-neutral-300 rounded w-12"></div>
+                  </th>
+                  {/* Company column skeleton */}
+                  <th className="px-6 py-3">
+                    <div className="h-3 bg-neutral-300 rounded w-16"></div>
+                  </th>
+                  {/* Location column skeleton */}
+                  <th className="px-6 py-3">
+                    <div className="h-3 bg-neutral-300 rounded w-16"></div>
+                  </th>
+                  {/* Status column skeleton */}
+                  <th className="sticky z-20 bg-neutral-50 shadow-[-1px_0_0_0_#e5e7eb] px-6 py-3 text-center" style={{ width: "140px", minWidth: "140px", right: "120px" }}>
+                    <div className="h-3 bg-neutral-300 rounded w-12 mx-auto"></div>
+                  </th>
+                  {/* Actions column skeleton */}
+                  <th className="sticky right-0 z-20 bg-neutral-50 shadow-[-1px_0_0_0_#e5e7eb] px-6 py-3" style={{ width: "120px", minWidth: "120px" }}>
+                    <div className="h-3 bg-neutral-300 rounded w-12"></div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-neutral-200">
+                {[...Array(5)].map((_, index) => (
+                  <tr key={index}>
+                    {/* Checkbox skeleton */}
+                    <td className="sticky left-0 z-10 bg-white shadow-[1px_0_0_0_#e5e7eb] px-6 py-4" style={{ width: "48px", minWidth: "48px" }}>
+                      <div className="w-4 h-4 bg-neutral-200 rounded"></div>
+                    </td>
+                    {/* ID skeleton */}
+                    <td className="px-6 py-4">
+                      <div className="h-4 bg-neutral-200 rounded w-12"></div>
+                    </td>
+                    {/* Applied Date skeleton */}
+                    <td className="px-6 py-4">
+                      <div className="h-4 bg-neutral-200 rounded w-20"></div>
+                    </td>
+                    {/* Candidate Name skeleton */}
+                    <td className="px-6 py-4">
+                      <div className="space-y-1">
+                        <div className="h-4 bg-neutral-200 rounded w-32"></div>
+                        <div className="h-3 bg-neutral-200 rounded w-28"></div>
+                      </div>
+                    </td>
+                    {/* Job skeleton */}
+                    <td className="px-6 py-4">
+                      <div className="h-4 bg-neutral-200 rounded w-24"></div>
+                    </td>
+                    {/* Company skeleton */}
+                    <td className="px-6 py-4">
+                      <div className="h-4 bg-neutral-200 rounded w-20"></div>
+                    </td>
+                    {/* Location skeleton */}
+                    <td className="px-6 py-4">
+                      <div className="h-4 bg-neutral-200 rounded w-24"></div>
+                    </td>
+                    {/* Status skeleton */}
+                    <td className="sticky z-10 bg-white shadow-[-1px_0_0_0_#e5e7eb] px-6 py-4 text-center" style={{ width: "140px", minWidth: "140px", right: "120px" }}>
+                      <div className="h-6 bg-neutral-200 rounded-full w-16 mx-auto"></div>
+                    </td>
+                    {/* Actions skeleton */}
+                    <td className="sticky right-0 z-10 bg-white shadow-[-1px_0_0_0_#e5e7eb] px-6 py-4" style={{ width: "120px", minWidth: "120px" }}>
+                      <div className="h-8 bg-neutral-200 rounded w-12"></div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

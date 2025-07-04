@@ -169,6 +169,7 @@ export interface CandidateFilters {
   jobId?: string;
   sortBy?: 'name' | 'application_status' | 'experience_years' | 'company_name' | 'applied_date' | 'created_at' | 'updated_at' | 'current_ctc' | 'expected_ctc';
   sortOrder?: 'asc' | 'desc';
+  searchTerm?: string; // Global search term
 }
 // Enhanced async thunk with role-based access control
 export const fetchJobApplicationsWithAccess = createAsyncThunk(
@@ -243,7 +244,9 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
         p_max_experience: filters.maxExperience || undefined,
         p_date_from: filters.dateFrom || undefined,
         p_date_to: filters.dateTo || undefined,
-        p_job_id: filters.jobId || undefined
+        p_job_id: filters.jobId || undefined,
+        // Add search term parameter
+        p_search_term: filters.searchTerm || undefined
       };
 
       // Call the PostgreSQL function using Supabase RPC

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { HiOutlineArrowCircleLeft } from "react-icons/hi";
 import { JobStatus, JobMetadata } from "@/types/custom";
 import { JOB_STATUSES, STEPS } from "@/types/custom";
 import { FaCaretDown, FaRegTrashAlt } from "react-icons/fa";
@@ -8,6 +7,7 @@ import { LiaRupeeSignSolid } from "react-icons/lia";
 import { GrLocation } from "react-icons/gr";
 import { MdOutlinePeopleAlt } from "react-icons/md";
 import Image from "next/image";
+import BreadcrumbComponent from "@/components/Breadcrumb";
 
 export const JobDetailsSkeleton: React.FC = () => (
   <div className="max-w-5xl w-full pb-20" data-testid="job-details-skeleton">
@@ -141,27 +141,13 @@ export const JobNotFound: React.FC<{ onGoBack: () => void }> = ({
 );
 
 // Breadcrumb Component
-export const Breadcrumb: React.FC<{ jobTitle: string }> = ({ jobTitle }) => (
-  <div className="flex items-center gap-1 mb-4" data-testid="breadcrumb">
-    <Link
-      href="/dashboard"
-      className="flex items-center text-neutral-500 hover:text-neutral-700 font-medium md:text-base text-sm transition-colors"
-    >
-      <HiOutlineArrowCircleLeft className="w-6 h-6 mr-1" />
-      <span>Back to Dashboard</span>
-    </Link>
-    <span className="text-base text-neutral-500 font-light">/</span>
-    <Link
-      href="/jobs"
-      className="text-neutral-500 hover:text-neutral-700 font-medium md:text-base text-sm transition-colors"
-    >
-      Jobs
-    </Link>
-    <span className="text-base text-neutral-500 font-light">/</span>
-    <span className="font-medium text-neutral-900 md:text-base text-sm truncate">
-      {jobTitle || "Job Details"}
-    </span>
-  </div>
+export const Breadcrumb = ({ jobTitle }: { jobTitle: string }) => (
+  <BreadcrumbComponent
+    segments={[
+      { label: "Jobs", href: "/jobs" },
+      { label: jobTitle || "Job Details" },
+    ]}
+  />
 );
 
 // Tab Navigation Component
@@ -336,10 +322,10 @@ export const DeleteConfirmationModal: React.FC<{
 };
 
 // Job Header Component
-export const JobHeader: React.FC<{ jobMetadata: JobMetadata; jobId?: string }> = ({
-  jobMetadata,
-  jobId,
-}) => (
+export const JobHeader: React.FC<{
+  jobMetadata: JobMetadata;
+  jobId?: string;
+}> = ({ jobMetadata, jobId }) => (
   <div className="flex gap-6 items-start" data-testid="job-header">
     <div className="flex-shrink-0">
       <div className="w-20 h-20 rounded-2xl overflow-hidden bg-neutral-100 border-2 border-neutral-200 shadow-sm">
@@ -396,8 +382,11 @@ export const JobHeader: React.FC<{ jobMetadata: JobMetadata; jobId?: string }> =
         <div className="flex-shrink-0 ml-4">
           <div className="text-right">
             <p className="text-sm text-neutral-600">Job ID</p>
-            <p className="font-mono text-sm text-neutral-900 truncate max-w-[120px]" title={jobId}>
-              {jobId ? `#${jobId.slice(-8).toUpperCase()}` : '#--------'}
+            <p
+              className="font-mono text-sm text-neutral-900 truncate max-w-[120px]"
+              title={jobId}
+            >
+              {jobId ? `#${jobId.slice(-8).toUpperCase()}` : "#--------"}
             </p>
           </div>
         </div>

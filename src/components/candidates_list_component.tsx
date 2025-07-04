@@ -28,14 +28,14 @@ import CandidatesDetailsOverlay from "./candidates-details-overlay";
 import Pagination from "./pagination";
 import FiltersModal from "./filters-modal";
 import TableCustomization, { TableColumn } from "./table-customization";
+import { ErrorMessage } from "./errorMessage";
 
 interface InitializationState {
   initialized: boolean;
   error: string | null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function debounce<T extends (...args: any[]) => any>(
+function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): ((...args: Parameters<T>) => void) & { cancel: () => void } {
@@ -70,47 +70,6 @@ interface CandidatesListProps {
   className?: string;
   jobId?: string | null;
   onCandidateClick?: (candidate: CandidateWithApplication) => void;
-}
-
-// Error component
-function ErrorMessage({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry?: () => void;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="text-red-600 mb-4">
-        <svg
-          className="w-12 h-12 mx-auto"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      </div>
-      <h3 className="text-lg font-semibold text-neutral-900 mb-2">
-        Something went wrong
-      </h3>
-      <p className="text-neutral-600 mb-4">{message}</p>
-      {onRetry && (
-        <button
-          onClick={onRetry}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Try Again
-        </button>
-      )}
-    </div>
-  );
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -157,7 +116,7 @@ export default function CandidatesList({
   const filters = useAppSelector(selectFilters);
   const userContext = useAppSelector(selectUserContext);
   const filterOptions = useAppSelector(selectFilterOptions);
-  const candidates = useAppSelector(state => state.candidates.candidates) || [];
+  const candidates = useAppSelector(state => state.candidates.candidates);
 
   // Local state for overlay
   const [candidatesDetailsOverlay, setCandidatesDetailsOverlay] = useState<{
@@ -211,7 +170,6 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
   useEffect(() => {
     const initializeData = async () => {
       if (initState.initialized || !userContext) return;
-
       try {
         setInitState((prev) => ({ ...prev, error: null }));
 
@@ -223,7 +181,7 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
         // Then fetch candidates
         await dispatch(fetchJobApplicationsWithAccess({
           page: 1,
-          limit: 50,
+          limit: pagination.candidatesPerPage,
           userContext,
           filters: {
             jobId: jobId || undefined, // Ensure jobId is handled correctly
@@ -317,6 +275,30 @@ const handleFilterChange = useCallback((filterType: string, value: string | stri
     newFilters.jobId = jobId; // Ensure jobId is included in filters
   }
 
+  if (filterType === "searchTerm") {
+    // For search, load all candidates to search across all data
+    newFilters.searchTerm = value as string;
+    dispatch(setFilters(newFilters));
+    
+    // Load all candidates when searching
+    if (value && (value as string).trim() !== "") {
+      dispatch(fetchJobApplicationsWithAccess({
+        filters: newFilters,
+        userContext,
+        page: 1,
+        limit: pagination.candidatesPerPage, // Load a large number to get all candidates for search
+      }));
+    } else {
+      // Reset to normal pagination when clearing search
+      dispatch(fetchJobApplicationsWithAccess({
+        filters: newFilters,
+        userContext,
+        page: 1,
+        limit: pagination.candidatesPerPage,
+      }));
+    }
+    return;
+  }
   if (filterType === "sortBy") {
     // Handle sort changes (single select)
     switch (value) {
@@ -717,11 +699,6 @@ const handleClearAllFilters = () => {
     debouncedFetchRef.current.cancel();
   }
 };
-
-  // const handleCloseExperienceFilter = useCallback(() => {
-  //   setTempFilters({ ...filters }); // Reset temp filters to current filters
-  // }, [filters]);
-
 
   // Table columns for GlobalStickyTable
   const columns = useMemo(() => {

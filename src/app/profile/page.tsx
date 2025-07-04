@@ -1,7 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import { HiOutlineArrowCircleLeft } from "react-icons/hi";
-import Link from "next/link";
 import Image from "next/image";
 import PhoneInput from "react-phone-number-input";
 import { parsePhoneNumber } from "react-phone-number-input";
@@ -16,6 +14,7 @@ import { updatePasswordAction } from "./actions"; // Add this import
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import Breadcrumb from "@/components/Breadcrumb";
 
 // Define the form schema using zod
 const profileSchema = z
@@ -252,19 +251,7 @@ export default function Profile() {
     >
       <div className="mt-4 px-2 py-4 ">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1 mb-4">
-          <Link
-            href="/dashboard"
-            className="flex items-center text-neutral-500 hover:text-neutral-700 font-medium text-base"
-          >
-            <HiOutlineArrowCircleLeft className="w-6 h-6 mr-1" />
-            <span>Back to Dashboard</span>
-          </Link>
-          <span className="text-base text-neutral-500 font-light">/</span>
-          <span className="text-base font-medium text-neutral-900">
-            Edit Profile
-          </span>
-        </div>
+        <Breadcrumb segments={[{ label: "Edit Profile" }]} />
 
         {/* Title & Description */}
         <div className="mb-4">
