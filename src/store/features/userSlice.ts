@@ -1,11 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { User } from "@supabase/supabase-js";
-import {
-  loginServerAction,
-  logoutServerAction,
-  getUserServerAction,
-} from "@/app/login/actions";
+import { loginServerAction, getUserServerAction } from "@/app/login/actions";
 import type { CompleteUserData, UserState } from "@/types/custom";
+import { createClient } from "@/utils/supabase/client";
 
 // Initial state
 const initialState: UserState = {
@@ -106,20 +103,24 @@ export const loginUser = createAsyncThunk(
 );
 
 export const logoutUser = createAsyncThunk(
-  "auth/logoutUser",
-  async (_, { rejectWithValue }) => {
+  "user/logoutUser",
+  async (_, { dispatch }) => {
     try {
-      const result = await logoutServerAction();
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut();
 
-      if (!result.success) {
-        return rejectWithValue(result.error || "Logout failed");
+      if (error) {
+        throw error;
       }
 
-      return null;
-    } catch (error) {
-      // Consider clearing local state even if server logout fails
-      console.warn("Logout failed, but clearing local state:", error);
-      return null; // Or you could still reject based on your needs
+      // Clear all Redux store data to prevent memory leaks
+      dispatch({ type: "RESET_STORE" });
+
+      return { success: true };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to logout";
+      throw new Error(errorMessage);
     }
   }
 );
@@ -192,6 +193,18 @@ const userSlice = createSlice({
     },
 
     clearUser: (state) => {
+      state.user = null;
+      state.profile = null;
+      state.organization = null;
+      state.roles = [];
+      state.completeUserData = null;
+      state.isAuthenticated = false;
+      state.loading = false;
+      state.error = null;
+    },
+
+    // Add aggressive cleanup action for memory management
+    resetAllData: (state) => {
       state.user = null;
       state.profile = null;
       state.organization = null;
@@ -296,7 +309,10 @@ const userSlice = createSlice({
       // Improved extraReducers for logout
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = typeof action.payload === "string" ? action.payload : String(action.payload);
+        state.error =
+          typeof action.payload === "string"
+            ? action.payload
+            : String(action.payload);
         // Clear local state regardless (more secure)
         state.user = null;
         state.profile = null;
@@ -327,6 +343,18 @@ const userSlice = createSlice({
           typeof action.payload === "string"
             ? action.payload
             : String(action.payload);
+      })
+
+      // Global reset action
+      .addCase("RESET_STORE", (state) => {
+        state.user = null;
+        state.profile = null;
+        state.organization = null;
+        state.roles = [];
+        state.completeUserData = null;
+        state.isAuthenticated = false;
+        state.loading = false;
+        state.error = null;
       });
   },
 });
@@ -335,6 +363,7 @@ export const {
   setUser,
   setCompleteUserData,
   clearUser,
+  resetAllData,
   clearError,
   updateProfile,
 } = userSlice.actions;
@@ -403,7 +432,7 @@ export const selectHasPermission =
       let currentValue:
         | boolean
         | Record<string, boolean | Record<string, boolean>> = userRole.role
-          .permissions as Record<string, boolean | Record<string, boolean>>;
+        .permissions as Record<string, boolean | Record<string, boolean>>;
       for (const path of permissionPath) {
         if (typeof currentValue !== "object" || currentValue === null)
           return false;

@@ -32,6 +32,11 @@ const store = configureStore({
     }),
 });
 
+// Add a global reset action
+export const resetStore = () => {
+  store.dispatch({ type: "RESET_STORE" });
+};
+
 // Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

@@ -21,6 +21,7 @@ import {
   CandidateWithApplication,
   deleteCandidateApplication,
   CandidateFilters,
+  clearCandidates,
 } from "@/store/features/candidatesSlice";
 import { TiArrowSortedDown } from "react-icons/ti";
 import GlobalStickyTable from "@/components/GlobalStickyTable";
@@ -40,7 +41,7 @@ function debounce<T extends (...args: never[]) => unknown>(
   wait: number
 ): ((...args: Parameters<T>) => void) & { cancel: () => void } {
   let timeout: NodeJS.Timeout | null = null;
-  
+
   const debouncedFunction = (...args: Parameters<T>) => {
     if (timeout) {
       clearTimeout(timeout);
@@ -50,7 +51,7 @@ function debounce<T extends (...args: never[]) => unknown>(
       func(...args);
     }, wait);
   };
-  
+
   // Add cleanup method
   debouncedFunction.cancel = () => {
     if (timeout) {
@@ -58,7 +59,7 @@ function debounce<T extends (...args: never[]) => unknown>(
       timeout = null;
     }
   };
-  
+
   return debouncedFunction;
 }
 
@@ -116,7 +117,7 @@ export default function CandidatesList({
   const filters = useAppSelector(selectFilters);
   const userContext = useAppSelector(selectUserContext);
   const filterOptions = useAppSelector(selectFilterOptions);
-  const candidates = useAppSelector(state => state.candidates.candidates);
+  const candidates = useAppSelector((state) => state.candidates.candidates);
 
   // Local state for overlay
   const [candidatesDetailsOverlay, setCandidatesDetailsOverlay] = useState<{
@@ -140,7 +141,6 @@ export default function CandidatesList({
     jobId: jobId || undefined, // Ensure jobId is handled correctly
   });
 
-
   // Table customization state
   const [tableColumns, setTableColumns] = useState<TableColumn[]>([
     { key: "id", label: "ID", visible: true },
@@ -152,7 +152,10 @@ export default function CandidatesList({
   ]);
 
   // Refs for cleanup
-const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void) & { cancel: () => void } | null>(null);
+  const debouncedFetchRef = useRef<
+    | (((newFilters: Record<string, unknown>) => void) & { cancel: () => void })
+    | null
+  >(null);
 
   //memoised filters
   const memoizedFilters = useMemo(() => {
@@ -164,16 +167,16 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
 
   // Load column preferences from localStorage on mount
   useEffect(() => {
-    const savedColumns = localStorage.getItem('candidates-table-columns');
+    const savedColumns = localStorage.getItem("candidates-table-columns");
     if (savedColumns) {
       try {
         const parsedColumns = JSON.parse(savedColumns);
         setTableColumns(parsedColumns);
       } catch (error) {
-        console.error('Failed to parse saved column preferences:', error);
+        console.error("Failed to parse saved column preferences:", error);
       }
     }
-  }, []);    
+  }, []);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -182,19 +185,23 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
         setInitState((prev) => ({ ...prev, error: null }));
 
         // Fetch filter options first (they're cached, so this is efficient)
-        await dispatch(fetchFilterOptions({
-          userContext,
-        })).unwrap();
+        await dispatch(
+          fetchFilterOptions({
+            userContext,
+          })
+        ).unwrap();
 
         // Then fetch candidates
-        await dispatch(fetchJobApplicationsWithAccess({
-          page: 1,
-          limit: pagination.candidatesPerPage,
-          userContext,
-          filters: {
-            ...memoizedFilters,
-          },
-        })).unwrap();
+        await dispatch(
+          fetchJobApplicationsWithAccess({
+            page: 1,
+            limit: pagination.candidatesPerPage,
+            userContext,
+            filters: {
+              ...memoizedFilters,
+            },
+          })
+        ).unwrap();
 
         setInitState({ initialized: true, error: null });
       } catch (err) {
@@ -206,63 +213,74 @@ const debouncedFetchRef = useRef<((newFilters: Record<string, unknown>) => void)
     };
 
     initializeData();
-  }, [dispatch, userContext, initState.initialized, jobId, memoizedFilters, pagination.candidatesPerPage]);
+  }, [
+    dispatch,
+    userContext,
+    initState.initialized,
+    jobId,
+    memoizedFilters,
+    pagination.candidatesPerPage,
+  ]);
 
-const getCurrentSortValue = () => {
-  const { sortBy, sortOrder } = tempFilters;
-  
-  if (sortBy === "applied_date" && sortOrder === "desc") return "date_desc";
-  if (sortBy === "applied_date" && sortOrder === "asc") return "date_asc";
-  if (sortBy === "name" && sortOrder === "asc") return "name_asc";
-  if (sortBy === "name" && sortOrder === "desc") return "name_desc";
-  
-  return "date_desc"; // default
-};
+  const getCurrentSortValue = () => {
+    const { sortBy, sortOrder } = tempFilters;
 
-const getCurrentSortValueFilter = () => {
-  const { sortBy, sortOrder } = filters;
-  
-  if (sortBy === "applied_date" && sortOrder === "desc") return "date_desc";
-  if (sortBy === "applied_date" && sortOrder === "asc") return "date_asc";
-  if (sortBy === "name" && sortOrder === "asc") return "name_asc";
-  if (sortBy === "name" && sortOrder === "desc") return "name_desc";
-  
-  return "date_desc"; // default
-};
+    if (sortBy === "applied_date" && sortOrder === "desc") return "date_desc";
+    if (sortBy === "applied_date" && sortOrder === "asc") return "date_asc";
+    if (sortBy === "name" && sortOrder === "asc") return "name_asc";
+    if (sortBy === "name" && sortOrder === "desc") return "name_desc";
 
-  // Create a stable debounced function
-const debouncedFetch = useMemo(() => {
-  const fetchWithFilters = async (newFilters: Record<string, unknown>) => {
-    if (!userContext) {
-      console.error("User context not available for filtering");
-      return;
-    }
-
-    try {
-      // Clean filters - remove undefined/null values
-      const cleanFilters = Object.entries(newFilters).reduce((acc, [key, value]) => {
-        if (value !== undefined && value !== null && value !== "") {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as Record<string, unknown>);
-
-      await dispatch(fetchJobApplicationsWithAccess({
-        filters: cleanFilters,
-        userContext,
-        page: 1, // Reset to first page when filtering
-      })).unwrap();
-
-      // Reset pagination to first page
-      dispatch(setCurrentPage(1));
-            
-    } catch (err) {
-      console.error("Failed to apply filter:", err);
-    }
+    return "date_desc"; // default
   };
 
-  return debounce(fetchWithFilters, 300);
-}, [dispatch, userContext]);
+  const getCurrentSortValueFilter = () => {
+    const { sortBy, sortOrder } = filters;
+
+    if (sortBy === "applied_date" && sortOrder === "desc") return "date_desc";
+    if (sortBy === "applied_date" && sortOrder === "asc") return "date_asc";
+    if (sortBy === "name" && sortOrder === "asc") return "name_asc";
+    if (sortBy === "name" && sortOrder === "desc") return "name_desc";
+
+    return "date_desc"; // default
+  };
+
+  // Create a stable debounced function
+  const debouncedFetch = useMemo(() => {
+    const fetchWithFilters = async (newFilters: Record<string, unknown>) => {
+      if (!userContext) {
+        console.error("User context not available for filtering");
+        return;
+      }
+
+      try {
+        // Clean filters - remove undefined/null values
+        const cleanFilters = Object.entries(newFilters).reduce(
+          (acc, [key, value]) => {
+            if (value !== undefined && value !== null && value !== "") {
+              acc[key] = value;
+            }
+            return acc;
+          },
+          {} as Record<string, unknown>
+        );
+
+        await dispatch(
+          fetchJobApplicationsWithAccess({
+            filters: cleanFilters,
+            userContext,
+            page: 1, // Reset to first page when filtering
+          })
+        ).unwrap();
+
+        // Reset pagination to first page
+        dispatch(setCurrentPage(1));
+      } catch (err) {
+        console.error("Failed to apply filter:", err);
+      }
+    };
+
+    return debounce(fetchWithFilters, 300);
+  }, [dispatch, userContext]);
 
   // Store ref for cleanup
   useEffect(() => {
@@ -274,242 +292,281 @@ const debouncedFetch = useMemo(() => {
     };
   }, [debouncedFetch]);
 
-// Updated filter change handler with multi-select support
-const handleFilterChange = useCallback((filterType: string, value: string | string[] | number) => {
-  if (!userContext) return;
-
-  let newFilters = { ...filters };
-  if (jobId) {
-    newFilters.jobId = jobId; // Ensure jobId is included in filters
-  }
-
-  if (filterType === "searchTerm") {
-    // For search, load all candidates to search across all data
-    newFilters.searchTerm = value as string;
-    dispatch(setFilters(newFilters));
-    
-    // Load all candidates when searching
-    if (value && (value as string).trim() !== "") {
-      dispatch(fetchJobApplicationsWithAccess({
-        filters: newFilters,
-        userContext,
-        page: 1,
-        limit: pagination.candidatesPerPage, // Load a large number to get all candidates for search
-      }));
-    } else {
-      // Reset to normal pagination when clearing search
-      dispatch(fetchJobApplicationsWithAccess({
-        filters: newFilters,
-        userContext,
-        page: 1,
-        limit: pagination.candidatesPerPage,
-      }));
-    }
-    return;
-  }
-  if (filterType === "sortBy") {
-    // Handle sort changes (single select)
-    switch (value) {
-      case "date_desc":
-        newFilters.sortBy = "applied_date";
-        newFilters.sortOrder = "desc";
-        break;
-      case "date_asc":
-        newFilters.sortBy = "applied_date";
-        newFilters.sortOrder = "asc";
-        break;
-      case "name_asc":
-        newFilters.sortBy = "name";
-        newFilters.sortOrder = "asc";
-        break;
-      case "name_desc":
-        newFilters.sortBy = "name";
-        newFilters.sortOrder = "desc";
-        break;
-    }
-  } else if (filterType === "experience") {
-    // Handle experience filter with improved parsing
-    console.log("Experience filter change:", value);
-    
-    if (value === "" || value === "all") {
-      newFilters.minExperience = undefined;
-      newFilters.maxExperience = undefined;
-    } else if (typeof value === "string") {
-      if (value.endsWith("+")) {
-        // Handle X+ cases (e.g., "9+", "5+")
-        const minValue = parseInt(value.replace("+", ""));
-        newFilters.minExperience = isNaN(minValue) ? undefined : minValue;
-        newFilters.maxExperience = undefined;
-      } else if (value.includes("-")) {
-        // Handle range cases like "0-2", "3-5", "6-8"
-        const [min, max] = value.split("-").map(Number);
-        console.log("Parsed experience range:", min, max);
-        newFilters.minExperience = isNaN(min) ? undefined : min;
-        newFilters.maxExperience = isNaN(max) ? undefined : max;
-      } else {
-        // Handle single number cases
-        const numValue = Number(value);
-        if (!isNaN(numValue)) {
-          newFilters.minExperience = numValue;
-          newFilters.maxExperience = numValue;
-        }
-      }
-    }
-  } else if (filterType === "status" || filterType === "companyName" || filterType === "jobTitle") {
-    // Handle multi-select filters - expect array values
-    if (value === "" || value === "all" || value === null) {
-      newFilters[filterType] = undefined;
-    } else if (Array.isArray(value)) {
-      newFilters[filterType] = value.length > 0 ? value : undefined;
-    } else {
-      newFilters[filterType] = value ? [value as string] : undefined;
-    }
-  } else {
-    // Handle other single-select filters
-    newFilters = {
-      ...newFilters,
-      [filterType]: value || undefined,
+  // Cleanup effect to clear data on unmount
+  useEffect(() => {
+    return () => {
+      // Clear candidates data to prevent memory leaks
+      dispatch(clearCandidates());
     };
-  }
+  }, [dispatch]);
 
-  // Remove undefined values
-  Object.keys(newFilters).forEach(key => {
-    if (newFilters[key as keyof typeof newFilters] === undefined) {
-      delete newFilters[key as keyof typeof newFilters];
-    }
-  });
+  // Updated filter change handler with multi-select support
+  const handleFilterChange = useCallback(
+    (filterType: string, value: string | string[] | number) => {
+      if (!userContext) return;
 
-  dispatch(setFilters(newFilters));
+      let newFilters = { ...filters };
+      if (jobId) {
+        newFilters.jobId = jobId; // Ensure jobId is included in filters
+      }
 
-  // Fetch data with new filters
-  dispatch(fetchJobApplicationsWithAccess({
-    page: 1,
-    limit: pagination.candidatesPerPage,
-    filters: newFilters,
-    userContext,
-  }));
-}, [dispatch, jobId, filters, userContext, pagination.candidatesPerPage]);
+      if (filterType === "searchTerm") {
+        // For search, load all candidates to search across all data
+        newFilters.searchTerm = value as string;
+        dispatch(setFilters(newFilters));
 
-const handleTempFilterChange = useCallback((filterType: string, value: string | string[] | number) => {
-  let newTempFilters = { ...tempFilters }; // Use tempFilters instead of filters
-  if (jobId) {
-    newTempFilters.jobId = jobId; // Ensure jobId is included in temp filters
-  }        
-  if (filterType === "sortBy") {
-    // Handle sort changes (single select)
-    switch (value) {
-      case "date_desc":
-        newTempFilters.sortBy = "applied_date";
-        newTempFilters.sortOrder = "desc";
-        break;
-      case "date_asc":
-        newTempFilters.sortBy = "applied_date";
-        newTempFilters.sortOrder = "asc";
-        break;
-      case "name_asc":
-        newTempFilters.sortBy = "name";
-        newTempFilters.sortOrder = "asc";
-        break;
-      case "name_desc":
-        newTempFilters.sortBy = "name";
-        newTempFilters.sortOrder = "desc";
-        break;
-    }
-  } else if (filterType === "experience") {
-      // Handle experience filter with improved parsing      
-      if (value === "" || value === "all") {
-        newTempFilters.minExperience = undefined;
-        newTempFilters.maxExperience = undefined;
-      } else if (typeof value === "string") {
-        if (value.endsWith("+")) {
-          // Handle X+ cases (e.g., "9+", "5+")
-          const minValue = parseInt(value.replace("+", ""));
-          newTempFilters.minExperience = isNaN(minValue) ? undefined : minValue;
-          newTempFilters.maxExperience = undefined;
-        } else if (value.includes("-")) {
-          // Handle range cases like "0-2", "3-5", "6-8"
-          const [min, max] = value.split("-").map(Number);
-          console.log("Parsed experience range:", min, max);
-          newTempFilters.minExperience = isNaN(min) ? undefined : min;
-          newTempFilters.maxExperience = isNaN(max) ? undefined : max;
+        // Load all candidates when searching
+        if (value && (value as string).trim() !== "") {
+          dispatch(
+            fetchJobApplicationsWithAccess({
+              filters: newFilters,
+              userContext,
+              page: 1,
+              limit: pagination.candidatesPerPage, // Load a large number to get all candidates for search
+            })
+          );
         } else {
-          // Handle single number cases
-          const numValue = Number(value);
-          if (!isNaN(numValue)) {
-            newTempFilters.minExperience = numValue;
-            newTempFilters.maxExperience = numValue;
+          // Reset to normal pagination when clearing search
+          dispatch(
+            fetchJobApplicationsWithAccess({
+              filters: newFilters,
+              userContext,
+              page: 1,
+              limit: pagination.candidatesPerPage,
+            })
+          );
+        }
+        return;
+      }
+      if (filterType === "sortBy") {
+        // Handle sort changes (single select)
+        switch (value) {
+          case "date_desc":
+            newFilters.sortBy = "applied_date";
+            newFilters.sortOrder = "desc";
+            break;
+          case "date_asc":
+            newFilters.sortBy = "applied_date";
+            newFilters.sortOrder = "asc";
+            break;
+          case "name_asc":
+            newFilters.sortBy = "name";
+            newFilters.sortOrder = "asc";
+            break;
+          case "name_desc":
+            newFilters.sortBy = "name";
+            newFilters.sortOrder = "desc";
+            break;
+        }
+      } else if (filterType === "experience") {
+        // Handle experience filter with improved parsing
+        console.log("Experience filter change:", value);
+
+        if (value === "" || value === "all") {
+          newFilters.minExperience = undefined;
+          newFilters.maxExperience = undefined;
+        } else if (typeof value === "string") {
+          if (value.endsWith("+")) {
+            // Handle X+ cases (e.g., "9+", "5+")
+            const minValue = parseInt(value.replace("+", ""));
+            newFilters.minExperience = isNaN(minValue) ? undefined : minValue;
+            newFilters.maxExperience = undefined;
+          } else if (value.includes("-")) {
+            // Handle range cases like "0-2", "3-5", "6-8"
+            const [min, max] = value.split("-").map(Number);
+            console.log("Parsed experience range:", min, max);
+            newFilters.minExperience = isNaN(min) ? undefined : min;
+            newFilters.maxExperience = isNaN(max) ? undefined : max;
+          } else {
+            // Handle single number cases
+            const numValue = Number(value);
+            if (!isNaN(numValue)) {
+              newFilters.minExperience = numValue;
+              newFilters.maxExperience = numValue;
+            }
           }
         }
-      }
-    } else if (filterType === "status" || filterType === "jobTitle" || filterType === "companyName") {
-    // Fixed multi-select logic for checkbox filters
-    const currentSelected = Array.isArray(newTempFilters[filterType])
-      ? [...(newTempFilters[filterType] as string[])]
-      : [];
-            
-    // Handle "All" option (empty string)
-    if (value === "" || value === "all" || value === null) {
-      // Clear all selections when "All" is selected
-      newTempFilters[filterType] = undefined;
-    } else if (typeof value === 'string') {
-      // Toggle individual option
-      const valueIndex = currentSelected.indexOf(value);
-            
-      if (valueIndex > -1) {
-        // Remove if already selected
-        currentSelected.splice(valueIndex, 1);
+      } else if (
+        filterType === "status" ||
+        filterType === "companyName" ||
+        filterType === "jobTitle"
+      ) {
+        // Handle multi-select filters - expect array values
+        if (value === "" || value === "all" || value === null) {
+          newFilters[filterType] = undefined;
+        } else if (Array.isArray(value)) {
+          newFilters[filterType] = value.length > 0 ? value : undefined;
+        } else {
+          newFilters[filterType] = value ? [value as string] : undefined;
+        }
       } else {
-        // Add if not selected
-        currentSelected.push(value);
+        // Handle other single-select filters
+        newFilters = {
+          ...newFilters,
+          [filterType]: value || undefined,
+        };
       }
-            
-      // Update the filter
-      newTempFilters[filterType] = currentSelected.length > 0 ? currentSelected : undefined;
-    } else if (Array.isArray(value)) {
-      // Handle array input directly
-      newTempFilters[filterType] = value.length > 0 ? value : undefined;
-    }
-  } else {
-    // Handle other single-select filters
-    newTempFilters = {
-      ...newTempFilters,
-      [filterType]: value || undefined,
-    };
-  }
 
-  // Clean up undefined values
-  Object.keys(newTempFilters).forEach(key => {
-    if (newTempFilters[key as keyof typeof newTempFilters] === undefined) {
-      delete newTempFilters[key as keyof typeof newTempFilters];
-    }
-  });
+      // Remove undefined values
+      Object.keys(newFilters).forEach((key) => {
+        if (newFilters[key as keyof typeof newFilters] === undefined) {
+          delete newFilters[key as keyof typeof newFilters];
+        }
+      });
 
-  setTempFilters(newTempFilters); //Update tempFilters state instead of dispatching
-}, [tempFilters, jobId]); // Depend on tempFilters instead of filters
+      dispatch(setFilters(newFilters));
 
-const handleCloseFiltersModal = useCallback(() => {
-  setTempFilters({ ...filters }); // Reset temp filters to current filters
-  setShowFiltersModal(false);
-}, [filters]);
+      // Fetch data with new filters
+      dispatch(
+        fetchJobApplicationsWithAccess({
+          page: 1,
+          limit: pagination.candidatesPerPage,
+          filters: newFilters,
+          userContext,
+        })
+      );
+    },
+    [dispatch, jobId, filters, userContext, pagination.candidatesPerPage]
+  );
 
-const handleApplyFilters = useCallback(() => {
-  if (!userContext) return;
-       
-  // Apply the temporary filters to main filters
-  dispatch(setFilters(tempFilters));
-       
-  // Fetch data with the temporary filters
-  dispatch(fetchJobApplicationsWithAccess({
-    page: 1,
-    limit: pagination.candidatesPerPage,
-    filters: tempFilters, // Use tempFilters
+  const handleTempFilterChange = useCallback(
+    (filterType: string, value: string | string[] | number) => {
+      let newTempFilters = { ...tempFilters }; // Use tempFilters instead of filters
+      if (jobId) {
+        newTempFilters.jobId = jobId; // Ensure jobId is included in temp filters
+      }
+      if (filterType === "sortBy") {
+        // Handle sort changes (single select)
+        switch (value) {
+          case "date_desc":
+            newTempFilters.sortBy = "applied_date";
+            newTempFilters.sortOrder = "desc";
+            break;
+          case "date_asc":
+            newTempFilters.sortBy = "applied_date";
+            newTempFilters.sortOrder = "asc";
+            break;
+          case "name_asc":
+            newTempFilters.sortBy = "name";
+            newTempFilters.sortOrder = "asc";
+            break;
+          case "name_desc":
+            newTempFilters.sortBy = "name";
+            newTempFilters.sortOrder = "desc";
+            break;
+        }
+      } else if (filterType === "experience") {
+        // Handle experience filter with improved parsing
+        if (value === "" || value === "all") {
+          newTempFilters.minExperience = undefined;
+          newTempFilters.maxExperience = undefined;
+        } else if (typeof value === "string") {
+          if (value.endsWith("+")) {
+            // Handle X+ cases (e.g., "9+", "5+")
+            const minValue = parseInt(value.replace("+", ""));
+            newTempFilters.minExperience = isNaN(minValue)
+              ? undefined
+              : minValue;
+            newTempFilters.maxExperience = undefined;
+          } else if (value.includes("-")) {
+            // Handle range cases like "0-2", "3-5", "6-8"
+            const [min, max] = value.split("-").map(Number);
+            console.log("Parsed experience range:", min, max);
+            newTempFilters.minExperience = isNaN(min) ? undefined : min;
+            newTempFilters.maxExperience = isNaN(max) ? undefined : max;
+          } else {
+            // Handle single number cases
+            const numValue = Number(value);
+            if (!isNaN(numValue)) {
+              newTempFilters.minExperience = numValue;
+              newTempFilters.maxExperience = numValue;
+            }
+          }
+        }
+      } else if (
+        filterType === "status" ||
+        filterType === "jobTitle" ||
+        filterType === "companyName"
+      ) {
+        // Fixed multi-select logic for checkbox filters
+        const currentSelected = Array.isArray(newTempFilters[filterType])
+          ? [...(newTempFilters[filterType] as string[])]
+          : [];
+
+        // Handle "All" option (empty string)
+        if (value === "" || value === "all" || value === null) {
+          // Clear all selections when "All" is selected
+          newTempFilters[filterType] = undefined;
+        } else if (typeof value === "string") {
+          // Toggle individual option
+          const valueIndex = currentSelected.indexOf(value);
+
+          if (valueIndex > -1) {
+            // Remove if already selected
+            currentSelected.splice(valueIndex, 1);
+          } else {
+            // Add if not selected
+            currentSelected.push(value);
+          }
+
+          // Update the filter
+          newTempFilters[filterType] =
+            currentSelected.length > 0 ? currentSelected : undefined;
+        } else if (Array.isArray(value)) {
+          // Handle array input directly
+          newTempFilters[filterType] = value.length > 0 ? value : undefined;
+        }
+      } else {
+        // Handle other single-select filters
+        newTempFilters = {
+          ...newTempFilters,
+          [filterType]: value || undefined,
+        };
+      }
+
+      // Clean up undefined values
+      Object.keys(newTempFilters).forEach((key) => {
+        if (newTempFilters[key as keyof typeof newTempFilters] === undefined) {
+          delete newTempFilters[key as keyof typeof newTempFilters];
+        }
+      });
+
+      setTempFilters(newTempFilters); //Update tempFilters state instead of dispatching
+    },
+    [tempFilters, jobId]
+  ); // Depend on tempFilters instead of filters
+
+  const handleCloseFiltersModal = useCallback(() => {
+    setTempFilters({ ...filters }); // Reset temp filters to current filters
+    setShowFiltersModal(false);
+  }, [filters]);
+
+  const handleApplyFilters = useCallback(() => {
+    if (!userContext) return;
+
+    // Apply the temporary filters to main filters
+    dispatch(setFilters(tempFilters));
+
+    // Fetch data with the temporary filters
+    dispatch(
+      fetchJobApplicationsWithAccess({
+        page: 1,
+        limit: pagination.candidatesPerPage,
+        filters: tempFilters, // Use tempFilters
+        userContext,
+      })
+    );
+
+    handleCloseFiltersModal();
+  }, [
+    dispatch,
+    tempFilters,
     userContext,
-  }));
-   
-  handleCloseFiltersModal();
-}, [dispatch, tempFilters, userContext, pagination.candidatesPerPage, handleCloseFiltersModal]);
+    pagination.candidatesPerPage,
+    handleCloseFiltersModal,
+  ]);
 
-  // Handle status updates 
+  // Handle status updates
   const handleStatusUpdate = async (applicationId: string, status: string) => {
     if (!userContext) {
       console.log("User context not available");
@@ -552,17 +609,20 @@ const handleApplyFilters = useCallback(() => {
     }
   };
 
-  const handleViewCandidate = useCallback((candidate: CandidateWithApplication) => {
-    // Show overlay instead of navigating
-    setCandidatesDetailsOverlay({
-      candidate,
-      show: true,
-    });
+  const handleViewCandidate = useCallback(
+    (candidate: CandidateWithApplication) => {
+      // Show overlay instead of navigating
+      setCandidatesDetailsOverlay({
+        candidate,
+        show: true,
+      });
 
-    if (onCandidateClick) {
-      onCandidateClick(candidate);
-    }
-  }, [onCandidateClick]);
+      if (onCandidateClick) {
+        onCandidateClick(candidate);
+      }
+    },
+    [onCandidateClick]
+  );
 
   const handleDeleteCandidate = async (application_id: string) => {
     if (!userContext) {
@@ -626,16 +686,18 @@ const handleApplyFilters = useCallback(() => {
         console.error("User context not available for pagination");
         return;
       }
-      dispatch(fetchJobApplicationsWithAccess({
-        page,
-        limit: pagination.candidatesPerPage,
-        filters,
-        userContext,
-      }));
+      dispatch(
+        fetchJobApplicationsWithAccess({
+          page,
+          limit: pagination.candidatesPerPage,
+          filters,
+          userContext,
+        })
+      );
     },
     [dispatch, pagination.candidatesPerPage, filters, userContext]
   );
-  
+
   const handlePageSizeChange = useCallback(
     async (pageSize: number) => {
       if (!userContext) {
@@ -645,7 +707,7 @@ const handleApplyFilters = useCallback(() => {
       try {
         // Step 1: Update page size in Redux
         dispatch(setPageSize(pageSize));
-        
+
         // Step 2: Log what we're about to send to fetchJobs
         const fetchJobsParams = {
           page: 1,
@@ -653,10 +715,11 @@ const handleApplyFilters = useCallback(() => {
           filters,
           userContext,
         };
-        
+
         // Step 3: Fetch jobs
-        await dispatch(fetchJobApplicationsWithAccess(fetchJobsParams)).unwrap();
-        
+        await dispatch(
+          fetchJobApplicationsWithAccess(fetchJobsParams)
+        ).unwrap();
       } catch (err) {
         console.error("Failed to change page size:", err);
       }
@@ -671,17 +734,26 @@ const handleApplyFilters = useCallback(() => {
   }, []);
 
   // Table customization handlers
-  const handleColumnToggle = useCallback((columnKey: string) => {
-    const updatedColumns = tableColumns.map(col =>
-      col.key === columnKey ? { ...col, visible: !col.visible } : col
-    );
-    setTableColumns(updatedColumns);
-    localStorage.setItem('candidates-table-columns', JSON.stringify(updatedColumns));
-  }, [tableColumns]);
+  const handleColumnToggle = useCallback(
+    (columnKey: string) => {
+      const updatedColumns = tableColumns.map((col) =>
+        col.key === columnKey ? { ...col, visible: !col.visible } : col
+      );
+      setTableColumns(updatedColumns);
+      localStorage.setItem(
+        "candidates-table-columns",
+        JSON.stringify(updatedColumns)
+      );
+    },
+    [tableColumns]
+  );
 
   const handleColumnsUpdate = useCallback((updatedColumns: TableColumn[]) => {
     setTableColumns(updatedColumns);
-    localStorage.setItem('candidates-table-columns', JSON.stringify(updatedColumns));
+    localStorage.setItem(
+      "candidates-table-columns",
+      JSON.stringify(updatedColumns)
+    );
   }, []);
 
   // Modal handlers
@@ -690,30 +762,34 @@ const handleApplyFilters = useCallback(() => {
     setShowFiltersModal(true);
   }, [filters]);
 
-const handleClearAllFilters = () => {
-  if (!userContext) return;
-  
-  const clearedFilters = {};
-  dispatch(setFilters(clearedFilters));
-  dispatch(fetchJobApplicationsWithAccess({
-    page: 1,
-    limit: pagination.candidatesPerPage,
-    filters: clearedFilters,
-    userContext,
-  }));
-  setShowFiltersModal(false);
-  // Clear debounced fetch if it exists
-  if (debouncedFetchRef.current?.cancel) {
-    debouncedFetchRef.current.cancel();
-  }
-};
+  const handleClearAllFilters = () => {
+    if (!userContext) return;
+
+    const clearedFilters = {};
+    dispatch(setFilters(clearedFilters));
+    dispatch(
+      fetchJobApplicationsWithAccess({
+        page: 1,
+        limit: pagination.candidatesPerPage,
+        filters: clearedFilters,
+        userContext,
+      })
+    );
+    setShowFiltersModal(false);
+    // Clear debounced fetch if it exists
+    if (debouncedFetchRef.current?.cancel) {
+      debouncedFetchRef.current.cancel();
+    }
+  };
 
   // Table columns for GlobalStickyTable
   const columns = useMemo(() => {
     const allColumns = [
       {
         key: "checkbox",
-        header: <input type="checkbox" className="rounded border-neutral-300" />,
+        header: (
+          <input type="checkbox" className="rounded border-neutral-300" />
+        ),
         width: "48px",
         render: (candidate: CandidateWithApplication) => (
           <input
@@ -760,7 +836,9 @@ const handleClearAllFilters = () => {
         key: "job_title",
         header: "Job",
         render: (candidate: CandidateWithApplication) => (
-          <span className="text-sm text-neutral-900">{candidate.job_title}</span>
+          <span className="text-sm text-neutral-900">
+            {candidate.job_title}
+          </span>
         ),
       },
       {
@@ -811,8 +889,8 @@ const handleClearAllFilters = () => {
     ];
 
     // Filter columns based on visibility settings
-    return allColumns.filter(column => {
-      const columnConfig = tableColumns.find(col => col.key === column.key);
+    return allColumns.filter((column) => {
+      const columnConfig = tableColumns.find((col) => col.key === column.key);
       return columnConfig?.visible !== false;
     });
   }, [tableColumns, generateShortId, formatDate, handleViewCandidate]);
@@ -835,37 +913,32 @@ const handleClearAllFilters = () => {
     );
   }
 
-const filtersModalOptions = [
-  {
-    id: "sortBy",
-    label: "Sort By",
-    type: "radio" as const,
-    options: [
-      "name_asc",
-      "name_desc", 
-      "date_desc",
-      "date_asc",
-    ],
-    selected: getCurrentSortValue(),
-    onChange: (value: string) => handleTempFilterChange('sortBy', value),
-  },
-  {
-    id: "status",
-    label: "Application Status",
-    type: "checkbox" as const,
-    options: filterOptions.statuses || [],
-    selected: tempFilters.status || [],
-    onChange: (option: string) => handleTempFilterChange('status', option),
-  },
-  {
-    id: "jobTitle",     
-    label: "Active Jobs",
-    type: "checkbox" as const,
-    options: filterOptions.jobTitles?.map(j => j.value) || [], // Remove the empty string from here
-    selected: tempFilters.jobTitle || [],
-    onChange: (option: string) => handleTempFilterChange('jobTitle', option),
-  },
-];
+  const filtersModalOptions = [
+    {
+      id: "sortBy",
+      label: "Sort By",
+      type: "radio" as const,
+      options: ["name_asc", "name_desc", "date_desc", "date_asc"],
+      selected: getCurrentSortValue(),
+      onChange: (value: string) => handleTempFilterChange("sortBy", value),
+    },
+    {
+      id: "status",
+      label: "Application Status",
+      type: "checkbox" as const,
+      options: filterOptions.statuses || [],
+      selected: tempFilters.status || [],
+      onChange: (option: string) => handleTempFilterChange("status", option),
+    },
+    {
+      id: "jobTitle",
+      label: "Active Jobs",
+      type: "checkbox" as const,
+      options: filterOptions.jobTitles?.map((j) => j.value) || [], // Remove the empty string from here
+      selected: tempFilters.jobTitle || [],
+      onChange: (option: string) => handleTempFilterChange("jobTitle", option),
+    },
+  ];
 
   return (
     <>
@@ -896,14 +969,16 @@ const filtersModalOptions = [
                   <div className="flex items-center bg-blue-600 text-white text-xs border border-blue-600 rounded-full px-2 py-2 cursor-pointer">
                     <span className="font-medium mr-2">Sort by</span>
                     <div className="relative">
-                      <select 
+                      <select
                         value={getCurrentSortValueFilter()}
-                        onChange={(e) => handleFilterChange("sortBy", e.target.value)}
+                        onChange={(e) =>
+                          handleFilterChange("sortBy", e.target.value)
+                        }
                         className="bg-blue-600 px-2 text-white text-xs border-none outline-none focus:ring-0 appearance-none pr-4 cursor-pointer hover:underline rounded-md"
-                        >
+                      >
                         <option
                           value="date_desc"
-                          className="bg-white text-neutral-900" 
+                          className="bg-white text-neutral-900"
                         >
                           Newest First
                         </option>
@@ -925,16 +1000,18 @@ const filtersModalOptions = [
                         >
                           Name (Z-A)
                         </option>
-                        </select>
+                      </select>
                       <TiArrowSortedDown className="absolute right-0 top-1/2 transform -translate-y-1/2 text-white pointer-events-none" />
                     </div>
                   </div>
 
-                 <MultiSelectDropdown
-                    options={filterOptions.statuses?.map((status: string) => ({
-                      value: status==="all" ? "all" : status.toLowerCase(),
-                      label: status.charAt(0).toUpperCase() + status.slice(1)
-                    })) || []}
+                  <MultiSelectDropdown
+                    options={
+                      filterOptions.statuses?.map((status: string) => ({
+                        value: status === "all" ? "all" : status.toLowerCase(),
+                        label: status.charAt(0).toUpperCase() + status.slice(1),
+                      })) || []
+                    }
                     selectedValues={filters.status || []}
                     onChange={(values) => handleFilterChange("status", values)}
                     placeholder="App. Status"
@@ -952,42 +1029,43 @@ const filtersModalOptions = [
                   onApplyFilterChange={handleFilterChange}
                   // onClose={handleCloseExperienceFilter}
                 />
-                {
-                  !jobId && (
-                    <div className="relative z-30">
-                     <MultiSelectDropdown
-                        options={filterOptions.companies?.map(company => ({
+                {!jobId && (
+                  <div className="relative z-30">
+                    <MultiSelectDropdown
+                      options={
+                        filterOptions.companies?.map((company) => ({
                           value: company.value,
-                          label: company.value
-                        })) || []}
-                        selectedValues={filters.companyName || []}
-                        onChange={(values) => handleFilterChange("companyName", values)}
-                        placeholder="Company"
-                      />
-                      </div>
-                  )
-                }          
+                          label: company.value,
+                        })) || []
+                      }
+                      selectedValues={filters.companyName || []}
+                      onChange={(values) =>
+                        handleFilterChange("companyName", values)
+                      }
+                      placeholder="Company"
+                    />
+                  </div>
+                )}
 
                 {/* Separator */}
                 <div className="h-8 w-px bg-neutral-500" />
 
                 {showFilters && (
                   <>
-                  {!jobId && (
-                    <button 
-                      onClick={handleOpenFiltersModal}
-                      className="flex items-center gap-2 px-4 py-2 bg-neutral-200 hover:bg-neutral-300 rounded-full text-xs font-medium text-neutral-600 transition-colors"
-                    >
-                      <CiFilter className="w-4 h-4" />
-                      All Filters
-                    </button>
-                    )} 
+                    {!jobId && (
+                      <button
+                        onClick={handleOpenFiltersModal}
+                        className="flex items-center gap-2 px-4 py-2 bg-neutral-200 hover:bg-neutral-300 rounded-full text-xs font-medium text-neutral-600 transition-colors"
+                      >
+                        <CiFilter className="w-4 h-4" />
+                        All Filters
+                      </button>
+                    )}
                     <TableCustomization
                       columns={tableColumns}
                       onColumnToggle={handleColumnToggle}
                       onColumnsUpdate={handleColumnsUpdate}
                     />
-                    
                   </>
                 )}
               </div>

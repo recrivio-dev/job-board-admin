@@ -1,8 +1,4 @@
-import {
-  createSlice,
-  createAsyncThunk,
-  PayloadAction,
-} from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { createClient } from "@/utils/supabase/client";
 import { Tables } from "@/types/supabase";
 
@@ -143,32 +139,42 @@ export type CandidateWithApplication = {
   hasAccess?: boolean;
 };
 
-function isDatabaseFunctionResponse(data: unknown): data is DatabaseFunctionResponse {
+function isDatabaseFunctionResponse(
+  data: unknown
+): data is DatabaseFunctionResponse {
   return !!(
     data &&
-    typeof data === 'object' &&
-    'success' in data &&
-    'candidates' in data &&
-    'total_count' in data &&
-    'current_page' in data &&
-    'total_pages' in data
+    typeof data === "object" &&
+    "success" in data &&
+    "candidates" in data &&
+    "total_count" in data &&
+    "current_page" in data &&
+    "total_pages" in data
   );
 }
-
 
 // Updated CandidateFilters interface (keeping multi-select)
 export interface CandidateFilters {
   candidateName?: string;
-  status?: string[];         // Multi-select array
-  companyName?: string[];    // Multi-select array
-  jobTitle?: string[];       // Multi-select array
+  status?: string[]; // Multi-select array
+  companyName?: string[]; // Multi-select array
+  jobTitle?: string[]; // Multi-select array
   minExperience?: number;
   maxExperience?: number;
   dateFrom?: string;
   dateTo?: string;
   jobId?: string;
-  sortBy?: 'name' | 'application_status' | 'experience_years' | 'company_name' | 'applied_date' | 'created_at' | 'updated_at' | 'current_ctc' | 'expected_ctc';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?:
+    | "name"
+    | "application_status"
+    | "experience_years"
+    | "company_name"
+    | "applied_date"
+    | "created_at"
+    | "updated_at"
+    | "current_ctc"
+    | "expected_ctc";
+  sortOrder?: "asc" | "desc";
   searchTerm?: string; // Global search term
 }
 // Enhanced async thunk with role-based access control
@@ -206,20 +212,24 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
           total_count: 0,
           current_page: page,
           total_pages: 0,
-          success: true
+          success: true,
         };
       }
 
       // Helper function to handle multi-value filters
-      const prepareArrayFilter = (filter: string | string[] | undefined): string[] | undefined => {
+      const prepareArrayFilter = (
+        filter: string | string[] | undefined
+      ): string[] | undefined => {
         if (!filter) return undefined;
         if (Array.isArray(filter)) {
           // Filter out empty strings and 'All' values
-          const cleanedArray = filter.filter(item => item && item.trim() !== '' && item !== 'All');
+          const cleanedArray = filter.filter(
+            (item) => item && item.trim() !== "" && item !== "All"
+          );
           return cleanedArray.length > 0 ? cleanedArray : undefined;
         }
         // Single value - convert to array if not 'All' or empty
-        if (filter !== 'All' && filter.trim() !== '') {
+        if (filter !== "All" && filter.trim() !== "") {
           return [filter];
         }
         return undefined;
@@ -237,8 +247,8 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
         p_company_filter: prepareArrayFilter(filters.companyName),
         p_job_title_filter: prepareArrayFilter(filters.jobTitle),
         // Other parameters remain the same
-        p_sort_by: filters.sortBy || 'applied_date',
-        p_sort_order: filters.sortOrder || 'desc',
+        p_sort_by: filters.sortBy || "applied_date",
+        p_sort_order: filters.sortOrder || "desc",
         p_name_filter: filters.candidateName || undefined,
         p_min_experience: filters.minExperience || undefined,
         p_max_experience: filters.maxExperience || undefined,
@@ -246,12 +256,12 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
         p_date_to: filters.dateTo || undefined,
         p_job_id: filters.jobId || undefined,
         // Add search term parameter
-        p_search_term: filters.searchTerm || undefined
+        p_search_term: filters.searchTerm || undefined,
       };
 
       // Call the PostgreSQL function using Supabase RPC
       const { data, error } = await supabase.rpc(
-        'fetch_candidates_with_access',
+        "fetch_candidates_with_access",
         functionParams
       );
 
@@ -270,7 +280,7 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
           total_count: 0,
           current_page: page,
           total_pages: 0,
-          success: true
+          success: true,
         };
       }
 
@@ -279,11 +289,15 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
 
       // Check if the function returned an error
       if (!functionResponse.success) {
-        throw new Error(functionResponse.error || "Database function returned an error");
+        throw new Error(
+          functionResponse.error || "Database function returned an error"
+        );
       }
 
       // Transform the data from the function to match your expected format
-      const transformedCandidates: CandidateWithApplication[] = (functionResponse.candidates as RawCandidateData[]).map((candidate: RawCandidateData) => ({
+      const transformedCandidates: CandidateWithApplication[] = (
+        functionResponse.candidates as RawCandidateData[]
+      ).map((candidate: RawCandidateData) => ({
         // Application fields
         application_id: candidate.application_id,
         applied_date: candidate.applied_date,
@@ -342,9 +356,8 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
         total_count: functionResponse.total_count,
         current_page: functionResponse.current_page,
         total_pages: functionResponse.total_pages,
-        success: functionResponse.success
+        success: functionResponse.success,
       };
-
     } catch (error) {
       console.log("fetchJobApplicationsWithAccess error:", error);
       return rejectWithValue(
@@ -354,17 +367,19 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
   }
 );
 
-const isFilterOptionsRPCResponse = (data: unknown): data is FilterOptionsResponse => {
-  if (typeof data !== 'object' || data === null) {
+const isFilterOptionsRPCResponse = (
+  data: unknown
+): data is FilterOptionsResponse => {
+  if (typeof data !== "object" || data === null) {
     return false;
   }
 
   const obj = data as Record<string, unknown>;
 
   return (
-    'companies' in obj &&
-    'success' in obj &&
-    'job_titles' in obj &&
+    "companies" in obj &&
+    "success" in obj &&
+    "job_titles" in obj &&
     Array.isArray(obj.companies) &&
     Array.isArray(obj.job_titles)
   );
@@ -384,21 +399,28 @@ export const fetchFilterOptions = createAsyncThunk(
       const state = getState() as { candidates: CandidatesState };
 
       if (!state.candidates) {
-        console.warn('Candidates state not initialized');
-        return rejectWithValue('Candidates state not initialized');
+        console.warn("Candidates state not initialized");
+        return rejectWithValue("Candidates state not initialized");
       }
 
       const { filterOptions } = state.candidates;
 
       // Add safety check for filterOptions
       if (!filterOptions) {
-        console.warn('Filter options not initialized, proceeding without cache');
+        console.warn(
+          "Filter options not initialized, proceeding without cache"
+        );
       } else {
         // Check if we should skip fetching (cache for 5 minutes)
-        const cacheValid = filterOptions.lastFetched &&
+        const cacheValid =
+          filterOptions.lastFetched &&
           Date.now() - filterOptions.lastFetched < 5 * 60 * 1000;
 
-        if (!params.forceRefresh && cacheValid && filterOptions.companies.length > 0) {
+        if (
+          !params.forceRefresh &&
+          cacheValid &&
+          filterOptions.companies.length > 0
+        ) {
           return {
             companies: filterOptions.companies,
             jobTitles: filterOptions.jobTitles || [],
@@ -412,7 +434,7 @@ export const fetchFilterOptions = createAsyncThunk(
 
       // Validate required parameters
       if (!userId || !roles) {
-        return rejectWithValue('Missing required user context parameters');
+        return rejectWithValue("Missing required user context parameters");
       }
 
       // Call the RPC function
@@ -449,7 +471,9 @@ export const fetchFilterOptions = createAsyncThunk(
       };
     } catch (error: unknown) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to fetch filter options";
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch filter options";
       return rejectWithValue(errorMessage);
     }
   }
@@ -485,15 +509,16 @@ export const applyFilters = createAsyncThunk(
       }
 
       // Dispatch the fetchJobApplicationsWithAccess thunk and unwrap the result
-      const response = await dispatch(fetchJobApplicationsWithAccess({
-        filters,
-        userContext,
-        page: targetPage,
-        limit: currentPageSize,
-      })).unwrap();
+      const response = await dispatch(
+        fetchJobApplicationsWithAccess({
+          filters,
+          userContext,
+          page: targetPage,
+          limit: currentPageSize,
+        })
+      ).unwrap();
 
       return response;
-
     } catch (error) {
       console.log("applyFilters error:", error);
 
@@ -504,7 +529,8 @@ export const applyFilters = createAsyncThunk(
         current_page: page,
         total_pages: 0,
         success: false,
-        error: error instanceof Error ? error.message : "Failed to apply filters",
+        error:
+          error instanceof Error ? error.message : "Failed to apply filters",
       });
     }
   }
@@ -527,12 +553,14 @@ export const goToPage = createAsyncThunk(
     dispatch(setCurrentPage(params.page));
 
     // Fetch jobs for the new page with current filters
-    return dispatch(fetchJobApplicationsWithAccess({
-      page: params.page,
-      limit: pagination.candidatesPerPage,
-      filters,
-      userContext: params.userContext,
-    }));
+    return dispatch(
+      fetchJobApplicationsWithAccess({
+        page: params.page,
+        limit: pagination.candidatesPerPage,
+        filters,
+        userContext: params.userContext,
+      })
+    );
   }
 );
 
@@ -705,8 +733,13 @@ export const deleteCandidateApplication = createAsyncThunk(
     console.log("deleteCandidateApplication called with:", applicationId);
 
     //only admin and hr can delete applications
-    if (!userContext.roles.includes("admin") && !userContext.roles.includes("hr")) {
-      return rejectWithValue("You do not have permission to delete applications");
+    if (
+      !userContext.roles.includes("admin") &&
+      !userContext.roles.includes("hr")
+    ) {
+      return rejectWithValue(
+        "You do not have permission to delete applications"
+      );
     }
 
     try {
@@ -717,7 +750,9 @@ export const deleteCandidateApplication = createAsyncThunk(
         .single();
 
       if (response.error) {
-        throw new Error(`Failed to delete application: ${response.error.message}`);
+        throw new Error(
+          `Failed to delete application: ${response.error.message}`
+        );
       }
 
       return applicationId;
@@ -771,7 +806,6 @@ interface CandidatesState {
   accessibleJobs: string[];
 }
 
-
 const initialState: CandidatesState = {
   // Core data
   candidates: [],
@@ -791,8 +825,8 @@ const initialState: CandidatesState = {
     dateFrom: undefined,
     dateTo: undefined,
     jobId: undefined,
-    sortBy: 'applied_date', // Matches default in your function
-    sortOrder: 'desc', // Matches default in your function
+    sortBy: "applied_date", // Matches default in your function
+    sortOrder: "desc", // Matches default in your function
   },
 
   // Filter options
@@ -818,40 +852,40 @@ const initialState: CandidatesState = {
   accessibleJobs: [],
 };
 
-
 const candidatesSlice = createSlice({
   name: "candidates",
   initialState,
   reducers: {
-    setUserContext: (state, action) => {
+    setUserContext: (state, action: PayloadAction<UserContext>) => {
       state.userContext = action.payload;
     },
 
-    setCurrentCandidate: (state, action) => {
-      const applicationId = action.payload;
-      const candidate = state.candidates.find(
-        (c) => c.application_id === applicationId
-      );
-      state.currentCandidate = candidate || null;
+    setCurrentCandidate: (
+      state,
+      action: PayloadAction<CandidateWithApplication | null>
+    ) => {
+      state.currentCandidate = action.payload;
     },
 
     clearCurrentCandidate: (state) => {
       state.currentCandidate = null;
     },
 
-    setFilters: (state, action: PayloadAction<CandidateFilters>) => {
-      const oldFilters = state.filters;
-      const newFilters = action.payload;
+    // Add cleanup action for memory management
+    clearCandidates: (state) => {
+      state.candidates = [];
+      state.currentCandidate = null;
+      state.pagination = {
+        currentPage: 1,
+        totalPages: 1,
+        totalCandidates: 0,
+        candidatesPerPage: 50,
+      };
+      state.lastFetched = null;
+    },
 
-      // Check if filters actually changed
-      const filtersChanged = JSON.stringify(oldFilters) !== JSON.stringify(newFilters);
-
-      state.filters = newFilters;
-
-      // Reset to first page only if filters actually changed
-      if (filtersChanged) {
-        state.pagination.currentPage = 1;
-      }
+    setFilters: (state, action: PayloadAction<Partial<CandidateFilters>>) => {
+      state.filters = { ...state.filters, ...action.payload };
     },
 
     clearFilters: (state) => {
@@ -1024,6 +1058,32 @@ const candidatesSlice = createSlice({
           typeof action.payload === "string"
             ? action.payload
             : "Failed to apply filters";
+      })
+
+      // Global reset action
+      .addCase("RESET_STORE", (state) => {
+        state.candidates = [];
+        state.currentCandidate = null;
+        state.loading = false;
+        state.error = null;
+        state.filters = {};
+        state.pagination = {
+          currentPage: 1,
+          totalPages: 1,
+          totalCandidates: 0,
+          candidatesPerPage: 50,
+        };
+        state.filterOptions = {
+          companies: [],
+          jobTitles: [],
+          statuses: ["accepted", "rejected", "pending"],
+          lastFetched: null,
+          loading: false,
+          error: null,
+        };
+        state.lastFetched = null;
+        state.userContext = null;
+        state.accessibleJobs = [];
       });
   },
 });
@@ -1043,6 +1103,7 @@ export const {
   setAccessibleJobs,
   setCurrentPage,
   setCandidatesPerPage,
+  clearCandidates,
 } = candidatesSlice.actions;
 
 // Enhanced selectors with proper typing

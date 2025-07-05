@@ -199,7 +199,7 @@ const transformRawJob = (rawJob: RawJob): Job => ({
 const parseExperienceMin = (experienceLevel: string): number | undefined => {
   try {
     if (experienceLevel === "8+") return 8;
-    const parts = experienceLevel.split('-');
+    const parts = experienceLevel.split("-");
     if (parts.length >= 1) {
       const min = parseInt(parts[0]);
       return isNaN(min) ? undefined : min;
@@ -213,7 +213,7 @@ const parseExperienceMin = (experienceLevel: string): number | undefined => {
 const parseExperienceMax = (experienceLevel: string): number | undefined => {
   try {
     if (experienceLevel === "8+") return 999; // Large number for "8+"
-    const parts = experienceLevel.split('-');
+    const parts = experienceLevel.split("-");
     if (parts.length >= 2) {
       const max = parseInt(parts[1]);
       return isNaN(max) ? undefined : max;
@@ -235,18 +235,20 @@ interface FetchJobsRPCResponse {
 }
 
 // Type guard to check if the response is a valid RPC response
-const isFetchJobsRPCResponse = (data: unknown): data is FetchJobsRPCResponse => {
-  if (!data || typeof data !== 'object' || data === null) {
+const isFetchJobsRPCResponse = (
+  data: unknown
+): data is FetchJobsRPCResponse => {
+  if (!data || typeof data !== "object" || data === null) {
     return false;
   }
 
   const obj = data as Record<string, unknown>;
 
   return (
-    typeof obj.success === 'boolean' &&
-    typeof obj.total_count === 'number' &&
-    typeof obj.current_page === 'number' &&
-    typeof obj.total_pages === 'number' &&
+    typeof obj.success === "boolean" &&
+    typeof obj.total_count === "number" &&
+    typeof obj.current_page === "number" &&
+    typeof obj.total_pages === "number" &&
     Array.isArray(obj.jobs)
   );
 };
@@ -282,12 +284,16 @@ export const fetchJobs = createAsyncThunk(
 
       // For admin/hr roles, organization ID is required
       if ((userRole === "admin" || userRole === "hr") && !organizationId) {
-        return rejectWithValue("Organization ID is required for admin/hr roles");
+        return rejectWithValue(
+          "Organization ID is required for admin/hr roles"
+        );
       }
 
       // Call the RPC function
       // Helper function to handle array or single value filters
-      const prepareFilterValue = (filter: string | string[] | undefined): string | undefined => {
+      const prepareFilterValue = (
+        filter: string | string[] | undefined
+      ): string | undefined => {
         if (!filter) return undefined;
         if (Array.isArray(filter)) {
           // For now, take the first value if it's an array (backend doesn't support arrays yet)
@@ -308,8 +314,12 @@ export const fetchJobs = createAsyncThunk(
         p_job_type: prepareFilterValue(filters.jobType),
         p_salary_min: filters.salaryRange?.min || undefined,
         p_salary_max: filters.salaryRange?.max || undefined,
-        p_experience_min: filters.experienceLevel ? parseExperienceMin(filters.experienceLevel) : (filters.experienceRange?.min || undefined),
-        p_experience_max: filters.experienceLevel ? parseExperienceMax(filters.experienceLevel) : (filters.experienceRange?.max || undefined),
+        p_experience_min: filters.experienceLevel
+          ? parseExperienceMin(filters.experienceLevel)
+          : filters.experienceRange?.min || undefined,
+        p_experience_max: filters.experienceLevel
+          ? parseExperienceMax(filters.experienceLevel)
+          : filters.experienceRange?.max || undefined,
       });
 
       if (error) {
@@ -340,17 +350,19 @@ export const fetchJobs = createAsyncThunk(
   }
 );
 
-const isFilterOptionsRPCResponse = (data: unknown): data is FilterOptionsResponse => {
-  if (typeof data !== 'object' || data === null) {
+const isFilterOptionsRPCResponse = (
+  data: unknown
+): data is FilterOptionsResponse => {
+  if (typeof data !== "object" || data === null) {
     return false;
   }
 
   const obj = data as Record<string, unknown>;
 
   return (
-    'companies' in obj &&
-    'locations' in obj &&
-    'success' in obj &&
+    "companies" in obj &&
+    "locations" in obj &&
+    "success" in obj &&
     Array.isArray(obj.companies) &&
     Array.isArray(obj.locations)
   );
@@ -373,10 +385,15 @@ export const fetchFilterOptions = createAsyncThunk(
       const { filterOptions } = state.jobs;
 
       // Check if we should skip fetching (cache for 5 minutes)
-      const cacheValid = filterOptions.lastFetched &&
+      const cacheValid =
+        filterOptions.lastFetched &&
         Date.now() - filterOptions.lastFetched < 5 * 60 * 1000;
 
-      if (!params.forceRefresh && cacheValid && filterOptions.companies.length > 0) {
+      if (
+        !params.forceRefresh &&
+        cacheValid &&
+        filterOptions.companies.length > 0
+      ) {
         return {
           companies: filterOptions.companies,
           locations: filterOptions.locations,
@@ -395,7 +412,9 @@ export const fetchFilterOptions = createAsyncThunk(
 
       // For admin/hr roles, organization ID is required
       if ((userRole === "admin" || userRole === "hr") && !organizationId) {
-        return rejectWithValue("Organization ID is required for admin/hr roles");
+        return rejectWithValue(
+          "Organization ID is required for admin/hr roles"
+        );
       }
 
       // Call the RPC function
@@ -423,12 +442,16 @@ export const fetchFilterOptions = createAsyncThunk(
       const defaultStatuses = ["active", "paused", "closed"];
 
       // Deduplicate and sort the arrays to prevent duplicates
-      const uniqueCompanies = Array.from(new Set((data.companies || []))).sort();
-      const uniqueLocations = Array.from(new Set((data.locations || []))).sort();
+      const uniqueCompanies = Array.from(new Set(data.companies || [])).sort();
+      const uniqueLocations = Array.from(new Set(data.locations || [])).sort();
 
       // Additional deduplication step
-      const deduplicatedCompanies = uniqueCompanies.filter((company, index, self) => self.indexOf(company) === index);
-      const deduplicatedLocations = uniqueLocations.filter((location, index, self) => self.indexOf(location) === index);
+      const deduplicatedCompanies = uniqueCompanies.filter(
+        (company, index, self) => self.indexOf(company) === index
+      );
+      const deduplicatedLocations = uniqueLocations.filter(
+        (location, index, self) => self.indexOf(location) === index
+      );
 
       return {
         companies: deduplicatedCompanies,
@@ -438,7 +461,9 @@ export const fetchFilterOptions = createAsyncThunk(
       };
     } catch (error: unknown) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to fetch filter options";
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch filter options";
       return rejectWithValue(errorMessage);
     }
   }
@@ -605,14 +630,16 @@ export const applyFilters = createAsyncThunk(
     }
 
     // Then fetch jobs with new filters
-    const result = await dispatch(fetchJobs({
-      page: targetPage,
-      limit: currentPageSize,
-      filters: params.filters,
-      userRole: params.userRole,
-      userId: params.userId,
-      organizationId: params.organizationId,
-    }));
+    const result = await dispatch(
+      fetchJobs({
+        page: targetPage,
+        limit: currentPageSize,
+        filters: params.filters,
+        userRole: params.userRole,
+        userId: params.userId,
+        organizationId: params.organizationId,
+      })
+    );
 
     return result;
   }
@@ -637,14 +664,16 @@ export const goToPage = createAsyncThunk(
     dispatch(setCurrentPage(params.page));
 
     // Fetch jobs for the new page with current filters
-    return dispatch(fetchJobs({
-      page: params.page,
-      limit: pagination.pageSize,
-      filters,
-      userRole: params.userRole,
-      userId: params.userId,
-      organizationId: params.organizationId,
-    }));
+    return dispatch(
+      fetchJobs({
+        page: params.page,
+        limit: pagination.pageSize,
+        filters,
+        userRole: params.userRole,
+        userId: params.userId,
+        organizationId: params.organizationId,
+      })
+    );
   }
 );
 
@@ -829,7 +858,8 @@ const jobSlice = createSlice({
       const newFilters = action.payload;
 
       // Check if filters actually changed
-      const filtersChanged = JSON.stringify(oldFilters) !== JSON.stringify(newFilters);
+      const filtersChanged =
+        JSON.stringify(oldFilters) !== JSON.stringify(newFilters);
 
       state.filters = newFilters;
 
@@ -855,6 +885,19 @@ const jobSlice = createSlice({
 
     clearSelectedJob: (state) => {
       state.selectedJob = null;
+    },
+
+    // Add cleanup action for memory management
+    clearJobs: (state) => {
+      state.jobs = [];
+      state.filteredJobs = [];
+      state.selectedJob = null;
+      state.pagination = {
+        currentPage: 1,
+        totalPages: 1,
+        totalCount: 0,
+        pageSize: 30,
+      };
     },
 
     updateJobAccess: (
@@ -890,13 +933,18 @@ const jobSlice = createSlice({
       state.pagination.currentPage = 1; // Reset to first page when changing page size
     },
 
-    updatePaginationInfo: (state, action: PayloadAction<{ totalCount: number; pageSize?: number }>) => {
+    updatePaginationInfo: (
+      state,
+      action: PayloadAction<{ totalCount: number; pageSize?: number }>
+    ) => {
       const { totalCount, pageSize } = action.payload;
       state.pagination.totalCount = totalCount;
       if (pageSize) {
         state.pagination.pageSize = pageSize;
       }
-      state.pagination.totalPages = Math.ceil(totalCount / state.pagination.pageSize);
+      state.pagination.totalPages = Math.ceil(
+        totalCount / state.pagination.pageSize
+      );
     },
   },
 
@@ -1080,7 +1128,6 @@ const jobSlice = createSlice({
             created_at: access.created_at!,
             access_type: access.access_type as "granted" | "revoked",
           }));
-
       })
       .addCase(fetchFilterOptions.pending, (state) => {
         state.filterOptions.loading = true;
@@ -1089,14 +1136,14 @@ const jobSlice = createSlice({
       .addCase(fetchFilterOptions.fulfilled, (state, action) => {
         state.filterOptions.loading = false;
         state.filterOptions.companies = Array.isArray(action.payload.companies)
-          ? action.payload.companies.map(company =>
-            typeof company === 'string' ? company : company.value
-          )
+          ? action.payload.companies.map((company) =>
+              typeof company === "string" ? company : company.value
+            )
           : action.payload.companies;
         state.filterOptions.locations = Array.isArray(action.payload.locations)
-          ? action.payload.locations.map(location =>
-            typeof location === 'string' ? location : location.value
-          )
+          ? action.payload.locations.map((location) =>
+              typeof location === "string" ? location : location.value
+            )
           : action.payload.locations;
         state.filterOptions.statuses = action.payload.statuses;
         state.filterOptions.error = null;
@@ -1128,6 +1175,32 @@ const jobSlice = createSlice({
           typeof action.payload === "string"
             ? action.payload
             : "Failed to apply filters";
+      })
+
+      // Global reset action
+      .addCase("RESET_STORE", (state) => {
+        state.jobs = [];
+        state.filteredJobs = [];
+        state.selectedJob = null;
+        state.loading = false;
+        state.error = null;
+        state.filters = {};
+        state.pagination = {
+          currentPage: 1,
+          totalPages: 1,
+          totalCount: 0,
+          pageSize: 30,
+        };
+        state.userAccess = [];
+        state.filterOptions = {
+          companies: [],
+          locations: [],
+          statuses: ["active, paused, closed"],
+          loading: false,
+          error: null,
+          lastFetched: null,
+        };
+        state.viewMode = "board";
       });
   },
 });
@@ -1145,6 +1218,7 @@ export const {
   clearFilterOptionsCache,
   setPageSize,
   updatePaginationInfo,
+  clearJobs,
 } = jobSlice.actions;
 
 export default jobSlice.reducer;
@@ -1241,9 +1315,12 @@ export const selectPaginatedJobs = createSelector(
   }
 );
 
-export const selectFilterOptions = (state: { jobs: JobState }) => state.jobs.filterOptions;
-export const selectFilterOptionsLoading = (state: { jobs: JobState }) => state.jobs.filterOptions.loading;
-export const selectFilterOptionsError = (state: { jobs: JobState }) => state.jobs.filterOptions.error;
+export const selectFilterOptions = (state: { jobs: JobState }) =>
+  state.jobs.filterOptions;
+export const selectFilterOptionsLoading = (state: { jobs: JobState }) =>
+  state.jobs.filterOptions.loading;
+export const selectFilterOptionsError = (state: { jobs: JobState }) =>
+  state.jobs.filterOptions.error;
 
 // Memoized selectors for better performance
 export const selectAvailableCompanies = createSelector(

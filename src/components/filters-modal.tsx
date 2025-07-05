@@ -167,8 +167,6 @@ const FiltersModal: React.FC<FiltersModalProps> = memo(
       if (show) {
         document.addEventListener("keydown", handleEscapeKey);
         document.body.style.overflow = "hidden";
-      } else {
-        document.body.style.overflow = "unset";
       }
 
       return () => {

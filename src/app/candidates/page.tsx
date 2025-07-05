@@ -316,7 +316,7 @@ export default function Candidates() {
           collapsed ? "md:ml-20" : "md:ml-60"
         } pt-4`}
       >
-        <div className="max-w-8xl mx-auto px-2 py-4">
+        <div className="max-w-8xl mx-auto px-2 py-4 mt-10">
           <InfoMessage
             message="You are not part of any organization. Please contact your administrator."
             type="info"
@@ -334,7 +334,7 @@ export default function Candidates() {
           collapsed ? "md:ml-20" : "md:ml-60"
         } pt-4`}
       >
-        <div className="max-w-8xl mx-auto px-2 py-4">
+        <div className="max-w-8xl mx-auto px-2 py-4 mt-10">
           <InfoMessage
             message="No role is assigned to you. Please contact your administrator to assign a role."
             type="info"
@@ -352,7 +352,7 @@ export default function Candidates() {
           collapsed ? "md:ml-20" : "md:ml-60"
         } pt-4`}
       >
-        <div className="max-w-8xl mx-auto px-2 py-4">
+        <div className="max-w-8xl mx-auto px-2 py-4 mt-10">
           <InfoMessage
             message="Invalid user or organization data. Please try refreshing the page."
             type="error"

@@ -705,7 +705,7 @@ export default function DashboardPage() {
           collapsed ? "md:ml-20" : "md:ml-60"
         } pt-18`}
       >
-        <div className="max-w-8xl mx-auto px-2 py-8">
+        <div className="max-w-8xl mx-auto px-2 py-8 mt-10">
           <InfoMessage
             message="You are not part of any organization. Please contact your administrator."
             type="info"
@@ -723,7 +723,7 @@ export default function DashboardPage() {
           collapsed ? "md:ml-20" : "md:ml-60"
         } pt-18`}
       >
-        <div className="max-w-8xl mx-auto px-2 py-8">
+        <div className="max-w-8xl mx-auto px-2 py-8 mt-10">
           <InfoMessage
             message="Invalid user or organization data. Please try refreshing the page."
             type="error"

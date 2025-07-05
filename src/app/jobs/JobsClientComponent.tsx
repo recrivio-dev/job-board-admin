@@ -1,5 +1,11 @@
 "use client";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import type { RootState } from "@/store/store";
 import { useRouter } from "next/navigation";
@@ -22,6 +28,7 @@ import {
   applyFilters,
   setPageSize,
   setFilters,
+  clearJobs,
 } from "@/store/features/jobSlice";
 import {
   JobListComponent,
@@ -56,16 +63,18 @@ export interface JobFilters {
 function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
-): (...args: Parameters<T>) => void {
+): ((...args: Parameters<T>) => void) & { cancel: () => void } {
   let timeout: NodeJS.Timeout;
-  return function executedFunction(...args: Parameters<T>) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
+  const debouncedFunction = (...args: Parameters<T>) => {
     clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
+    timeout = setTimeout(() => func(...args), wait);
   };
+
+  debouncedFunction.cancel = () => {
+    clearTimeout(timeout);
+  };
+
+  return debouncedFunction;
 }
 
 interface InitializationState {
@@ -108,34 +117,39 @@ export default function JobsClientComponent({
     isOpen: false,
   });
 
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [sortBy, setSortBy] = useState<string>("recent");
   const [searchTerm, setSearchTerm] = useState<string>("");
+
+  // Refs to store debounced functions to prevent memory leaks
+  const debouncedFilterRef = useRef<
+    | (((filterType: string, value: string) => void) & { cancel: () => void })
+    | null
+  >(null);
+  const debouncedSearchRef = useRef<
+    (((searchValue: string) => void) & { cancel: () => void }) | null
+  >(null);
 
   // Validation helper
   const isValidProps = useMemo(() => {
     return Boolean(userRole && userId && organizationId);
   }, [userRole, userId, organizationId]);
 
-  // Initialize data with better error handling
+  // Initialize data when component mounts
   useEffect(() => {
-    const initializeData = async () => {
-      if (
-        initState.initialized ||
-        !isValidProps ||
-        !userRole ||
-        !userId ||
-        !organizationId
-      )
-        return;
+    if (initState.initialized || !isValidProps) return;
 
+    const initializeData = async () => {
       // Type guard to ensure required values are strings
       if (
         typeof userRole !== "string" ||
         typeof userId !== "string" ||
         typeof organizationId !== "string"
-      )
+      ) {
         return;
+      }
 
       try {
         setInitState((prev) => ({ ...prev, error: null }));
@@ -143,9 +157,9 @@ export default function JobsClientComponent({
         // Fetch filter options first (they're cached, so this is efficient)
         await dispatch(
           fetchFilterOptions({
-            userRole: userRole!,
-            userId: userId!,
-            organizationId: organizationId!,
+            userRole,
+            userId,
+            organizationId,
           })
         ).unwrap();
 
@@ -154,9 +168,9 @@ export default function JobsClientComponent({
           fetchJobs({
             page: 1,
             limit: pagination.pageSize,
-            userRole: userRole!,
-            userId: userId!,
-            organizationId: organizationId!,
+            userRole,
+            userId,
+            organizationId,
           })
         ).unwrap();
 
@@ -180,6 +194,112 @@ export default function JobsClientComponent({
     pagination.pageSize,
   ]);
 
+  // Initialize debounced functions and store in refs
+  useEffect(() => {
+    debouncedFilterRef.current = debounce(
+      async (filterType: string, value: string) => {
+        if (!isValidProps) return;
+
+        try {
+          const newFilters = {
+            ...filters,
+            [filterType]: value || undefined,
+          };
+
+          // Remove undefined values
+          Object.keys(newFilters).forEach((key) => {
+            if (newFilters[key as keyof JobFilters] === undefined) {
+              delete newFilters[key as keyof JobFilters];
+            }
+          });
+
+          // Update filters immediately without loading state
+          dispatch(setFilters(newFilters));
+
+          // Update local dropdown state immediately
+          setFilterDropdowns((prev) => ({
+            ...prev,
+            [filterType]: value,
+            isOpen: false,
+          }));
+
+          // Apply filters with server-side filtering
+          await dispatch(
+            applyFilters({
+              filters: newFilters,
+              userRole: userRole || "",
+              userId: userId || "",
+              organizationId,
+              page: 1,
+            })
+          ).unwrap();
+        } catch (err) {
+          console.error("Failed to apply filter:", err);
+        }
+      },
+      500
+    );
+
+    debouncedSearchRef.current = debounce(async (searchValue: string) => {
+      if (!isValidProps) return;
+
+      try {
+        const newFilters = {
+          ...filters,
+          searchTerm: searchValue || undefined,
+        };
+
+        // Remove undefined values
+        Object.keys(newFilters).forEach((key) => {
+          if (newFilters[key as keyof JobFilters] === undefined) {
+            delete newFilters[key as keyof JobFilters];
+          }
+        });
+
+        // Update filters immediately
+        dispatch(setFilters(newFilters));
+
+        // Apply filters with server-side filtering
+        await dispatch(
+          applyFilters({
+            filters: newFilters,
+            userRole: userRole || "",
+            userId: userId || "",
+            organizationId,
+            page: 1, // Reset to first page on search
+          })
+        ).unwrap();
+      } catch (err) {
+        console.error("Failed to apply search:", err);
+      }
+    }, 500);
+
+    // Cleanup function
+    return () => {
+      if (debouncedFilterRef.current) {
+        debouncedFilterRef.current.cancel?.();
+      }
+      if (debouncedSearchRef.current) {
+        debouncedSearchRef.current.cancel?.();
+      }
+    };
+  }, [dispatch, filters, userRole, userId, organizationId, isValidProps]);
+
+  // Cleanup effect to clear data on unmount
+  useEffect(() => {
+    return () => {
+      // Clear jobs data to prevent memory leaks
+      dispatch(clearJobs());
+      // Cancel any pending debounced functions
+      if (debouncedFilterRef.current) {
+        debouncedFilterRef.current.cancel?.();
+      }
+      if (debouncedSearchRef.current) {
+        debouncedSearchRef.current.cancel?.();
+      }
+    };
+  }, [dispatch]);
+
   // Optimized handlers with better error handling
   const handleAddJob = useCallback(() => {
     try {
@@ -202,102 +322,20 @@ export default function JobsClientComponent({
 
   const handleFilterChange = useCallback(
     (filterType: string, value: string) => {
-      const debouncedFn = debounce(async (fType: string, fValue: string) => {
-        if (!isValidProps) return;
-
-        try {
-          const newFilters = {
-            ...filters,
-            [fType]: fValue || undefined,
-          };
-
-          // Remove undefined values
-          Object.keys(newFilters).forEach((key) => {
-            if (newFilters[key as keyof JobFilters] === undefined) {
-              delete newFilters[key as keyof JobFilters];
-            }
-          });
-
-          // Update filters immediately without loading state
-          dispatch(setFilters(newFilters));
-
-          // Update local dropdown state immediately
-          setFilterDropdowns((prev) => ({
-            ...prev,
-            [fType]: fValue,
-            isOpen: false,
-          }));
-
-          // Apply filters with server-side filtering (this will trigger loading)
-          await dispatch(
-            applyFilters({
-              filters: newFilters,
-              userRole: userRole!,
-              userId: userId!,
-              organizationId: organizationId!,
-              page: 1, // Reset to first page on filter change
-            })
-          ).unwrap();
-        } catch (err) {
-          console.error("Failed to apply filter:", err);
-        }
-      }, 500);
-
-      debouncedFn(filterType, value);
+      if (debouncedFilterRef.current) {
+        debouncedFilterRef.current(filterType, value);
+      }
     },
-    [dispatch, filters, userRole, userId, organizationId, isValidProps] // Dependencies
-  );
-
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    (searchValue: string) => {
-      const debouncedFn = debounce(async (sValue: string) => {
-        if (!isValidProps) return;
-
-        try {
-          const newFilters = {
-            ...filters,
-            searchTerm: sValue || undefined,
-          };
-
-          // Remove undefined values
-          Object.keys(newFilters).forEach((key) => {
-            if (newFilters[key as keyof JobFilters] === undefined) {
-              delete newFilters[key as keyof JobFilters];
-            }
-          });
-
-          // Update filters immediately
-          dispatch(setFilters(newFilters));
-
-          // Apply filters with server-side filtering
-          await dispatch(
-            applyFilters({
-              filters: newFilters,
-              userRole: userRole!,
-              userId: userId!,
-              organizationId: organizationId!,
-              page: 1, // Reset to first page on search
-            })
-          ).unwrap();
-        } catch (err) {
-          console.error("Failed to apply search:", err);
-        }
-      }, 500);
-
-      debouncedFn(searchValue);
-    },
-    [dispatch, filters, userRole, userId, organizationId, isValidProps]
+    []
   );
 
   // Search handler that updates local state immediately and triggers debounced search
-  const handleSearchChange = useCallback(
-    (searchValue: string) => {
-      setSearchTerm(searchValue); // Update local state immediately for UI responsiveness
-      debouncedSearch(searchValue); // Trigger debounced search
-    },
-    [debouncedSearch]
-  );
+  const handleSearchChange = useCallback((searchValue: string) => {
+    setSearchTerm(searchValue); // Update local state immediately for UI responsiveness
+    if (debouncedSearchRef.current) {
+      debouncedSearchRef.current(searchValue);
+    }
+  }, []);
 
   const handleRetry = useCallback(async () => {
     if (!isValidProps || !userRole || !userId || !organizationId) return;
@@ -310,9 +348,9 @@ export default function JobsClientComponent({
         fetchJobs({
           page: 1,
           limit: INITIAL_PAGE_SIZE,
-          userRole: userRole!,
-          userId: userId!,
-          organizationId: organizationId!,
+          userRole,
+          userId,
+          organizationId,
         })
       ).unwrap();
     } catch (err) {
@@ -328,9 +366,9 @@ export default function JobsClientComponent({
           page,
           limit: pagination.pageSize,
           filters,
-          userRole: userRole!,
-          userId: userId!,
-          organizationId: organizationId!,
+          userRole,
+          userId,
+          organizationId,
         })
       );
     },
@@ -355,9 +393,9 @@ export default function JobsClientComponent({
           page: 1,
           limit: pageSize, // This should be the new pageSize
           filters,
-          userRole: userRole!,
-          userId: userId!,
-          organizationId: organizationId!,
+          userRole,
+          userId,
+          organizationId,
         };
 
         // Step 3: Fetch jobs
@@ -395,12 +433,45 @@ export default function JobsClientComponent({
     setSearchTerm(""); // Clear search term as well
   }, [dispatch]);
 
-  const handleApplyFilters = () => {
-    handleCloseFiltersModal();
-    // Filters are already applied through client-side filtering in transformedJobs
-    // No need to make server calls since we're doing client-side multiselect filtering
-    console.log("Applying filters - filters are handled client-side");
-  };
+  const handleApplyFilters = useCallback(async () => {
+    if (!isValidProps) return;
+
+    // Type guard to ensure required values are strings
+    if (typeof userRole !== "string" || typeof userId !== "string") {
+      return;
+    }
+
+    try {
+      const newFilters = {
+        ...filters,
+        // Convert arrays to single values for API compatibility
+        status: Array.isArray(filters.status)
+          ? filters.status[0]
+          : filters.status,
+        location: Array.isArray(filters.location)
+          ? filters.location[0]
+          : filters.location,
+        company: Array.isArray(filters.company)
+          ? filters.company[0]
+          : filters.company,
+        jobType: Array.isArray(filters.jobType)
+          ? filters.jobType[0]
+          : filters.jobType,
+      };
+
+      await dispatch(
+        applyFilters({
+          filters: newFilters,
+          userRole,
+          userId,
+          organizationId,
+          page: 1, // Reset to first page on filter change
+        })
+      ).unwrap();
+    } catch (error) {
+      console.error("Failed to apply filters:", error);
+    }
+  }, [dispatch, filters, userRole, userId, organizationId, isValidProps]);
 
   // Optimized job transformations - now using paginated jobs with search and sorting
   const transformedJobs = useMemo(() => {
@@ -701,18 +772,27 @@ export default function JobsClientComponent({
           {/* Filters */}
           <div className="flex items-center gap-2 text-sm text-neutral-500">
             {/* Sort dropdown */}
-            <div className="flex items-center gap-2 border-r border-neutral-300 pr-2">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-white border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="recent">Most Recent</option>
-                <option value="az">A-Z</option>
-                <option value="za">Z-A</option>
-              </select>
+            <div className="hidden md:flex items-center gap-2">
+              <FilterDropdown
+                label="Sort By"
+                value={
+                  sortBy === "recent"
+                    ? "Most Recent"
+                    : sortBy === "az"
+                    ? "A-Z"
+                    : "Z-A"
+                }
+                options={["Most Recent", "A-Z", "Z-A"]}
+                onChange={(value) => {
+                  if (value === "Most Recent") setSortBy("recent");
+                  else if (value === "A-Z") setSortBy("az");
+                  else if (value === "Z-A") setSortBy("za");
+                }}
+                isOpen={sortDropdownOpen}
+                onToggle={() => setSortDropdownOpen(!sortDropdownOpen)}
+              />
             </div>
-            <div className="hidden md:flex items-center gap-2 border-r border-neutral-300 pr-2">
+            <div className="hidden md:flex items-center gap-2">
               <FilterDropdown
                 label="Job Status"
                 value={filterDropdowns.status}
