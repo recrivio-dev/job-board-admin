@@ -466,7 +466,7 @@ export const fetchFilterOptions = createAsyncThunk(
       return {
         companies: (data.companies || []).sort(),
         jobTitles: (data.job_titles || []).sort(),
-        statuses: defaultStatuses,
+        statuses: data.statuses || defaultStatuses,
         cached: false,
       };
     } catch (error: unknown) {
@@ -817,9 +817,10 @@ const initialState: CandidatesState = {
 
   // Filters (using default values that match your function)
   filters: {
-    status: [], // Will be filtered out in function if "All"
+    status: undefined, // Will be filtered out in function if "All"
     candidateName: undefined,
     companyName: undefined,
+    jobTitle: undefined,
     minExperience: undefined,
     maxExperience: undefined,
     dateFrom: undefined,
@@ -827,13 +828,14 @@ const initialState: CandidatesState = {
     jobId: undefined,
     sortBy: "applied_date", // Matches default in your function
     sortOrder: "desc", // Matches default in your function
+    searchTerm: undefined,
   },
 
   // Filter options
   filterOptions: {
     companies: [],
     jobTitles: [],
-    statuses: ["All", "Accepted", "Rejected", "Pending"], // Default statuses
+    statuses: ["accepted", "rejected", "pending"], // Default statuses in lowercase
     lastFetched: null, // Timestamp of last fetch
   },
 
@@ -889,7 +891,20 @@ const candidatesSlice = createSlice({
     },
 
     clearFilters: (state) => {
-      state.filters = {};
+      state.filters = {
+        status: undefined,
+        candidateName: undefined,
+        companyName: undefined,
+        jobTitle: undefined,
+        minExperience: undefined,
+        maxExperience: undefined,
+        dateFrom: undefined,
+        dateTo: undefined,
+        jobId: undefined,
+        sortBy: "applied_date",
+        sortOrder: "desc",
+        searchTerm: undefined,
+      };
       state.pagination.currentPage = 1;
     },
 
@@ -1040,7 +1055,7 @@ const candidatesSlice = createSlice({
         state.filterOptions = {
           companies: [],
           jobTitles: [],
-          statuses: ["accepted", "rejected", "pending"], // Default statuses
+          statuses: ["accepted", "rejected", "pending"], // Default statuses in lowercase
           lastFetched: null,
         };
       })
@@ -1066,7 +1081,20 @@ const candidatesSlice = createSlice({
         state.currentCandidate = null;
         state.loading = false;
         state.error = null;
-        state.filters = {};
+        state.filters = {
+          status: undefined,
+          candidateName: undefined,
+          companyName: undefined,
+          jobTitle: undefined,
+          minExperience: undefined,
+          maxExperience: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+          jobId: undefined,
+          sortBy: "applied_date",
+          sortOrder: "desc",
+          searchTerm: undefined,
+        };
         state.pagination = {
           currentPage: 1,
           totalPages: 1,

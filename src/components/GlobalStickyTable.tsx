@@ -1,5 +1,3 @@
-import React from "react";
-
 interface Column<T> {
   key: string;
   header: React.ReactNode;

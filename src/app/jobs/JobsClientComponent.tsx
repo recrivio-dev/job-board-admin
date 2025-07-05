@@ -735,7 +735,7 @@ export default function JobsClientComponent({
             <button
               onClick={() => handleViewModeChange("board")}
               aria-pressed={viewMode === "board"}
-              className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-3xl text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              className={`flex items-center gap-2 cursor-pointer px-4 py-1.5 rounded-3xl text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                 viewMode === "board"
                   ? "bg-blue-600 text-white hover:bg-blue-700"
                   : "border border-neutral-500 text-neutral-500 hover:text-neutral-700 hover:border-neutral-700"
@@ -758,7 +758,7 @@ export default function JobsClientComponent({
             <button
               onClick={() => handleViewModeChange("list")}
               aria-pressed={viewMode === "list"}
-              className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-3xl text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              className={`flex items-center gap-2 cursor-pointer px-4 py-1.5 rounded-3xl text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                 viewMode === "list"
                   ? "bg-blue-600 text-white hover:bg-blue-700"
                   : "border border-neutral-500 text-neutral-500 hover:text-neutral-700 hover:border-neutral-700"
@@ -831,7 +831,7 @@ export default function JobsClientComponent({
 
             <div className="flex items-center gap-2">
               <button
-                className="flex items-center gap-1 font-medium cursor-pointer bg-neutral-200 px-4 py-2 rounded-3xl hover:bg-neutral-300 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2"
+                className="flex items-center gap-1 font-medium cursor-pointer bg-neutral-200 px-4 py-1.5 rounded-3xl hover:bg-neutral-300 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2"
                 onClick={handleOpenFiltersModal}
                 aria-label="Open advanced filters"
               >

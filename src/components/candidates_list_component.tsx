@@ -22,6 +22,7 @@ import {
   deleteCandidateApplication,
   CandidateFilters,
   clearCandidates,
+  clearFilters,
 } from "@/store/features/candidatesSlice";
 import { TiArrowSortedDown } from "react-icons/ti";
 import GlobalStickyTable from "@/components/GlobalStickyTable";
@@ -119,6 +120,12 @@ export default function CandidatesList({
   const filterOptions = useAppSelector(selectFilterOptions);
   const candidates = useAppSelector((state) => state.candidates.candidates);
 
+  // ADDED LOG FOR DEBUGGING
+  console.log("CandidatesList render", filters);
+
+  console.log("CandidatesList - current filters:", filters);
+  console.log("CandidatesList - filterOptions:", filterOptions);
+
   // Local state for overlay
   const [candidatesDetailsOverlay, setCandidatesDetailsOverlay] = useState<{
     candidate: CandidateWithApplication | null;
@@ -163,6 +170,14 @@ export default function CandidatesList({
       ...filters,
       jobId: jobId || undefined,
     };
+  }, [filters, jobId]);
+
+  // Update tempFilters when main filters change
+  useEffect(() => {
+    setTempFilters({
+      ...filters,
+      jobId: jobId || undefined,
+    });
   }, [filters, jobId]);
 
   // Load column preferences from localStorage on mount
@@ -305,6 +320,15 @@ export default function CandidatesList({
     (filterType: string, value: string | string[] | number) => {
       if (!userContext) return;
 
+      console.log(
+        `Filter change - Type: ${filterType}, Value:`,
+        value,
+        "Type:",
+        typeof value,
+        "IsArray:",
+        Array.isArray(value)
+      );
+
       let newFilters = { ...filters };
       if (jobId) {
         newFilters.jobId = jobId; // Ensure jobId is included in filters
@@ -360,8 +384,6 @@ export default function CandidatesList({
         }
       } else if (filterType === "experience") {
         // Handle experience filter with improved parsing
-        console.log("Experience filter change:", value);
-
         if (value === "" || value === "all") {
           newFilters.minExperience = undefined;
           newFilters.maxExperience = undefined;
@@ -374,7 +396,6 @@ export default function CandidatesList({
           } else if (value.includes("-")) {
             // Handle range cases like "0-2", "3-5", "6-8"
             const [min, max] = value.split("-").map(Number);
-            console.log("Parsed experience range:", min, max);
             newFilters.minExperience = isNaN(min) ? undefined : min;
             newFilters.maxExperience = isNaN(max) ? undefined : max;
           } else {
@@ -391,13 +412,13 @@ export default function CandidatesList({
         filterType === "companyName" ||
         filterType === "jobTitle"
       ) {
-        // Handle multi-select filters - expect array values
-        if (value === "" || value === "all" || value === null) {
-          newFilters[filterType] = undefined;
-        } else if (Array.isArray(value)) {
-          newFilters[filterType] = value.length > 0 ? value : undefined;
+        // Always set to a new array, even if empty
+        if (Array.isArray(value)) {
+          newFilters[filterType] = [...value];
+        } else if (value === "" || value === "all" || value === null) {
+          newFilters[filterType] = [];
         } else {
-          newFilters[filterType] = value ? [value as string] : undefined;
+          newFilters[filterType] = value ? [value as string] : [];
         }
       } else {
         // Handle other single-select filters
@@ -414,6 +435,7 @@ export default function CandidatesList({
         }
       });
 
+      console.log("Final filters state:", newFilters);
       dispatch(setFilters(newFilters));
 
       // Fetch data with new filters
@@ -537,9 +559,13 @@ export default function CandidatesList({
   ); // Depend on tempFilters instead of filters
 
   const handleCloseFiltersModal = useCallback(() => {
-    setTempFilters({ ...filters }); // Reset temp filters to current filters
+    // Reset temp filters to current filters to ensure proper synchronization
+    setTempFilters({
+      ...filters,
+      jobId: jobId || undefined,
+    });
     setShowFiltersModal(false);
-  }, [filters]);
+  }, [filters, jobId]);
 
   const handleApplyFilters = useCallback(() => {
     if (!userContext) return;
@@ -758,20 +784,44 @@ export default function CandidatesList({
 
   // Modal handlers
   const handleOpenFiltersModal = useCallback(() => {
-    setTempFilters({ ...filters }); // Copy current filters to temp
+    // Copy current filters to temp filters to ensure proper synchronization
+    setTempFilters({
+      ...filters,
+      jobId: jobId || undefined,
+    });
     setShowFiltersModal(true);
-  }, [filters]);
+  }, [filters, jobId]);
 
   const handleClearAllFilters = () => {
     if (!userContext) return;
 
-    const clearedFilters = {};
-    dispatch(setFilters(clearedFilters));
+    // Use the clearFilters action to properly reset all filters
+    dispatch(clearFilters());
+
+    // Force a complete reset of temp filters
+    const clearedTempFilters: Partial<CandidateFilters> = {
+      status: undefined,
+      candidateName: undefined,
+      companyName: undefined,
+      jobTitle: undefined,
+      minExperience: undefined,
+      maxExperience: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      jobId: jobId || undefined,
+      sortBy: "applied_date",
+      sortOrder: "desc",
+      searchTerm: undefined,
+    };
+
+    setTempFilters(clearedTempFilters);
+
+    // Fetch data with cleared filters
     dispatch(
       fetchJobApplicationsWithAccess({
         page: 1,
         limit: pagination.candidatesPerPage,
-        filters: clearedFilters,
+        filters: {},
         userContext,
       })
     );
@@ -926,16 +976,20 @@ export default function CandidatesList({
       id: "status",
       label: "Application Status",
       type: "checkbox" as const,
-      options: filterOptions.statuses || [],
-      selected: tempFilters.status || [],
-      onChange: (option: string) => handleTempFilterChange("status", option),
+      options:
+        filterOptions.statuses?.map((status) => status.toLowerCase()) || [],
+      selected: Array.isArray(tempFilters.status) ? tempFilters.status : [],
+      onChange: (option: string) => {
+        console.log("Status filter onChange called with:", option);
+        handleTempFilterChange("status", option);
+      },
     },
     {
       id: "jobTitle",
       label: "Active Jobs",
       type: "checkbox" as const,
-      options: filterOptions.jobTitles?.map((j) => j.value) || [], // Remove the empty string from here
-      selected: tempFilters.jobTitle || [],
+      options: filterOptions.jobTitles?.map((j) => j.value) || [],
+      selected: Array.isArray(tempFilters.jobTitle) ? tempFilters.jobTitle : [],
       onChange: (option: string) => handleTempFilterChange("jobTitle", option),
     },
   ];
@@ -1006,10 +1060,13 @@ export default function CandidatesList({
                   </div>
 
                   <MultiSelectDropdown
+                    key={filters.status ? filters.status.join(",") : "none"}
                     options={
                       filterOptions.statuses?.map((status: string) => ({
-                        value: status === "all" ? "all" : status.toLowerCase(),
-                        label: status.charAt(0).toUpperCase() + status.slice(1),
+                        value: status.toLowerCase(),
+                        label:
+                          status.charAt(0).toUpperCase() +
+                          status.slice(1).toLowerCase(),
                       })) || []
                     }
                     selectedValues={filters.status || []}
@@ -1035,7 +1092,7 @@ export default function CandidatesList({
                       options={
                         filterOptions.companies?.map((company) => ({
                           value: company.value,
-                          label: company.value,
+                          label: company.label,
                         })) || []
                       }
                       selectedValues={filters.companyName || []}
@@ -1108,6 +1165,7 @@ export default function CandidatesList({
       />
       {/* Filters Modal */}
       <FiltersModal
+        key={`filters-modal-${JSON.stringify(tempFilters)}`}
         show={showFiltersModal}
         onClose={handleCloseFiltersModal}
         filterOptions={filtersModalOptions}

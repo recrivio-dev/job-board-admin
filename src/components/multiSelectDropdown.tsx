@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FaCaretDown } from 'react-icons/fa';
-import { BiCheck } from 'react-icons/bi';
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { FaCaretDown } from "react-icons/fa";
 
 const MultiSelectDropdown = ({
   options,
@@ -8,7 +7,7 @@ const MultiSelectDropdown = ({
   onChange,
   placeholder,
   className = "",
-  searchPlaceholder = "Search"
+  searchPlaceholder = "Search",
 }: {
   options: Array<{ value: string; label: string }>;
   selectedValues: string[] | string;
@@ -22,16 +21,32 @@ const MultiSelectDropdown = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Normalize selectedValues to always be an array and memoize it
+  const normalizedSelectedValues = useMemo(() => {
+    console.log("MultiSelectDropdown - selectedValues prop:", selectedValues);
+    if (!selectedValues) return [];
+    if (Array.isArray(selectedValues)) return selectedValues;
+    return [selectedValues];
+  }, [selectedValues]);
+
+  console.log(
+    "MultiSelectDropdown - normalizedSelectedValues:",
+    normalizedSelectedValues
+  );
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
         setSearchTerm(""); // Clear search when closing
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Focus search input when dropdown opens
@@ -42,30 +57,40 @@ const MultiSelectDropdown = ({
   }, [isOpen]);
 
   const handleOptionToggle = (value: string) => {
-    const currentValues = Array.isArray(selectedValues) ? selectedValues : [];
-    const newValues = currentValues.includes(value)
-      ? currentValues.filter(v => v !== value)
-      : [...currentValues, value];
+    console.log(
+      "MultiSelectDropdown toggle - value:",
+      value,
+      "current selected:",
+      normalizedSelectedValues
+    );
+
+    const newValues = normalizedSelectedValues.includes(value)
+      ? normalizedSelectedValues.filter((v) => v !== value)
+      : [...normalizedSelectedValues, value];
+
+    console.log("MultiSelectDropdown new values:", newValues);
+
+    // Always call onChange, even with empty array
     onChange(newValues);
   };
 
   const getDisplayText = () => {
-    const currentValues = Array.isArray(selectedValues) ? selectedValues : [];
-    if (currentValues.length === 0) return placeholder;
-    if (currentValues.length === 1) {
-      const option = options.find(opt => opt.value === currentValues[0]);
-      return option?.label || currentValues[0];
+    if (normalizedSelectedValues.length === 0) return placeholder;
+    if (normalizedSelectedValues.length === 1) {
+      const option = options.find(
+        (opt) => opt.value === normalizedSelectedValues[0]
+      );
+      return option?.label || normalizedSelectedValues[0];
     }
-    return `${currentValues.length} selected`;
+    return `${normalizedSelectedValues.length} selected`;
   };
 
   // Filter options based on search term
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    option.value.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredOptions = options.filter(
+    (option) =>
+      option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      option.value.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const currentValues = Array.isArray(selectedValues) ? selectedValues : [];
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
@@ -76,33 +101,35 @@ const MultiSelectDropdown = ({
         className={`
           flex items-center justify-between gap-2 font-medium cursor-pointer
           border px-4 py-2 rounded-3xl transition-all duration-200 min-w-[120px]
-          ${currentValues.length > 0
-            ? 'border-blue-500 bg-blue-600 text-white hover:border-blue-600' 
-            : 'border-neutral-500 text-neutral-700 hover:border-neutral-700 hover:bg-neutral-50'
+          ${
+            normalizedSelectedValues.length > 0
+              ? "border-blue-500 bg-blue-600 text-white hover:border-blue-600"
+              : "border-neutral-500 text-neutral-700 hover:border-neutral-700 hover:bg-neutral-50"
           }
           hover:shadow-sm
-          ${isOpen ? 'ring-2 ring-blue-200 border-blue-500' : ''}
+          ${isOpen ? "ring-2 ring-blue-200 border-blue-500" : ""}
         `}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span className="truncate text-xs">
-          {getDisplayText()}
-        </span>
+        <span className="truncate text-xs">{getDisplayText()}</span>
         <div className="flex items-center gap-1">
-          <FaCaretDown 
+          <FaCaretDown
             className={`w-4 h-4 transition-transform duration-200 ${
-                  isOpen ? 'rotate-180' : ''}
+              isOpen ? "rotate-180" : ""
+            }
                   ${
-                  currentValues.length > 0 ? 'text-white' : 'text-neutral-500'
-            }`} 
+                    normalizedSelectedValues.length > 0
+                      ? "text-white"
+                      : "text-neutral-500"
+                  }`}
           />
         </div>
       </button>
 
       {/* Dropdown Menu - Styled like FilterDropdown */}
       {isOpen && (
-        <div 
+        <div
           className="absolute top-full left-0 mt-2 w-52 bg-white border border-neutral-200 rounded-lg shadow-lg z-50 overflow-hidden"
           role="listbox"
         >
@@ -121,39 +148,25 @@ const MultiSelectDropdown = ({
           )}
 
           {/* Options Container */}
-          <div 
-            className="py-2 overflow-y-auto"
-            style={{ maxHeight: '240px' }}
-          >
+          <div className="py-2 overflow-y-auto" style={{ maxHeight: "240px" }}>
             {/* Options */}
             {filteredOptions.length > 0 ? (
-              filteredOptions.map((option, index) => (
-                <label
-                  key={index}
-                  className={`
-                  flex items-center px-4 py-2.5 text-sm transition-colors cursor-pointer
-                  hover:bg-neutral-50
-                  ${currentValues.includes(option.value) ? 'font-medium bg-blue-50 text-blue-700' : ''}
-                  `}
-                >
-                  <div className="mr-3 flex items-center">
-                  {currentValues.includes(option.value) ? (
-                    <div className="w-5 h-5 bg-green-500 rounded flex items-center justify-center">
-                      <BiCheck className="w-5 h-5 text-white" />
-                    </div>
-                  ) : (
-                    <div className="w-5 h-5 border border-neutral-300 rounded"></div>
-                  )}
-                  </div>
-                  <span className="truncate">{option.label}</span>
-                  <input
-                  type="checkbox"
-                  checked={currentValues.includes(option.value)}
-                  onChange={() => handleOptionToggle(option.value)}
-                  className="sr-only"
-                  />
-                </label>
-              ))
+              filteredOptions.map((option) => {
+                return (
+                  <label
+                    key={option.value}
+                    className="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={normalizedSelectedValues.includes(option.value)}
+                      onChange={() => handleOptionToggle(option.value)}
+                      className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    {option.label}
+                  </label>
+                );
+              })
             ) : (
               <div className="px-4 py-6 text-center text-sm text-neutral-500">
                 <div className="mb-2">🔍</div>
@@ -164,14 +177,14 @@ const MultiSelectDropdown = ({
           </div>
 
           {/* Footer - Clear all button */}
-          {currentValues.length > 0 && (
+          {normalizedSelectedValues.length > 0 && (
             <div className="px-4 py-2 bg-neutral-50 border-t border-neutral-100">
               <button
                 type="button"
                 onClick={() => onChange([])}
                 className="text-xs text-blue-600 hover:text-blue-800 font-medium"
               >
-                Clear all ({currentValues.length})
+                Clear all ({normalizedSelectedValues.length})
               </button>
             </div>
           )}
