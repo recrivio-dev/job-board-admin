@@ -253,7 +253,7 @@ const JobCard = ({ job }: { job: JobCardProps }) => {
   return (
     <div
       onClick={handleCardClick}
-      className="bg-white rounded-2xl shadow-sm p-3 hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col min-w-64"
+      className="bg-white rounded-2xl p-3 shadow-xs hover:shadow-sm transition-all duration-200 cursor-pointer group h-full flex flex-col min-w-64"
     >
       <div className="flex items-start space-x-4">
         <div className="flex-shrink-0">
@@ -277,17 +277,17 @@ const JobCard = ({ job }: { job: JobCardProps }) => {
         </div>
       </div>
 
-      <div className="space-y-2 mt-auto">
-        <div className="flex flex-col gap-2">
-          <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg w-fit">
+      <div className="mt-3">
+        <div className="flex flex-col space-y-1">
+          <div className="inline-flex items-center gap-1">
             <MdCurrencyRupee className="w-4 h-4 text-blue-600 flex-shrink-0" />
-            <p className="text-sm text-neutral-600">
+            <p className="text-xs text-neutral-600">
               {formatSalary(job.min_salary, job.max_salary)}
             </p>
           </div>
-          <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg w-fit">
+          <div className="inline-flex items-center gap-1">
             <IoLocationOutline className="w-4 h-4 text-blue-600 flex-shrink-0" />
-            <p className="text-sm text-neutral-600 truncate">{job.location}</p>
+            <p className="text-xs text-neutral-600 truncate">{job.location}</p>
           </div>
         </div>
 
