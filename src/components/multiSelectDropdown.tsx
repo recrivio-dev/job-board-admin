@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { FaCaretDown } from "react-icons/fa";
 
 const MultiSelectDropdown = ({
@@ -23,16 +23,10 @@ const MultiSelectDropdown = ({
 
   // Normalize selectedValues to always be an array and memoize it
   const normalizedSelectedValues = useMemo(() => {
-    console.log("MultiSelectDropdown - selectedValues prop:", selectedValues);
     if (!selectedValues) return [];
     if (Array.isArray(selectedValues)) return selectedValues;
     return [selectedValues];
   }, [selectedValues]);
-
-  console.log(
-    "MultiSelectDropdown - normalizedSelectedValues:",
-    normalizedSelectedValues
-  );
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -57,18 +51,9 @@ const MultiSelectDropdown = ({
   }, [isOpen]);
 
   const handleOptionToggle = (value: string) => {
-    console.log(
-      "MultiSelectDropdown toggle - value:",
-      value,
-      "current selected:",
-      normalizedSelectedValues
-    );
-
     const newValues = normalizedSelectedValues.includes(value)
       ? normalizedSelectedValues.filter((v) => v !== value)
       : [...normalizedSelectedValues, value];
-
-    console.log("MultiSelectDropdown new values:", newValues);
 
     // Always call onChange, even with empty array
     onChange(newValues);

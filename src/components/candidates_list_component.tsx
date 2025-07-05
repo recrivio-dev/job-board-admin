@@ -120,12 +120,6 @@ export default function CandidatesList({
   const filterOptions = useAppSelector(selectFilterOptions);
   const candidates = useAppSelector((state) => state.candidates.candidates);
 
-  // ADDED LOG FOR DEBUGGING
-  console.log("CandidatesList render", filters);
-
-  console.log("CandidatesList - current filters:", filters);
-  console.log("CandidatesList - filterOptions:", filterOptions);
-
   // Local state for overlay
   const [candidatesDetailsOverlay, setCandidatesDetailsOverlay] = useState<{
     candidate: CandidateWithApplication | null;
@@ -320,15 +314,6 @@ export default function CandidatesList({
     (filterType: string, value: string | string[] | number) => {
       if (!userContext) return;
 
-      console.log(
-        `Filter change - Type: ${filterType}, Value:`,
-        value,
-        "Type:",
-        typeof value,
-        "IsArray:",
-        Array.isArray(value)
-      );
-
       let newFilters = { ...filters };
       if (jobId) {
         newFilters.jobId = jobId; // Ensure jobId is included in filters
@@ -435,7 +420,6 @@ export default function CandidatesList({
         }
       });
 
-      console.log("Final filters state:", newFilters);
       dispatch(setFilters(newFilters));
 
       // Fetch data with new filters
@@ -493,7 +477,6 @@ export default function CandidatesList({
           } else if (value.includes("-")) {
             // Handle range cases like "0-2", "3-5", "6-8"
             const [min, max] = value.split("-").map(Number);
-            console.log("Parsed experience range:", min, max);
             newTempFilters.minExperience = isNaN(min) ? undefined : min;
             newTempFilters.maxExperience = isNaN(max) ? undefined : max;
           } else {
@@ -980,7 +963,6 @@ export default function CandidatesList({
         filterOptions.statuses?.map((status) => status.toLowerCase()) || [],
       selected: Array.isArray(tempFilters.status) ? tempFilters.status : [],
       onChange: (option: string) => {
-        console.log("Status filter onChange called with:", option);
         handleTempFilterChange("status", option);
       },
     },
