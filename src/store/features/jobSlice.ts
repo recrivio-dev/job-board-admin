@@ -117,6 +117,8 @@ export interface JobFilters {
     max: number;
   };
   accessibleOnly?: boolean;
+  sortBy?: string; // Field to sort by
+  sortOrder?: 'asc' | 'desc'; // Sort order
   searchTerm?: string; // Global search term
 }
 
@@ -151,7 +153,19 @@ const initialState: JobState = {
   jobs: [],
   filteredJobs: [],
   selectedJob: null,
-  filters: {},
+  filters: {
+    status: [],
+    location: [],
+    company: [],
+    jobType: [],
+    experienceLevel: "",
+    salaryRange: { min: 0, max: 0 },
+    experienceRange: { min: 0, max: 0 },
+    accessibleOnly: false,
+    sortBy: "created_at",
+    sortOrder: "desc",
+    searchTerm: "", // Initialize searchTerm
+  },
   loading: false,
   error: null,
   pagination: {
@@ -289,31 +303,61 @@ export const fetchJobs = createAsyncThunk(
         );
       }
 
-      // Call the RPC function
-      // Helper function to handle array or single value filters
-      const prepareFilterValue = (
+      // Helper function to handle array filters
+      const prepareArrayFilter = (
+        filter: string | string[] | undefined
+      ): string[] | undefined => {
+        if (!filter) return undefined;
+        if (Array.isArray(filter)) {
+          return filter.filter(item => item && item.trim() !== '');
+        }
+        return filter.trim() !== '' ? [filter] : undefined;
+      };
+
+      // Helper function to handle single value filters (for backward compatibility)
+      const prepareSingleFilter = (
         filter: string | string[] | undefined
       ): string | undefined => {
         if (!filter) return undefined;
         if (Array.isArray(filter)) {
-          // For now, take the first value if it's an array (backend doesn't support arrays yet)
           return filter.length > 0 ? filter[0] : undefined;
         }
         return filter;
       };
 
+      // Call the enhanced RPC function
+      console.log("Fetching jobs with filters:", filters);
       const { data, error } = await supabase.rpc("fetch_jobs_with_access", {
         p_user_id: userId,
         p_user_role: userRole,
         p_organization_id: organizationId,
         p_page: page,
         p_limit: limit,
-        p_status: prepareFilterValue(filters.status),
-        p_location: prepareFilterValue(filters.location),
-        p_company: prepareFilterValue(filters.company),
-        p_job_type: prepareFilterValue(filters.jobType),
+
+        // Search functionality
+        p_search_term: filters.searchTerm?.trim() || undefined,
+
+        // Sorting
+        p_sort_by: filters.sortBy || "created_at",
+        p_sort_order: filters.sortOrder || "desc",
+
+        // Array filters (new enhanced filters)
+        p_status_filter: prepareArrayFilter(filters.status),
+        p_location_filter: prepareArrayFilter(filters.location),
+        p_company_filter: prepareArrayFilter(filters.company),
+        p_job_type_filter: prepareArrayFilter(filters.jobType),
+
+        // Single value filters (for backward compatibility)
+        p_status: prepareSingleFilter(filters.status),
+        p_location: prepareSingleFilter(filters.location),
+        p_company: prepareSingleFilter(filters.company),
+        p_job_type: prepareSingleFilter(filters.jobType),
+
+        // Salary range filters
         p_salary_min: filters.salaryRange?.min || undefined,
         p_salary_max: filters.salaryRange?.max || undefined,
+
+        // Experience filters
         p_experience_min: filters.experienceLevel
           ? parseExperienceMin(filters.experienceLevel)
           : filters.experienceRange?.min || undefined,
@@ -623,6 +667,8 @@ export const applyFilters = createAsyncThunk(
 
     // Update filters in state first
     dispatch(setFilters(params.filters));
+
+    console.log("Applying filters:", params.filters);
 
     // If page is not specified and filters changed, reset to page 1
     if (!params.page) {
@@ -1137,13 +1183,13 @@ const jobSlice = createSlice({
         state.filterOptions.loading = false;
         state.filterOptions.companies = Array.isArray(action.payload.companies)
           ? action.payload.companies.map((company) =>
-              typeof company === "string" ? company : company.value
-            )
+            typeof company === "string" ? company : company.value
+          )
           : action.payload.companies;
         state.filterOptions.locations = Array.isArray(action.payload.locations)
           ? action.payload.locations.map((location) =>
-              typeof location === "string" ? location : location.value
-            )
+            typeof location === "string" ? location : location.value
+          )
           : action.payload.locations;
         state.filterOptions.statuses = action.payload.statuses;
         state.filterOptions.error = null;

@@ -57,6 +57,9 @@ export interface JobFilters {
     min: number;
     max: number;
   };
+  searchTerm?: string;
+  sortBy?: string; // e.g., "created_at", "title", etc.
+  sortOrder?: "asc" | "desc"; // e.g., "asc" for ascending, "desc" for descending
   accessibleOnly?: boolean;
 }
 
@@ -94,7 +97,7 @@ export default function JobsClientComponent({
     (state: RootState) => state.ui.sidebar.collapsed
   );
   // const jobs = useAppSelector(selectJobs);
-  const paginatedJobs = useAppSelector(selectJobs);
+  const jobs = useAppSelector(selectJobs);
   const pagination = useAppSelector(selectJobPagination);
   const error = useAppSelector(selectJobsError);
   const viewMode = useAppSelector(selectJobViewMode);
@@ -121,7 +124,7 @@ export default function JobsClientComponent({
 
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [sortBy, setSortBy] = useState<string>("recent");
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>(filters.searchTerm || "");
 
   // Refs to store debounced functions to prevent memory leaks
   const debouncedFilterRef = useRef<
@@ -168,6 +171,7 @@ export default function JobsClientComponent({
           fetchJobs({
             page: 1,
             limit: pagination.pageSize,
+            filters,
             userRole,
             userId,
             organizationId,
@@ -255,9 +259,6 @@ export default function JobsClientComponent({
             delete newFilters[key as keyof JobFilters];
           }
         });
-
-        // Update filters immediately
-        dispatch(setFilters(newFilters));
 
         // Apply filters with server-side filtering
         await dispatch(
@@ -444,19 +445,6 @@ export default function JobsClientComponent({
     try {
       const newFilters = {
         ...filters,
-        // Convert arrays to single values for API compatibility
-        status: Array.isArray(filters.status)
-          ? filters.status[0]
-          : filters.status,
-        location: Array.isArray(filters.location)
-          ? filters.location[0]
-          : filters.location,
-        company: Array.isArray(filters.company)
-          ? filters.company[0]
-          : filters.company,
-        jobType: Array.isArray(filters.jobType)
-          ? filters.jobType[0]
-          : filters.jobType,
       };
 
       await dispatch(
@@ -472,185 +460,6 @@ export default function JobsClientComponent({
       console.error("Failed to apply filters:", error);
     }
   }, [dispatch, filters, userRole, userId, organizationId, isValidProps]);
-
-  // Optimized job transformations - now using paginated jobs with search and sorting
-  const transformedJobs = useMemo(() => {
-    let filteredJobs = [...paginatedJobs];
-
-    // Debug logging for filters
-    console.log("Current filters:", filters);
-    console.log("Total jobs before filtering:", filteredJobs.length);
-
-    // Apply search filter
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      filteredJobs = filteredJobs.filter((job) => {
-        return (
-          // Search in job title
-          (job.title && job.title.toLowerCase().includes(searchLower)) ||
-          // Search in company name
-          (job.company_name &&
-            job.company_name.toLowerCase().includes(searchLower)) ||
-          // Search in location
-          (job.location && job.location.toLowerCase().includes(searchLower)) ||
-          // Search in job ID
-          (job.id && job.id.toLowerCase().includes(searchLower)) ||
-          // Search in job type
-          (job.job_type && job.job_type.toLowerCase().includes(searchLower)) ||
-          // Search in working type
-          (job.working_type &&
-            job.working_type.toLowerCase().includes(searchLower)) ||
-          // Search in description
-          (job.description &&
-            job.description.toLowerCase().includes(searchLower))
-        );
-      });
-    }
-
-    // Apply client-side multiselect filters - handle both string and array values
-    if (filters.status) {
-      const statusArray = Array.isArray(filters.status)
-        ? filters.status
-        : [filters.status];
-      if (statusArray.length > 0) {
-        console.log("Applying status filter:", statusArray);
-        filteredJobs = filteredJobs.filter((job) =>
-          statusArray.includes(job.status || "")
-        );
-        console.log("Jobs after status filter:", filteredJobs.length);
-      }
-    }
-
-    if (filters.location) {
-      const locationArray = Array.isArray(filters.location)
-        ? filters.location
-        : [filters.location];
-      if (locationArray.length > 0) {
-        filteredJobs = filteredJobs.filter((job) =>
-          locationArray.includes(job.location || "")
-        );
-      }
-    }
-
-    if (filters.company) {
-      const companyArray = Array.isArray(filters.company)
-        ? filters.company
-        : [filters.company];
-      if (companyArray.length > 0) {
-        console.log("Applying company filter:", companyArray);
-        filteredJobs = filteredJobs.filter((job) =>
-          companyArray.includes(job.company_name || "")
-        );
-        console.log("Jobs after company filter:", filteredJobs.length);
-      }
-    }
-
-    if (filters.jobType) {
-      const jobTypeArray = Array.isArray(filters.jobType)
-        ? filters.jobType
-        : [filters.jobType];
-      if (jobTypeArray.length > 0) {
-        console.log("Applying job type filter:", jobTypeArray);
-        console.log(
-          "Sample job types in data:",
-          filteredJobs.slice(0, 3).map((job) => ({
-            id: job.id,
-            job_type: job.job_type,
-            working_type: job.working_type,
-          }))
-        );
-        filteredJobs = filteredJobs.filter(
-          (job) =>
-            jobTypeArray.includes(job.job_type || "") ||
-            jobTypeArray.includes(job.working_type || "")
-        );
-        console.log("Jobs after job type filter:", filteredJobs.length);
-      }
-    }
-
-    // Apply salary range filter (check for overlap)
-    if (
-      filters.salaryRange &&
-      (filters.salaryRange.min > 0 || filters.salaryRange.max < 5000000)
-    ) {
-      filteredJobs = filteredJobs.filter((job) => {
-        const jobMinSalary = job.salary_min || 0;
-        const jobMaxSalary = job.salary_max || 999999; // Default high value if not set
-
-        // Check for overlap: job range overlaps with filter range
-        return (
-          jobMinSalary <= filters.salaryRange!.max &&
-          jobMaxSalary >= filters.salaryRange!.min
-        );
-      });
-    }
-
-    // Apply experience range filter (check for overlap)
-    if (
-      filters.experienceRange &&
-      (filters.experienceRange.min > 0 || filters.experienceRange.max < 20)
-    ) {
-      filteredJobs = filteredJobs.filter((job) => {
-        const jobMinExp = job.min_experience_needed || 0;
-        const jobMaxExp = job.max_experience_needed || 20; // Default high value if not set
-
-        // Check for overlap: job range overlaps with filter range
-        return (
-          jobMinExp <= filters.experienceRange!.max &&
-          jobMaxExp >= filters.experienceRange!.min
-        );
-      });
-    }
-
-    // Apply client-side sorting
-    if (sortBy === "az") {
-      filteredJobs.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
-    } else if (sortBy === "za") {
-      filteredJobs.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
-    } else if (sortBy === "recent") {
-      filteredJobs.sort((a, b) => {
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
-        return dateB - dateA; // Most recent first
-      });
-    }
-
-    const forCards = filteredJobs.map((job) => ({
-      id: job.id,
-      title: job.title,
-      company_name: job.company_name ?? "",
-      location: job.location ?? "Remote",
-      min_salary: job.salary_min ?? 0,
-      max_salary: job.salary_max ?? 0,
-      company_logo_url: job.company_logo_url || "/demo.png",
-    }));
-
-    const forList = filteredJobs.map((job) => ({
-      job_id: job.id,
-      job_title: job.title,
-      company_name: job.company_name || "",
-      job_location: job.location || "",
-      min_salary: job.salary_min || 0,
-      max_salary: job.salary_max || 0,
-      company_logo_url: job.company_logo_url || "",
-      application_deadline: job.application_deadline || "",
-      benefits: null,
-      job_description: job.description || "",
-      job_location_type: job.job_location_type || "",
-      job_type: job.job_type || "",
-      max_experience_needed: job.max_experience_needed || 0,
-      min_experience_needed: job.min_experience_needed || 0,
-      requirements: null,
-      status: job.status || "",
-      updated_at: job.updated_at || "",
-      working_type: job.working_type || "",
-      admin_id: job.created_by || "",
-      created_at: job.created_at || "",
-    }));
-
-    console.log("Final filtered jobs count:", filteredJobs.length);
-    return { forCards, forList };
-  }, [paginatedJobs, sortBy, searchTerm, filters]);
 
   // Show initialization error
   if (initState.error) {
@@ -687,10 +496,10 @@ export default function JobsClientComponent({
           </h1>
           <p className="text-sm text-neutral-500 mb-2">
             Manage your job listings and applications with ease.
-            {transformedJobs.forCards.length > 0 && (
+            {pagination.totalCount > 0 && (
               <span className="ml-1 font-medium">
-                ({transformedJobs.forCards.length} job
-                {transformedJobs.forCards.length !== 1 ? "s" : ""} found)
+                ({pagination.totalCount} job
+                {pagination.totalCount !== 1 ? "s" : ""} found)
               </span>
             )}
           </p>
@@ -850,26 +659,47 @@ export default function JobsClientComponent({
         {/* Content */}
         {error ? (
           <ErrorState error={error} onRetry={handleRetry} />
-        ) : transformedJobs.forCards.length === 0 ? (
+        ) : jobs.length === 0 ? (
           <EmptyState onAddJob={handleAddJob} />
         ) : (
           <>
             {viewMode === "board" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                {transformedJobs.forCards.map((job) => (
-                  <JobCard key={job.id} job={job} />
+                {jobs.map((job) => (
+                  <JobCard 
+                    key={job.id} 
+                    job={{
+                      ...job,
+                      title: job.title || "Untitled Job",
+                      company_name: job.company_name || "Unknown Company",
+                      company_logo_url: job.company_logo_url || "",
+                      location: job.location || "Remote",
+                      min_salary: job.salary_min || 0,
+                      max_salary: job.salary_max || 0
+                    }} 
+                  />
                 ))}
               </div>
             ) : (
-              <JobListComponent jobsFromStore={transformedJobs.forList} />
+              <JobListComponent jobsFromStore={jobs.map(job => ({
+                ...job,
+                job_id: job.id,
+                job_title: job.title || "Untitled Job",
+                company_name: job.company_name || "Unknown Company",
+                application_deadline: job.application_deadline || "",
+                status: job.status || "active",
+                min_salary: job.salary_min || 0,
+                max_salary: job.salary_max || 0,
+                job_location: job.location || "Remote"
+              }))} />
             )}
 
             {/* Pagination */}
-            {transformedJobs.forCards.length > 0 && (
+            {jobs.length > 0 && (
               <Pagination
                 currentPage={pagination.currentPage}
                 totalPages={pagination.totalPages}
-                totalItems={transformedJobs.forCards.length}
+                totalItems={pagination.totalCount}
                 itemsPerPage={pagination.pageSize}
                 onPageChange={handlePageChange}
                 onItemsPerPageChange={handlePageSizeChange}
@@ -965,8 +795,16 @@ export default function JobsClientComponent({
                   },
           };
 
-          // Only update Redux state - client-side filtering handles the display
-          dispatch(setFilters(updatedFilters));
+          if (userRole && userId) {
+            dispatch(applyFilters({
+              filters: updatedFilters,
+              userRole,
+              userId,
+              organizationId,
+              page: 1,
+            }));
+          }
+
         }}
         onClearAll={handleClearAllFilters}
         onApply={handleApplyFilters}
