@@ -39,6 +39,7 @@ import { EmptyState, ErrorState, FilterDropdown } from "./job_utils";
 import Pagination from "@/components/pagination";
 import EnhancedFiltersModal from "@/components/enhanced-filters-modal";
 import Breadcrumb from "@/components/Breadcrumb";
+import MultiSelectDropdown from "@/components/multiSelectDropdown";
 
 // Constants
 const INITIAL_PAGE_SIZE = 30;
@@ -128,7 +129,7 @@ export default function JobsClientComponent({
 
   // Refs to store debounced functions to prevent memory leaks
   const debouncedFilterRef = useRef<
-    | (((filterType: string, value: string) => void) & { cancel: () => void })
+    | (((filterType: string, value: string[]) => void) & { cancel: () => void })
     | null
   >(null);
   const debouncedSearchRef = useRef<
@@ -201,7 +202,7 @@ export default function JobsClientComponent({
   // Initialize debounced functions and store in refs
   useEffect(() => {
     debouncedFilterRef.current = debounce(
-      async (filterType: string, value: string) => {
+      async (filterType: string, value: string[]) => {
         if (!isValidProps) return;
 
         try {
@@ -322,7 +323,7 @@ export default function JobsClientComponent({
   );
 
   const handleFilterChange = useCallback(
-    (filterType: string, value: string) => {
+    (filterType: string, value: string[]) => {
       if (debouncedFilterRef.current) {
         debouncedFilterRef.current(filterType, value);
       }
@@ -581,7 +582,7 @@ export default function JobsClientComponent({
           {/* Filters */}
           <div className="flex items-center gap-2 text-sm text-neutral-500">
             {/* Sort dropdown */}
-            <div className="hidden md:flex items-center gap-2">
+            {/* <div className="hidden md:flex items-center gap-2">
               <FilterDropdown
                 label="Sort By"
                 value={
@@ -600,43 +601,48 @@ export default function JobsClientComponent({
                 isOpen={sortDropdownOpen}
                 onToggle={() => setSortDropdownOpen(!sortDropdownOpen)}
               />
-            </div>
+            </div> */}
             <div className="hidden md:flex items-center gap-2">
-              <FilterDropdown
-                label="Job Status"
-                value={filterDropdowns.status}
-                options={filterOptions.statuses}
-                onChange={(value) => handleFilterChange("status", value)}
-                isOpen={filterDropdowns.isOpen === "status"}
-                onToggle={() => toggleFilterDropdown("status")}
+              <MultiSelectDropdown
+                key={filters.status ? (Array.isArray(filters.status) ? filters.status.join(",") : filters.status) : ""}
+                options={
+                  filterOptions.statuses.map((status) => ({
+                    label: status.charAt(0).toUpperCase() + status.slice(1),
+                    value: status,
+                  }))
+                }
+                placeholder="Job Status"
+                onChange={(value: string[]) => handleFilterChange("status", value)}
+                selectedValues={filters.status || []}
               />
-              <FilterDropdown
-                label="Location"
-                value={filterDropdowns.location}
-                options={filterOptions.locations}
-                onChange={(value) => handleFilterChange("location", value)}
-                isOpen={filterDropdowns.isOpen === "location"}
-                onToggle={() => toggleFilterDropdown("location")}
-                loading={filterOptionsLoading}
-                searchable={filterOptions.locations.length > 10} // Enable search for long lists
-                showCount={true}
-                placeholder="Job location"
-                error={filterOptions.error}
+              <MultiSelectDropdown
+                options={
+                  filterOptions.locations.map((location) => ({
+                    label: location.charAt(0).toUpperCase() + location.slice(1),
+                    value: location,
+                  }))
+                }
+                search={true}
+                placeholder="Job Location"
+                onChange={(value: string[]) => handleFilterChange("location", value)}
+                selectedValues={filters.location || []}
               />
-              <FilterDropdown
-                label="Company"
-                value={filterDropdowns.company}
-                options={filterOptions.companies}
-                onChange={(value) => handleFilterChange("company", value)}
-                isOpen={filterDropdowns.isOpen === "company"}
-                onToggle={() => toggleFilterDropdown("company")}
-                loading={filterOptionsLoading}
-                searchable={filterOptions.companies.length > 10} // Enable search for long lists
-                showCount={true}
+              <MultiSelectDropdown
+                options={
+                  filterOptions.companies.map((company) => ({
+                    label: company.charAt(0).toUpperCase() + company.slice(1),
+                    value: company,
+                  }))
+                }
+                search={true}
                 placeholder="Company"
-                error={filterOptions.error}
+                onChange={(value: string[]) => handleFilterChange("company", value)}
+                selectedValues={filters.company || []}
               />
             </div>
+
+            {/* Separator */}
+            <div className="h-8 w-px bg-neutral-500" />
 
             <div className="flex items-center gap-2">
               <button

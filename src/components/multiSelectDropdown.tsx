@@ -5,6 +5,7 @@ const MultiSelectDropdown = ({
   options,
   selectedValues,
   onChange,
+  search = false,
   placeholder,
   className = "",
   searchPlaceholder = "Search",
@@ -12,6 +13,7 @@ const MultiSelectDropdown = ({
   options: Array<{ value: string; label: string }>;
   selectedValues: string[] | string;
   onChange: (values: string[]) => void;
+  search?: boolean;
   placeholder: string;
   className?: string;
   searchPlaceholder?: string;
@@ -119,7 +121,7 @@ const MultiSelectDropdown = ({
           role="listbox"
         >
           {/* Search Input - Only for Company */}
-          {placeholder === "Company" && (
+          {search && (
             <div className="p-3 border-b border-neutral-100">
               <input
                 ref={searchInputRef}

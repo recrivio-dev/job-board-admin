@@ -1078,6 +1078,7 @@ export default function CandidatesList({
                         })) || []
                       }
                       selectedValues={filters.companyName || []}
+                      search={true}
                       onChange={(values) =>
                         handleFilterChange("companyName", values)
                       }

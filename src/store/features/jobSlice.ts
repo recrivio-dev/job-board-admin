@@ -347,12 +347,6 @@ export const fetchJobs = createAsyncThunk(
         p_company_filter: prepareArrayFilter(filters.company),
         p_job_type_filter: prepareArrayFilter(filters.jobType),
 
-        // Single value filters (for backward compatibility)
-        p_status: prepareSingleFilter(filters.status),
-        p_location: prepareSingleFilter(filters.location),
-        p_company: prepareSingleFilter(filters.company),
-        p_job_type: prepareSingleFilter(filters.jobType),
-
         // Salary range filters
         p_salary_min: filters.salaryRange?.min || undefined,
         p_salary_max: filters.salaryRange?.max || undefined,
