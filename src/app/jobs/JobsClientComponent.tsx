@@ -22,7 +22,6 @@ import {
   selectJobViewMode,
   selectJobFilters,
   selectFilterOptions,
-  selectFilterOptionsLoading,
   setViewMode,
   clearError,
   applyFilters,
@@ -34,8 +33,8 @@ import {
   JobListComponent,
   JobCard,
 } from "@/components/Job-card&list-component";
-import { FilterState, JobsClientComponentProps } from "@/types/custom";
-import { EmptyState, ErrorState, FilterDropdown } from "./job_utils";
+import { JobsClientComponentProps } from "@/types/custom";
+import { EmptyState, ErrorState } from "./job_utils";
 import Pagination from "@/components/pagination";
 import EnhancedFiltersModal from "@/components/enhanced-filters-modal";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -106,7 +105,6 @@ export default function JobsClientComponent({
 
   // New filter options selectors
   const filterOptions = useAppSelector(selectFilterOptions);
-  const filterOptionsLoading = useAppSelector(selectFilterOptionsLoading);
 
   // Local state
   const [initState, setInitState] = useState<InitializationState>({
@@ -114,17 +112,14 @@ export default function JobsClientComponent({
     error: null,
   });
 
-  const [filterDropdowns, setFilterDropdowns] = useState<FilterState>({
-    status: "",
-    location: "",
-    company: "",
-    isOpen: false,
-  });
-
-  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  // const [filterDropdowns, setFilterDropdowns] = useState<FilterState>({
+  //   status: "",
+  //   location: "",
+  //   company: "",
+  //   isOpen: false,
+  // });
 
   const [showFiltersModal, setShowFiltersModal] = useState(false);
-  const [sortBy, setSortBy] = useState<string>("recent");
   const [searchTerm, setSearchTerm] = useState<string>(filters.searchTerm || "");
 
   // Refs to store debounced functions to prevent memory leaks
@@ -193,6 +188,7 @@ export default function JobsClientComponent({
     dispatch,
     userRole,
     userId,
+    filters,
     organizationId,
     initState.initialized,
     isValidProps,
@@ -222,11 +218,11 @@ export default function JobsClientComponent({
           dispatch(setFilters(newFilters));
 
           // Update local dropdown state immediately
-          setFilterDropdowns((prev) => ({
-            ...prev,
-            [filterType]: value,
-            isOpen: false,
-          }));
+          // setFilterDropdowns((prev) => ({
+          //   ...prev,
+          //   [filterType]: value,
+          //   isOpen: false,
+          // }));
 
           // Apply filters with server-side filtering
           await dispatch(
@@ -409,16 +405,6 @@ export default function JobsClientComponent({
     [dispatch, filters, userRole, userId, organizationId, isValidProps] // Added pagination to deps
   );
 
-  const toggleFilterDropdown = useCallback(
-    (filterType: "status" | "location" | "company") => {
-      setFilterDropdowns((prev) => ({
-        ...prev,
-        isOpen: prev.isOpen === filterType ? false : filterType,
-      }));
-    },
-    []
-  );
-
   // Modal handlers
   const handleOpenFiltersModal = () => setShowFiltersModal(true);
   const handleCloseFiltersModal = () => setShowFiltersModal(false);
@@ -426,14 +412,18 @@ export default function JobsClientComponent({
   const handleClearAllFilters = useCallback(() => {
     const clearedFilters = {};
     dispatch(setFilters(clearedFilters));
-    setFilterDropdowns({
-      status: "",
-      location: "",
-      company: "",
-      isOpen: false,
-    });
     setSearchTerm(""); // Clear search term as well
-  }, [dispatch]);
+
+    dispatch(
+      applyFilters({
+        filters: clearedFilters,
+        userRole: userRole || "",
+        userId: userId || "",
+        organizationId,
+        page: 1, // Reset to first page on search
+      })
+    ).unwrap();
+  }, [dispatch, userRole, userId, organizationId]);
 
   const handleApplyFilters = useCallback(async () => {
     if (!isValidProps) return;
@@ -476,9 +466,6 @@ export default function JobsClientComponent({
       </div>
     );
   }
-
-  // Calculate active filters count
-  const activeFiltersCount = Object.values(filters).filter(Boolean).length;
 
   return (
     <div
@@ -646,17 +633,17 @@ export default function JobsClientComponent({
 
             <div className="flex items-center gap-2">
               <button
-                className="flex items-center gap-1 font-medium cursor-pointer bg-neutral-200 px-4 py-1.5 rounded-3xl hover:bg-neutral-300 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2"
+                className="flex items-center gap-1 text-xs font-medium cursor-pointer bg-neutral-200 px-4 py-1.5 rounded-3xl hover:bg-neutral-300 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2"
                 onClick={handleOpenFiltersModal}
                 aria-label="Open advanced filters"
               >
                 <CiFilter className="w-5 h-5 text-neutral-500" />
                 All Filters
-                {activeFiltersCount > 0 && (
+                {/* {activeFiltersCount > 0 && (
                   <span className="ml-1 bg-blue-600 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
                     {activeFiltersCount}
                   </span>
-                )}
+                )} */}
               </button>
             </div>
           </div>
@@ -719,88 +706,31 @@ export default function JobsClientComponent({
       </div>
 
       {/* Enhanced Filters Modal */}
-      <EnhancedFiltersModal
+      <EnhancedFiltersModal 
         show={showFiltersModal}
         onClose={handleCloseFiltersModal}
         filters={{
-          status: Array.isArray(filters.status)
-            ? filters.status
-            : filters.status
-            ? [filters.status]
-            : [],
-          location: Array.isArray(filters.location)
-            ? filters.location
-            : filters.location
-            ? [filters.location]
-            : [],
-          company: Array.isArray(filters.company)
-            ? filters.company
-            : filters.company
-            ? [filters.company]
-            : [],
-          jobType: Array.isArray(filters.jobType)
-            ? filters.jobType
-            : filters.jobType
-            ? [filters.jobType]
-            : [],
-          salaryRange: filters.salaryRange
-            ? [filters.salaryRange.min, filters.salaryRange.max]
-            : [0, 5000000],
-          experienceRange: filters.experienceRange
-            ? [filters.experienceRange.min, filters.experienceRange.max]
-            : [0, 20],
+          status: Array.isArray(filters.status) ? filters.status : filters.status ? [filters.status] : [],
+          location: Array.isArray(filters.location) ? filters.location : filters.location ? [filters.location] : [],
+          company: Array.isArray(filters.company) ? filters.company : filters.company ? [filters.company] : [],
+          sortBy: filters.sortBy || 'createdAt',
+          sortOrder: filters.sortOrder || 'desc',
         }}
         filterOptions={{
           statuses: filterOptions.statuses,
           locations: filterOptions.locations,
           companies: filterOptions.companies,
-          jobTypes: [
-            // Common job types
-            "Full-time",
-            "Part-time",
-            "Contract",
-            "Temporary",
-            "Internship",
-            // Working types from the database
-            "Day",
-            "Night",
-            "Flexible",
-          ],
         }}
         onFiltersChange={(newFilters) => {
-          // Only update Redux state for client-side filtering
-          // This prevents server calls and flickering
           const updatedFilters = {
             ...filters,
-            // Keep arrays for multiselect functionality
-            status:
-              newFilters.status.length === 0 ? undefined : newFilters.status,
-            location:
-              newFilters.location.length === 0
-                ? undefined
-                : newFilters.location,
-            company:
-              newFilters.company.length === 0 ? undefined : newFilters.company,
-            jobType:
-              newFilters.jobType.length === 0 ? undefined : newFilters.jobType,
-            salaryRange:
-              newFilters.salaryRange[0] === 0 &&
-              newFilters.salaryRange[1] === 5000000
-                ? undefined
-                : {
-                    min: newFilters.salaryRange[0],
-                    max: newFilters.salaryRange[1],
-                  },
-            experienceRange:
-              newFilters.experienceRange[0] === 0 &&
-              newFilters.experienceRange[1] === 20
-                ? undefined
-                : {
-                    min: newFilters.experienceRange[0],
-                    max: newFilters.experienceRange[1],
-                  },
+            status: newFilters.status.length === 0 ? undefined : newFilters.status,
+            location: newFilters.location.length === 0 ? undefined : newFilters.location,
+            company: newFilters.company.length === 0 ? undefined : newFilters.company,
+            sortBy: newFilters.sortBy,
+            sortOrder: newFilters.sortOrder,
           };
-
+          
           if (userRole && userId) {
             dispatch(applyFilters({
               filters: updatedFilters,
@@ -810,7 +740,6 @@ export default function JobsClientComponent({
               page: 1,
             }));
           }
-
         }}
         onClearAll={handleClearAllFilters}
         onApply={handleApplyFilters}

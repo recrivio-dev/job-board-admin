@@ -314,17 +314,6 @@ export const fetchJobs = createAsyncThunk(
         return filter.trim() !== '' ? [filter] : undefined;
       };
 
-      // Helper function to handle single value filters (for backward compatibility)
-      const prepareSingleFilter = (
-        filter: string | string[] | undefined
-      ): string | undefined => {
-        if (!filter) return undefined;
-        if (Array.isArray(filter)) {
-          return filter.length > 0 ? filter[0] : undefined;
-        }
-        return filter;
-      };
-
       // Call the enhanced RPC function
       console.log("Fetching jobs with filters:", filters);
       const { data, error } = await supabase.rpc("fetch_jobs_with_access", {

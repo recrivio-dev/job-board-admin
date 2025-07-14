@@ -1,246 +1,171 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { RxCross2 } from "react-icons/rx";
 import { FaCheck } from "react-icons/fa6";
 
 // Debounce utility function
-function debounce<T extends (...args: never[]) => unknown>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
+// function debounce<T extends (...args: never[]) => unknown>(
+//   func: T,
+//   wait: number
+// ): (...args: Parameters<T>) => void {
+//   let timeout: NodeJS.Timeout;
+//   return (...args: Parameters<T>) => {
+//     clearTimeout(timeout);
+//     timeout = setTimeout(() => func(...args), wait);
+//   };
+// }
 
-interface RangeSliderProps {
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-  value: [number, number];
-  onChange: (value: [number, number]) => void;
-  formatValue?: (value: number) => string;
-}
+// interface RangeSliderProps {
+//   label: string;
+//   min: number;
+//   max: number;
+//   step: number;
+//   value: [number, number];
+//   onChange: (value: [number, number]) => void;
+//   formatValue?: (value: number) => string;
+// }
 
-const RangeSlider: React.FC<RangeSliderProps> = ({
-  label,
-  min,
-  max,
-  step,
-  value,
-  onChange,
-  formatValue = (val) => val.toString(),
-}) => {
-  const [localValue, setLocalValue] = useState(value);
-  const [isDragging, setIsDragging] = useState(false);
+// const RangeSlider: React.FC<RangeSliderProps> = ({
+//   label,
+//   min,
+//   max,
+//   step,
+//   value,
+//   onChange,
+//   formatValue = (val) => val.toString(),
+// }) => {
+//   const [localValue, setLocalValue] = useState(value);
+//   const [isDragging, setIsDragging] = useState(false);
 
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
+//   useEffect(() => {
+//     setLocalValue(value);
+//   }, [value]);
 
-  // Debounced onChange to reduce flicker
-  const debouncedOnChange = useCallback(
-    (newValue: [number, number]) => {
-      const debouncedFn = debounce((value: [number, number]) => {
-        onChange(value);
-      }, 100);
-      debouncedFn(newValue);
-    },
-    [onChange]
-  );
+//   const debouncedOnChange = useCallback(
+//     (newValue: [number, number]) => {
+//       const debouncedFn = debounce((value: [number, number]) => {
+//         onChange(value);
+//       }, 100);
+//       debouncedFn(newValue);
+//     },
+//     [onChange]
+//   );
 
-  const handleMinChange = (newMin: number) => {
-    const clampedMin = Math.min(newMin, localValue[1] - step);
-    const newValue: [number, number] = [clampedMin, localValue[1]];
-    setLocalValue(newValue);
+//   const handleMinChange = (newMin: number) => {
+//     const clampedMin = Math.min(newMin, localValue[1] - step);
+//     const newValue: [number, number] = [clampedMin, localValue[1]];
+//     setLocalValue(newValue);
 
-    if (isDragging) {
-      debouncedOnChange(newValue);
-    } else {
-      onChange(newValue);
-    }
-  };
+//     if (isDragging) {
+//       debouncedOnChange(newValue);
+//     } else {
+//       onChange(newValue);
+//     }
+//   };
 
-  const handleMaxChange = (newMax: number) => {
-    const clampedMax = Math.max(newMax, localValue[0] + step);
-    const newValue: [number, number] = [localValue[0], clampedMax];
-    setLocalValue(newValue);
+//   const handleMaxChange = (newMax: number) => {
+//     const clampedMax = Math.max(newMax, localValue[0] + step);
+//     const newValue: [number, number] = [localValue[0], clampedMax];
+//     setLocalValue(newValue);
 
-    if (isDragging) {
-      debouncedOnChange(newValue);
-    } else {
-      onChange(newValue);
-    }
-  };
+//     if (isDragging) {
+//       debouncedOnChange(newValue);
+//     } else {
+//       onChange(newValue);
+//     }
+//   };
 
-  const percentage1 = ((localValue[0] - min) / (max - min)) * 100;
-  const percentage2 = ((localValue[1] - min) / (max - min)) * 100;
+//   const percentage1 = ((localValue[0] - min) / (max - min)) * 100;
+//   const percentage2 = ((localValue[1] - min) / (max - min)) * 100;
 
-  return (
-    <div className="mb-8">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-medium text-base text-neutral-900">{label}</h3>
-        <span className="text-sm text-neutral-600">
-          {formatValue(localValue[0])} - {formatValue(localValue[1])}
-        </span>
-      </div>
+//   return (
+//     <div className="mb-8">
+//       <div className="flex justify-between items-center mb-4">
+//         <h3 className="font-medium text-base text-neutral-900">{label}</h3>
+//         <span className="text-sm text-neutral-600">
+//           {formatValue(localValue[0])} - {formatValue(localValue[1])}
+//         </span>
+//       </div>
 
-      <div className="relative mb-6">
-        {/* Track */}
-        <div className="absolute w-full h-2 bg-neutral-200 rounded-full top-1/2 transform -translate-y-1/2"></div>
+//       <div className="relative mb-6">
+//         <div className="absolute w-full h-2 bg-neutral-200 rounded-full top-1/2 transform -translate-y-1/2"></div>
+//         <div
+//           className="absolute h-2 bg-blue-500 rounded-full top-1/2 transform -translate-y-1/2"
+//           style={{
+//             left: `${percentage1}%`,
+//             width: `${percentage2 - percentage1}%`,
+//           }}
+//         ></div>
 
-        {/* Active track */}
-        <div
-          className="absolute h-2 bg-blue-500 rounded-full top-1/2 transform -translate-y-1/2"
-          style={{
-            left: `${percentage1}%`,
-            width: `${percentage2 - percentage1}%`,
-          }}
-        ></div>
+//         <input
+//           type="range"
+//           min={min}
+//           max={max}
+//           step={step}
+//           value={localValue[0]}
+//           onChange={(e) => handleMinChange(Number(e.target.value))}
+//           onMouseDown={() => setIsDragging(true)}
+//           onMouseUp={() => setIsDragging(false)}
+//           onTouchStart={() => setIsDragging(true)}
+//           onTouchEnd={() => setIsDragging(false)}
+//           className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer"
+//           style={{ zIndex: 25 }}
+//         />
 
-        {/* Min slider */}
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={localValue[0]}
-          onChange={(e) => handleMinChange(Number(e.target.value))}
-          onMouseDown={() => setIsDragging(true)}
-          onMouseUp={() => setIsDragging(false)}
-          onTouchStart={() => setIsDragging(true)}
-          onTouchEnd={() => setIsDragging(false)}
-          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer range-slider-min"
-          style={{
-            background: "transparent",
-            pointerEvents: "auto",
-            zIndex:
-              Math.abs(localValue[0] - localValue[1]) < (max - min) * 0.05
-                ? 25
-                : 20,
-          }}
-        />
+//         <input
+//           type="range"
+//           min={min}
+//           max={max}
+//           step={step}
+//           value={localValue[1]}
+//           onChange={(e) => handleMaxChange(Number(e.target.value))}
+//           onMouseDown={() => setIsDragging(true)}
+//           onMouseUp={() => setIsDragging(false)}
+//           onTouchStart={() => setIsDragging(true)}
+//           onTouchEnd={() => setIsDragging(false)}
+//           className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer"
+//           style={{ zIndex: 20 }}
+//         />
+//       </div>
 
-        {/* Max slider */}
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={localValue[1]}
-          onChange={(e) => handleMaxChange(Number(e.target.value))}
-          onMouseDown={() => setIsDragging(true)}
-          onMouseUp={() => setIsDragging(false)}
-          onTouchStart={() => setIsDragging(true)}
-          onTouchEnd={() => setIsDragging(false)}
-          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer range-slider-max"
-          style={{
-            background: "transparent",
-            pointerEvents: "auto",
-            zIndex: 20,
-          }}
-        />
-      </div>
-
-      <style jsx>{`
-        input[type="range"] {
-          -webkit-appearance: none;
-          appearance: none;
-          background: transparent;
-          cursor: pointer;
-        }
-
-        input[type="range"]::-webkit-slider-track {
-          background: transparent;
-          height: 8px;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: #3b82f6;
-          cursor: grab;
-          border: 2px solid white;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-          position: relative;
-          pointer-events: auto;
-          margin-top: -6px;
-        }
-
-        input[type="range"]:active::-webkit-slider-thumb {
-          cursor: grabbing;
-          transform: scale(1.1);
-        }
-
-        input[type="range"]:focus::-webkit-slider-thumb {
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-        }
-
-        input[type="range"]::-moz-range-track {
-          background: transparent;
-          height: 8px;
-          border: none;
-        }
-
-        input[type="range"]::-moz-range-thumb {
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: #3b82f6;
-          cursor: grab;
-          border: 2px solid white;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-          border: none;
-          pointer-events: auto;
-        }
-
-        input[type="range"]:active::-moz-range-thumb {
-          cursor: grabbing;
-          transform: scale(1.1);
-        }
-
-        input[type="range"]::-ms-track {
-          background: transparent;
-          height: 8px;
-          border: none;
-          color: transparent;
-        }
-
-        input[type="range"]::-ms-thumb {
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: #3b82f6;
-          cursor: grab;
-          border: 2px solid white;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-          pointer-events: auto;
-        }
-
-        input[type="range"]:active::-ms-thumb {
-          cursor: grabbing;
-          transform: scale(1.1);
-        }
-      `}</style>
-    </div>
-  );
-};
+//       <style jsx>{`
+//         input[type="range"] {
+//           -webkit-appearance: none;
+//           appearance: none;
+//           background: transparent;
+//           cursor: pointer;
+//         }
+//         input[type="range"]::-webkit-slider-thumb {
+//           -webkit-appearance: none;
+//           appearance: none;
+//           height: 20px;
+//           width: 20px;
+//           border-radius: 50%;
+//           background: #3b82f6;
+//           cursor: grab;
+//           border: 2px solid white;
+//           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+//         }
+//         input[type="range"]:active::-webkit-slider-thumb {
+//           cursor: grabbing;
+//           transform: scale(1.1);
+//         }
+//       `}</style>
+//     </div>
+//   );
+// };
 
 interface MultiSelectFilterProps {
   label: string;
   options: string[];
   selected: string[];
+  grid?: boolean;
   onChange: (selected: string[]) => void;
 }
 
 const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
   label,
   options,
+  grid = false,
   selected,
   onChange,
 }) => {
@@ -248,19 +173,17 @@ const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     const newSelected = selected.includes(option)
       ? selected.filter((item) => item !== option)
       : [...selected, option];
-
-    // Immediate update for better UX
     onChange(newSelected);
   };
 
   return (
     <div className="mb-8">
       <h3 className="font-medium text-base mb-5 text-neutral-900">{label}</h3>
-      <div className="flex flex-wrap gap-3 pb-5 border-b border-neutral-200">
+      <div className={`${grid ? "grid grid-cols-1 sm:grid-cols-3" : "flex flex-wrap"} pb-5 gap-2 border-b border-neutral-200`}>
         {options.map((option) => (
           <label
             key={option}
-            className="flex items-center gap-2 cursor-pointer py-1 mb-0 hover:bg-neutral-50 rounded px-2 transition-colors"
+            className="flex items-center gap-4 text-lg cursor-pointer py-1 mb-0 hover:bg-neutral-50 rounded px-2 transition-colors"
           >
             <div className="relative w-5 h-5 cursor-pointer">
               <input
@@ -274,13 +197,13 @@ const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
                 w-5 h-5 border-2 rounded-sm transition-all duration-150 flex items-center justify-center
                 ${
                   selected.includes(option)
-                    ? "bg-[#359A57] border-[#359A57]"
+                    ? "bg-green-600 border-green-600"
                     : "border-neutral-300 bg-white hover:border-neutral-400"
                 }
               `}
               >
                 {selected.includes(option) && (
-                  <FaCheck className="w-4 h-4 text-white" />
+                  <FaCheck className="w-3 h-3 text-white" />
                 )}
               </div>
             </div>
@@ -294,6 +217,56 @@ const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
   );
 };
 
+// Improved Sort Configuration
+interface SortOption {
+  value: string;
+  label: string;
+  field: string;
+  order: 'asc' | 'desc';
+}
+
+const SORT_OPTIONS: SortOption[] = [
+  { value: 'recent', label: 'Most Recent', field: 'createdAt', order: 'desc' },
+  { value: 'name_asc', label: 'Name (A-Z)', field: 'title', order: 'asc' },
+  { value: 'name_desc', label: 'Name (Z-A)', field: 'title', order: 'desc' },
+];
+
+interface SortFilterProps {
+  label: string;
+  selected: string;
+  onChange: (selected: string) => void;
+}
+
+const SortFilter: React.FC<SortFilterProps> = ({ label, selected, onChange }) => {
+  return (
+    <div className="mb-8">
+      <h3 className="font-medium text-base mb-5 text-neutral-900">{label}</h3>
+      <div className="pb-5 border-b border-neutral-200">
+        <div className="flex flex-row gap-2 flex-wrap">
+          {SORT_OPTIONS.map((option) => (
+            <label
+              key={option.value}
+              className="flex items-center gap-4 cursor-pointer py-2 px-2 rounded transition-colors"
+            >
+              <input
+                type="radio"
+                name="sort"
+                value={option.value}
+                checked={selected === option.value}
+                onChange={() => onChange(option.value)}
+                className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+              />
+              <span className="text-sm text-neutral-700 select-none">
+                {option.label}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface EnhancedFiltersModalProps {
   show: boolean;
   onClose: () => void;
@@ -301,23 +274,20 @@ interface EnhancedFiltersModalProps {
     status: string[];
     location: string[];
     company: string[];
-    jobType: string[];
-    salaryRange: [number, number];
-    experienceRange: [number, number];
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
   };
   filterOptions: {
     statuses: string[];
     locations: string[];
     companies: string[];
-    jobTypes: string[];
   };
   onFiltersChange: (filters: {
     status: string[];
     location: string[];
     company: string[];
-    jobType: string[];
-    salaryRange: [number, number];
-    experienceRange: [number, number];
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
   }) => void;
   onClearAll: () => void;
   onApply: () => void;
@@ -357,24 +327,26 @@ const EnhancedFiltersModal: React.FC<EnhancedFiltersModalProps> = ({
 
   if (!show) return null;
 
-  // Count total selected filters
-  const totalSelectedFilters =
-    filters.status.length +
-    filters.location.length +
-    filters.company.length +
-    filters.jobType.length +
-    (filters.salaryRange[0] > 0 || filters.salaryRange[1] < 200000 ? 1 : 0) +
-    (filters.experienceRange[0] > 0 || filters.experienceRange[1] < 20 ? 1 : 0);
+  const totalSelectedFilters = filters.status.length + filters.location.length + filters.company.length;
 
-  const formatSalary = (value: number) => {
-    if (value >= 100000) {
-      return `₹${(value / 1000).toFixed(0)}k`;
-    }
-    return `₹${value.toLocaleString()}`;
+  // Get current sort value - find the matching option or default to 'recent'
+  const getCurrentSortValue = () => {
+    const currentOption = SORT_OPTIONS.find(
+      option => option.field === filters.sortBy && option.order === filters.sortOrder
+    );
+    return currentOption?.value || 'recent';
   };
 
-  const formatExperience = (value: number) => {
-    return `${value} year${value !== 1 ? "s" : ""}`;
+  // Handle sort change
+  const handleSortChange = (sortValue: string) => {
+    const selectedOption = SORT_OPTIONS.find(option => option.value === sortValue);
+    if (selectedOption) {
+      onFiltersChange({
+        ...filters,
+        sortBy: selectedOption.field,
+        sortOrder: selectedOption.order,
+      });
+    }
   };
 
   return (
@@ -383,11 +355,9 @@ const EnhancedFiltersModal: React.FC<EnhancedFiltersModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-semibold text-neutral-900">
-              All Filters
-            </h2>
+            <h2 className="text-xl font-semibold text-neutral-900">All Filters</h2>
             {totalSelectedFilters > 0 && (
-              <span className="bg-[#1E5CDC] text-white text-sm font-medium px-2.5 py-0.5 rounded-full">
+              <span className="bg-blue-600 text-white text-sm font-medium px-2.5 py-0.5 rounded-full">
                 {totalSelectedFilters} selected
               </span>
             )}
@@ -404,6 +374,13 @@ const EnhancedFiltersModal: React.FC<EnhancedFiltersModalProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-2">
+            {/* Sort Filter */}
+            <SortFilter
+              label="Sort By"
+              selected={getCurrentSortValue()}
+              onChange={handleSortChange}
+            />
+
             {/* Status Filter */}
             <MultiSelectFilter
               label="Status"
@@ -419,6 +396,7 @@ const EnhancedFiltersModal: React.FC<EnhancedFiltersModalProps> = ({
               label="Location"
               options={filterOptions.locations}
               selected={filters.location}
+              grid={true}
               onChange={(selected) =>
                 onFiltersChange({ ...filters, location: selected })
               }
@@ -429,45 +407,10 @@ const EnhancedFiltersModal: React.FC<EnhancedFiltersModalProps> = ({
               label="Company"
               options={filterOptions.companies}
               selected={filters.company}
+              grid={true}
               onChange={(selected) =>
                 onFiltersChange({ ...filters, company: selected })
               }
-            />
-
-            {/* Job Type Filter */}
-            <MultiSelectFilter
-              label="Job Type"
-              options={filterOptions.jobTypes}
-              selected={filters.jobType}
-              onChange={(selected) =>
-                onFiltersChange({ ...filters, jobType: selected })
-              }
-            />
-
-            {/* Salary Range */}
-            <RangeSlider
-              label="Salary Range (INR)"
-              min={0}
-              max={5000000}
-              step={50000}
-              value={filters.salaryRange}
-              onChange={(value) =>
-                onFiltersChange({ ...filters, salaryRange: value })
-              }
-              formatValue={formatSalary}
-            />
-
-            {/* Experience Range */}
-            <RangeSlider
-              label="Experience Range"
-              min={0}
-              max={20}
-              step={1}
-              value={filters.experienceRange}
-              onChange={(value) =>
-                onFiltersChange({ ...filters, experienceRange: value })
-              }
-              formatValue={formatExperience}
             />
           </div>
         </div>
@@ -476,14 +419,20 @@ const EnhancedFiltersModal: React.FC<EnhancedFiltersModalProps> = ({
         <div className="flex gap-3 justify-end rounded-b-lg items-center p-6 border-t border-neutral-200 bg-neutral-50">
           <button
             className="px-4 py-2 text-sm text-neutral-500 border border-neutral-500 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            onClick={onClearAll}
+            onClick={() => {
+              onClearAll();
+              onClose();
+            }}
             disabled={totalSelectedFilters === 0}
           >
             Clear All
           </button>
           <button
-            className="px-4 py-2 text-sm bg-[#1E5CDC] text-white rounded-lg hover:bg-[#1A4BB8] transition-colors font-medium shadow-sm cursor-pointer"
-            onClick={onApply}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm cursor-pointer"
+            onClick={() => {
+              onApply();
+              onClose();
+            }}
           >
             Show Results
           </button>
