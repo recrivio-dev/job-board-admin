@@ -8,7 +8,6 @@ import {
   Education,
   Experience,
 } from "@/store/features/candidatesSlice";
-import { check } from "zod/v4-mini";
 
 // Memoized candidate header component
 const CandidateHeader = memo(

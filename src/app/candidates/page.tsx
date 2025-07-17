@@ -20,7 +20,6 @@ import {
 } from "@/store/features/candidatesSlice";
 
 import { initializeAuth } from "@/store/features/userSlice";
-import { ErrorMessage } from "@/components/errorMessage";
 
 import { User } from "@supabase/supabase-js";
 import { Organization, UserRole } from "@/types/custom";

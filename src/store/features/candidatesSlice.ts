@@ -719,9 +719,8 @@ export const deleteCandidateApplication = createAsyncThunk(
   "candidates/deleteCandidateApplication",
   async (
     { applicationId, userContext }: { applicationId: string; userContext: UserContext },
-    { rejectWithValue, getState }
+    { rejectWithValue }
   ) => {
-    const state = getState() as RootState;
 
     if (!userContext) {
       return rejectWithValue("User context is not available");
