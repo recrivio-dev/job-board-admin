@@ -165,15 +165,15 @@ export interface CandidateFilters {
   dateTo?: string;
   jobId?: string;
   sortBy?:
-    | "name"
-    | "application_status"
-    | "experience_years"
-    | "company_name"
-    | "applied_date"
-    | "created_at"
-    | "updated_at"
-    | "current_ctc"
-    | "expected_ctc";
+  | "name"
+  | "application_status"
+  | "experience_years"
+  | "company_name"
+  | "applied_date"
+  | "created_at"
+  | "updated_at"
+  | "current_ctc"
+  | "expected_ctc";
   sortOrder?: "asc" | "desc";
   searchTerm?: string; // Global search term
 }
@@ -261,7 +261,7 @@ export const fetchJobApplicationsWithAccess = createAsyncThunk(
 
       // Call the PostgreSQL function using Supabase RPC
       const { data, error } = await supabase.rpc(
-        "fetch_candidates_with_access",
+        "new_fetch_candidates_with_access",
         functionParams
       );
 
@@ -607,7 +607,20 @@ export const checkJobAccess = createAsyncThunk(
     }
   }
 );
-
+interface UpdateApplicationStatusResponse {
+  success: boolean;
+  error?: string;
+  error_code?: string;
+  message?: string;
+  data?: {
+    application_id: string;
+    application_status: string;
+    updated_at: string;
+    applied_date: string;
+    base_profile_id: string;
+    job_id: string;
+  };
+}
 // Enhanced async thunk to update application status with access control
 export const updateApplicationStatusWithAccess = createAsyncThunk(
   "candidates/updateApplicationStatusWithAccess",
@@ -624,89 +637,59 @@ export const updateApplicationStatusWithAccess = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const { userId, roles } = userContext;
+      const { userId, roles, organizationId } = userContext;
 
-      // Check if user has permission to update application status
-      if (
-        !roles.includes("admin") &&
-        !roles.includes("hr") &&
-        !roles.includes("ta")
-      ) {
-        throw new Error(
-          "Insufficient permissions to update application status"
-        );
+      // Determine user role (taking the highest priority role)
+      let userRole = "viewer"; // default
+      if (roles.includes("admin")) {
+        userRole = "admin";
+      } else if (roles.includes("hr")) {
+        userRole = "hr";
+      } else if (roles.includes("ta")) {
+        userRole = "ta";
       }
 
-      // For TA, check if they have access to the specific job
-      if (
-        roles.includes("ta") &&
-        !roles.includes("admin") &&
-        !roles.includes("hr")
-      ) {
-        // First get the job_id for this application
-        const { data: appData, error: appError } = await supabase
-          .from("job_applications")
-          .select("job_id")
-          .eq("id", applicationId)
-          .single();
-
-        if (appError) {
-          throw new Error(`Failed to fetch application: ${appError.message}`);
+      // Call the RPC function
+      const { data, error } = await supabase.rpc(
+        "update_application_status_with_access",
+        {
+          p_application_id: applicationId,
+          p_status: status,
+          p_user_id: userId,
+          p_user_role: userRole,
+          p_organization_id: organizationId,
         }
-
-        // Check if TA has access to this job
-        const { data: accessData, error: accessError } = await supabase
-          .from("job_access_control")
-          .select("access_type")
-          .eq("job_id", appData.job_id)
-          .eq("user_id", userId)
-          .single();
-
-        if (accessError && accessError.code !== "PGRST116") {
-          throw new Error(`Failed to check job access: ${accessError.message}`);
-        }
-
-        if (!accessData || accessData.access_type !== "granted") {
-          throw new Error("You do not have access to update this application");
-        }
-      }
-
-      // Validate status
-      const validStatuses = ["pending", "accepted", "rejected"];
-      const normalizedStatus = status.toLowerCase();
-
-      if (!validStatuses.includes(normalizedStatus)) {
-        throw new Error(
-          `Invalid status: ${status}. Must be one of: ${validStatuses.join(
-            ", "
-          )}`
-        );
-      }
-
-      const { data, error } = await supabase
-        .from("job_applications")
-        .update({
-          application_status: normalizedStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", applicationId)
-        .select("id, application_status, updated_at")
-        .single();
+      );
 
       if (error) {
-        throw new Error(
-          `Failed to update application status: ${error.message}`
-        );
+        throw new Error(`RPC call failed: ${error.message}`);
       }
 
       if (!data) {
-        throw new Error("No data returned from update operation");
+        throw new Error("No data returned from RPC function");
       }
 
+      // Type check and ensure data has the expected structure
+      const response = data as unknown as UpdateApplicationStatusResponse;
+
+      // Check if the RPC function returned an error
+      if (!response.success) {
+        throw new Error(response.error || "Failed to update application status");
+      }
+
+      // Check if response.data exists
+      if (!response.data) {
+        throw new Error("No data returned in successful response");
+      }
+
+      // Return the successful result
       return {
-        applicationId: data.id,
-        status: data.application_status,
-        updatedAt: data.updated_at,
+        applicationId: response.data.application_id,
+        status: response.data.application_status,
+        updatedAt: response.data.updated_at,
+        appliedDate: response.data.applied_date,
+        baseProfileId: response.data.base_profile_id,
+        jobId: response.data.job_id,
       };
     } catch (error) {
       console.log("updateApplicationStatusWithAccess error:", error);

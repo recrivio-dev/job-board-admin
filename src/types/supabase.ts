@@ -39,6 +39,165 @@ export type Database = {
   }
   public: {
     Tables: {
+      candidate_education_templates: {
+        Row: {
+          base_profile_id: string
+          college_university: string
+          created_at: string | null
+          degree: string | null
+          end_date: string | null
+          field_of_study: string | null
+          id: string
+          is_current: boolean | null
+          start_date: string | null
+          template_name: string
+        }
+        Insert: {
+          base_profile_id: string
+          college_university: string
+          created_at?: string | null
+          degree?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          id?: string
+          is_current?: boolean | null
+          start_date?: string | null
+          template_name: string
+        }
+        Update: {
+          base_profile_id?: string
+          college_university?: string
+          created_at?: string | null
+          degree?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          id?: string
+          is_current?: boolean | null
+          start_date?: string | null
+          template_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_education_templates_base_profile_id_fkey"
+            columns: ["base_profile_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_applications_view"
+            referencedColumns: ["base_profile_id"]
+          },
+          {
+            foreignKeyName: "candidate_education_templates_base_profile_id_fkey"
+            columns: ["base_profile_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_base_profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_experience_templates: {
+        Row: {
+          base_profile_id: string
+          company_name: string
+          created_at: string | null
+          currently_working: boolean | null
+          end_date: string | null
+          id: string
+          job_title: string
+          key_skills: string[] | null
+          start_date: string
+          template_name: string
+        }
+        Insert: {
+          base_profile_id: string
+          company_name: string
+          created_at?: string | null
+          currently_working?: boolean | null
+          end_date?: string | null
+          id?: string
+          job_title: string
+          key_skills?: string[] | null
+          start_date: string
+          template_name: string
+        }
+        Update: {
+          base_profile_id?: string
+          company_name?: string
+          created_at?: string | null
+          currently_working?: boolean | null
+          end_date?: string | null
+          id?: string
+          job_title?: string
+          key_skills?: string[] | null
+          start_date?: string
+          template_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_experience_templates_base_profile_id_fkey"
+            columns: ["base_profile_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_applications_view"
+            referencedColumns: ["base_profile_id"]
+          },
+          {
+            foreignKeyName: "candidate_experience_templates_base_profile_id_fkey"
+            columns: ["base_profile_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_base_profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidates_base_profile: {
+        Row: {
+          address: string | null
+          auth_id: string | null
+          candidate_email: string
+          created_at: string | null
+          disability: string | null
+          dob: string | null
+          gender: string | null
+          id: string
+          is_authenticated: boolean | null
+          linkedin_url: string | null
+          mobile_number: string | null
+          name: string
+          portfolio_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          auth_id?: string | null
+          candidate_email: string
+          created_at?: string | null
+          disability?: string | null
+          dob?: string | null
+          gender?: string | null
+          id?: string
+          is_authenticated?: boolean | null
+          linkedin_url?: string | null
+          mobile_number?: string | null
+          name?: string
+          portfolio_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          auth_id?: string | null
+          candidate_email?: string
+          created_at?: string | null
+          disability?: string | null
+          dob?: string | null
+          gender?: string | null
+          id?: string
+          is_authenticated?: boolean | null
+          linkedin_url?: string | null
+          mobile_number?: string | null
+          name?: string
+          portfolio_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       candidates_profiles: {
         Row: {
           additional_doc_link: string | null
@@ -227,6 +386,13 @@ export type Database = {
             foreignKeyName: "job_access_control_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
+            referencedRelation: "candidate_applications_view"
+            referencedColumns: ["job_id"]
+          },
+          {
+            foreignKeyName: "job_access_control_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
             referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
@@ -235,6 +401,182 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_application_education: {
+        Row: {
+          application_profile_id: string
+          college_university: string
+          created_at: string | null
+          degree: string | null
+          end_date: string | null
+          field_of_study: string | null
+          id: string
+          is_current: boolean | null
+          start_date: string | null
+        }
+        Insert: {
+          application_profile_id: string
+          college_university: string
+          created_at?: string | null
+          degree?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          id?: string
+          is_current?: boolean | null
+          start_date?: string | null
+        }
+        Update: {
+          application_profile_id?: string
+          college_university?: string
+          created_at?: string | null
+          degree?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          id?: string
+          is_current?: boolean | null
+          start_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_application_education_application_profile_id_fkey"
+            columns: ["application_profile_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_applications_view"
+            referencedColumns: ["application_profile_id"]
+          },
+          {
+            foreignKeyName: "job_application_education_application_profile_id_fkey"
+            columns: ["application_profile_id"]
+            isOneToOne: false
+            referencedRelation: "job_application_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_application_experience: {
+        Row: {
+          application_profile_id: string
+          company_name: string
+          created_at: string | null
+          currently_working: boolean | null
+          end_date: string | null
+          id: string
+          job_title: string
+          key_skills: string[] | null
+          start_date: string
+        }
+        Insert: {
+          application_profile_id: string
+          company_name: string
+          created_at?: string | null
+          currently_working?: boolean | null
+          end_date?: string | null
+          id?: string
+          job_title: string
+          key_skills?: string[] | null
+          start_date: string
+        }
+        Update: {
+          application_profile_id?: string
+          company_name?: string
+          created_at?: string | null
+          currently_working?: boolean | null
+          end_date?: string | null
+          id?: string
+          job_title?: string
+          key_skills?: string[] | null
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_application_experience_application_profile_id_fkey"
+            columns: ["application_profile_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_applications_view"
+            referencedColumns: ["application_profile_id"]
+          },
+          {
+            foreignKeyName: "job_application_experience_application_profile_id_fkey"
+            columns: ["application_profile_id"]
+            isOneToOne: false
+            referencedRelation: "job_application_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_application_profiles: {
+        Row: {
+          additional_doc_link: string | null
+          application_status: string
+          applied_date: string
+          base_profile_id: string
+          created_at: string | null
+          current_ctc: number | null
+          expected_ctc: number | null
+          id: string
+          job_id: string
+          notice_period: string | null
+          resume_link: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          additional_doc_link?: string | null
+          application_status?: string
+          applied_date?: string
+          base_profile_id: string
+          created_at?: string | null
+          current_ctc?: number | null
+          expected_ctc?: number | null
+          id?: string
+          job_id: string
+          notice_period?: string | null
+          resume_link?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          additional_doc_link?: string | null
+          application_status?: string
+          applied_date?: string
+          base_profile_id?: string
+          created_at?: string | null
+          current_ctc?: number | null
+          expected_ctc?: number | null
+          id?: string
+          job_id?: string
+          notice_period?: string | null
+          resume_link?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_application_profiles_base_profile_id_fkey"
+            columns: ["base_profile_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_applications_view"
+            referencedColumns: ["base_profile_id"]
+          },
+          {
+            foreignKeyName: "job_application_profiles_base_profile_id_fkey"
+            columns: ["base_profile_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_base_profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_application_profiles_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_applications_view"
+            referencedColumns: ["job_id"]
+          },
+          {
+            foreignKeyName: "job_application_profiles_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -274,6 +616,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "candidates_profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_applications_view"
+            referencedColumns: ["job_id"]
           },
           {
             foreignKeyName: "job_applications_job_id_fkey"
@@ -521,7 +870,26 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      candidate_applications_view: {
+        Row: {
+          application_profile_id: string | null
+          application_status: string | null
+          applied_date: string | null
+          auth_id: string | null
+          base_profile_id: string | null
+          candidate_email: string | null
+          company_name: string | null
+          current_ctc: number | null
+          expected_ctc: number | null
+          is_authenticated: boolean | null
+          job_id: string | null
+          job_title: string | null
+          location: string | null
+          name: string | null
+          notice_period: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       assign_user_role: {
@@ -628,6 +996,31 @@ export type Database = {
         Args: { user_uuid: string; org_uuid: string }
         Returns: Json
       }
+      get_job_details: {
+        Args: { job_id: string }
+        Returns: {
+          id: string
+          organization_id: string
+          title: string
+          description: string
+          company_name: string
+          company_logo_url: string
+          location: string
+          job_location_type: string
+          job_type: string
+          working_type: string
+          salary_min: number
+          salary_max: number
+          status: string
+          application_deadline: string
+          min_experience_needed: number
+          max_experience_needed: number
+          created_by: string
+          created_at: string
+          updated_at: string
+          total_applicants: number
+        }[]
+      }
       get_top_performers: {
         Args: {
           user_uuid: string
@@ -635,6 +1028,14 @@ export type Database = {
           metric_type?: string
           limit_count?: number
         }
+        Returns: Json
+      }
+      get_user_applications: {
+        Args: { p_auth_id?: string; p_candidate_email?: string }
+        Returns: Json
+      }
+      get_user_profile_data: {
+        Args: { p_auth_id?: string; p_candidate_email?: string }
         Returns: Json
       }
       get_user_role_in_org: {
@@ -652,6 +1053,65 @@ export type Database = {
           p_granted_by: string
         }
         Returns: boolean
+      }
+      link_applications_to_user: {
+        Args: { p_auth_id: string; p_candidate_email: string }
+        Returns: Json
+      }
+      new_fetch_candidates_with_access: {
+        Args: {
+          p_user_id: string
+          p_user_role: string
+          p_organization_id?: string
+          p_page?: number
+          p_limit?: number
+          p_application_status?: string[]
+          p_sort_by?: string
+          p_sort_order?: string
+          p_name_filter?: string
+          p_company_filter?: string[]
+          p_job_title_filter?: string[]
+          p_min_experience?: number
+          p_max_experience?: number
+          p_date_from?: string
+          p_date_to?: string
+          p_job_id?: string
+          p_search_term?: string
+        }
+        Returns: Json
+      }
+      submit_job_application: {
+        Args: {
+          p_job_id: string
+          p_candidate_email: string
+          p_name: string
+          p_auth_id?: string
+          p_mobile_number?: string
+          p_dob?: string
+          p_address?: string
+          p_linkedin_url?: string
+          p_portfolio_url?: string
+          p_gender?: string
+          p_disability?: string
+          p_current_ctc?: number
+          p_expected_ctc?: number
+          p_notice_period?: string
+          p_resume_link?: string
+          p_additional_doc_link?: string
+          p_education_data?: Json
+          p_experience_data?: Json
+        }
+        Returns: Json
+      }
+      update_application_status_with_access: {
+        Args: {
+          p_application_id: string
+          p_status: string
+          p_user_id: string
+          p_user_role: string
+          p_organization_id?: string
+        }
+        Returns: Json
       }
       update_user_role: {
         Args: {
