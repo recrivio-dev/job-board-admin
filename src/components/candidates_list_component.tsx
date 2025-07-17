@@ -648,7 +648,7 @@ export default function CandidatesList({
     }
 
     try {
-      await dispatch(deleteCandidateApplication(application_id)).unwrap();
+      await dispatch(deleteCandidateApplication({ applicationId: application_id, userContext })).unwrap();
 
       // Optionally, close the overlay if it was open for this candidate
       if (

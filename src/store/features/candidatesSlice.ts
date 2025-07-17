@@ -702,12 +702,26 @@ export const updateApplicationStatusWithAccess = createAsyncThunk(
   }
 );
 
-//Enhaced async thunk for deleting a candidate application
+interface DeleteCandidateApplicationResponse {
+  success: boolean;
+  error?: string;
+  message?: string;
+  data?: {
+    application_id: string;
+    application_status: string;
+    applied_date: string;
+    base_profile_id: string;
+    job_id: string;
+  };
+}
+
 export const deleteCandidateApplication = createAsyncThunk(
   "candidates/deleteCandidateApplication",
-  async (applicationId: string, { rejectWithValue, getState }) => {
+  async (
+    { applicationId, userContext }: { applicationId: string; userContext: UserContext },
+    { rejectWithValue, getState }
+  ) => {
     const state = getState() as RootState;
-    const userContext = state.candidates.userContext;
 
     if (!userContext) {
       return rejectWithValue("User context is not available");
@@ -715,29 +729,33 @@ export const deleteCandidateApplication = createAsyncThunk(
 
     console.log("deleteCandidateApplication called with:", applicationId);
 
-    //only admin and hr can delete applications
-    if (
-      !userContext.roles.includes("admin") &&
-      !userContext.roles.includes("hr")
-    ) {
-      return rejectWithValue(
-        "You do not have permission to delete applications"
-      );
-    }
-
     try {
-      const response = await supabase
-        .from("job_applications")
-        .delete()
-        .eq("id", applicationId)
-        .single();
+      const { data, error } = await supabase.rpc("delete_application_with_access", {
+        p_application_id: applicationId,
+        p_user_id: userContext.userId,
+        p_user_role: userContext.roles, // assuming first role is primary
+        p_organization_id: userContext.organizationId
+      });
 
-      if (response.error) {
+      if (error) {
         throw new Error(
-          `Failed to delete application: ${response.error.message}`
+          `Failed to delete application: ${error.message}`
         );
       }
 
+      if (!data) {
+        throw new Error("No data returned from delete application RPC function");
+      }
+
+      // Type check and ensure data has the expected structure
+      const result = data as unknown as DeleteCandidateApplicationResponse;
+
+      // Check if the RPC function returned an error
+      if (!result.success) {
+        throw new Error(result.error || "Failed to delete candidate application");
+      }
+
+      // Return the application ID for state management
       return applicationId;
     } catch (error) {
       console.log("deleteCandidateApplication error:", error);

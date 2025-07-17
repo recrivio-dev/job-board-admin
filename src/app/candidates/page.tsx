@@ -225,13 +225,6 @@ const CandidatesContent = ({
           </div>
         </div>
 
-        {/* Error Display */}
-        {error && (
-         <ErrorMessage
-            message={`Error loading candidates: ${error}`}
-          />
-        )}
-
         {/* Candidates List Component */}
         <Suspense fallback={<TableSkeleton />}>
           <CandidatesList

@@ -8,6 +8,7 @@ import {
   Education,
   Experience,
 } from "@/store/features/candidatesSlice";
+import { check } from "zod/v4-mini";
 
 // Memoized candidate header component
 const CandidateHeader = memo(
@@ -107,27 +108,71 @@ CandidateHeader.displayName = "CandidateHeader";
 
 // Memoized resume section component
 const ResumeSection = memo(
-  ({ candidate }: { candidate: CandidateWithApplication | null }) => (
-    <div className="mb-6">
-      <div className="font-semibold text-lg text-blue-700 mb-3 flex items-center gap-2">
-        Resume
-      </div>
-      <div className="flex items-center gap-4">
-        <div className="bg-neutral-100 flex items-center gap-2 rounded-lg cursor-pointer pr-4 transition-colors hover:bg-neutral-200">
-          <div className="text-white bg-red-700 py-4 px-3 rounded-l-lg">
-            PDF
-          </div>
-          <div className="text-neutral-800 font-semibold">
-            {candidate?.name ? `${candidate.name}_Resume.pdf` : "Resume.pdf"}
-            <div className="text-neutral-400 text-sm font-normal">
-              Download Resume
+  ({ candidate }: { candidate: CandidateWithApplication | null }) => {
+    const handleDownload = async () => {
+      if (!candidate?.resume_link) {
+        console.error('No resume link available');
+        return;
+      }
+
+      // Custom toast notification can be implemented here
+      alert('Downloading resume for: ' + (candidate.name || 'Unknown Candidate'));
+
+      try {
+        // Fetch the file from AWS
+        const response = await fetch(candidate.resume_link);
+        
+        if (!response.ok) {
+          throw new Error('Failed to download resume');
+        }
+
+        // Create blob from response
+        const blob = await response.blob();
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = candidate?.name ? `${candidate.name}_Resume.pdf` : 'Resume.pdf';
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error downloading resume:', error);
+        // You might want to show a toast notification here
+      }
+    };
+
+    return (
+      <div className="mb-6">
+        <div className="font-semibold text-lg text-blue-700 mb-3 flex items-center gap-2">
+          Resume
+        </div>
+        <div className="flex items-center gap-4">
+          <div 
+            className="bg-neutral-100 flex items-center gap-2 rounded-lg cursor-pointer pr-4 transition-colors hover:bg-neutral-200"
+            onClick={handleDownload}
+          >
+            <div className="text-white bg-red-700 py-4 px-3 rounded-l-lg">
+              PDF
             </div>
+            <div className="text-neutral-800 font-semibold">
+              {candidate?.name ? `${candidate.name}_Resume.pdf` : "Resume.pdf"}
+              <div className="text-neutral-400 text-sm font-normal">
+                Download Resume
+              </div>
+            </div>
+            <FiDownload className="h-5 w-5 mx-2 text-neutral-800" />
           </div>
-          <FiDownload className="h-5 w-5 mx-2 text-neutral-800" />
         </div>
       </div>
-    </div>
-  )
+    );
+  }
 );
 
 ResumeSection.displayName = "ResumeSection";

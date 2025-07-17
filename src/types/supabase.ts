@@ -901,6 +901,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      delete_application_with_access: {
+        Args: {
+          p_application_id: string
+          p_user_id: string
+          p_user_role: string
+          p_organization_id?: string
+        }
+        Returns: Json
+      }
       fetch_candidates_with_access: {
         Args: {
           p_user_id: string
