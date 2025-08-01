@@ -589,8 +589,12 @@ export const Overlay = ({
   });
 
   // useEffect to fetch jobs and company data if initially they are not present in state
+  // FIXED VERSION
+  const [hasInitialized, setHasInitialized] = useState(false);
+
   useEffect(() => {
-    if (jobs.length === 0 || company.length === 0) {
+    if (!hasInitialized && organizationId && (jobs.length === 0 || company.length === 0)) {
+      setHasInitialized(true);
       const userContext: UserContext = {
         userId: member?.id || "",
         organizationId: organizationId,
@@ -598,7 +602,7 @@ export const Overlay = ({
       };
       dispatch(fetchFilterOptions({ userContext }));
     }
-  }, [jobs, company, dispatch, member?.id, organizationId, roles]);
+  }, [organizationId]); // MINIMAL DEPENDENCIES
 
   // Check for unsaved changes - improved to include assignments
   useEffect(() => {

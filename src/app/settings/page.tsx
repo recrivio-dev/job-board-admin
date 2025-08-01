@@ -749,7 +749,7 @@ export default function Settings() {
                                 onChange={(e) => {
                                   handleRoleChange(member, e.target.value);
                                 }}
-                                className={`w-full border px-3 pr-8 rounded-md py-2 text-sm bg-white appearance-none focus:outline-none focus:ring-2 truncate focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                className={`w-full border px-3 pr-8 rounded-full py-2 text-sm bg-white appearance-none focus:outline-none focus:ring-2 truncate focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                                   hasChange
                                     ? "border-yellow-400 bg-yellow-50 text-yellow-800"
                                     : "border-neutral-300 text-neutral-700"

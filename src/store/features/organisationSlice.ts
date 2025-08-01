@@ -227,12 +227,46 @@ export const updateMemberRole = createAsyncThunk(
     }
 );
 
+export const removeMemberRole = createAsyncThunk(
+    'organisation/removeMemberRole',
+    async (
+        { memberUUID, organization_id, removed_by }: {
+            memberUUID: string;
+            organization_id: string;
+            removed_by: string;
+        },
+        { rejectWithValue, dispatch }
+    ) => {
+        try {
+            // Validate inputs
+            if (!memberUUID || !organization_id || !removed_by) {
+                throw new Error('All parameters are required');
+            }
+            // Call the RPC function to remove role
+            const { error: rpcError } = await supabase.rpc('remove_member_from_organization', {
+                p_user_id: memberUUID,
+                p_organization_id: organization_id,
+                p_removed_by: removed_by
+            });
+            if (rpcError) {
+                throw new Error(`Failed to remove role: ${rpcError.message}`);
+            }
+
+            // It can be optimised further by not fetching all members again
+            dispatch(fetchOrgMembers(organization_id));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error occurred';
+            return rejectWithValue(message);
+        }
+    }
+);
+
 //assign jobs access with job title with the function grant_access_by_job_titles that accepts memberUUid, jobTitle[], grantedBy(uuid)]
 export const assignJobAccesswithJob_title = createAsyncThunk(
     'organisation/assignJobAccesswithJob_title',
     async (
         { memberUuid, jobTitles, grantedBy, organization_id }: { memberUuid: string; jobTitles: string[]; grantedBy: string, organization_id: string },
-        { rejectWithValue, dispatch }
+        { rejectWithValue, dispatch, getState }
     ) => {
         try {
             // Validate inputs
@@ -384,6 +418,21 @@ const organisationSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload as string;
             })
+            // Remove member role
+            .addCase(removeMemberRole.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            }
+            )
+            .addCase(removeMemberRole.fulfilled, (state) => {
+                state.loading = false;
+                // The fetchOrgMembers will update the members list
+            })
+            .addCase(removeMemberRole.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
+            }
+            );
     },
 });
 
