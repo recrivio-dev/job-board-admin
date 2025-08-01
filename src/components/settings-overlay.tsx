@@ -602,7 +602,7 @@ export const Overlay = ({
       };
       dispatch(fetchFilterOptions({ userContext }));
     }
-  }, [organizationId]); // MINIMAL DEPENDENCIES
+  }, [organizationId, member?.id, jobs.length, company.length, dispatch, hasInitialized, roles]); // MINIMAL DEPENDENCIES
 
   // Check for unsaved changes - improved to include assignments
   useEffect(() => {

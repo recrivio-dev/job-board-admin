@@ -6,9 +6,7 @@ import { selectMembers } from "@/store/features/organisationSlice";
 import { useAppSelector } from "@/store/hooks";
 import { Overlay } from "./settings-overlay";
 import { RootState } from "@/store/store";
-import { useDispatch } from "react-redux";
-import { fetchOrgMembers } from "@/store/features/organisationSlice";
-
+import Image from "next/image";
 
 interface TeamMember {
   id: string;
@@ -37,7 +35,6 @@ export const RoleProfile = ({
   handleRevokeAccess: (member: TeamMember, job_id: string) => void;
   handleSaveMember: (member: TeamMember) => void;
 }) => {
-  const dispatch = useDispatch();
   const [showOverlay, setShowOverlay] = React.useState(false);
   const [assignedJobs, setAssignedJobs] = React.useState<JobAccess[]>(editingMember.assignedJobs || []);
   const members = useAppSelector((state: RootState) => selectMembers(state as RootState));
@@ -82,7 +79,7 @@ export const RoleProfile = ({
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
           <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
-            <img src="/recrivio-profile.svg" alt={`${editingMember.name}'s avatar`} className="w-full h-full rounded-full" />
+            <Image src="/recrivio-profile.svg" alt={`${editingMember.name}'s avatar`} className="w-full h-full rounded-full" />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-gray-900">

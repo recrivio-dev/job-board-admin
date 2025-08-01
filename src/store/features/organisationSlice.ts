@@ -266,7 +266,7 @@ export const assignJobAccesswithJob_title = createAsyncThunk(
     'organisation/assignJobAccesswithJob_title',
     async (
         { memberUuid, jobTitles, grantedBy, organization_id }: { memberUuid: string; jobTitles: string[]; grantedBy: string, organization_id: string },
-        { rejectWithValue, dispatch, getState }
+        { rejectWithValue, dispatch }
     ) => {
         try {
             // Validate inputs
