@@ -262,7 +262,7 @@ const ExperienceDetails = memo(
           No experience information available.
         </p>
       )}
-      {candidate?.experience?.map((exp: Experience, index: number) => (
+      {(candidate?.experience as Experience[] | undefined)?.map((exp: Experience, index: number) => (
         <div key={index} className="mb-4">
           <div className="flex items-center gap-4 mb-2">
             <div>
@@ -302,7 +302,7 @@ const ExperienceDetails = memo(
               <div className="font-normal text-neutral-600">
                 {exp.company_name || "Company Name"}
               </div>
-              <div className="font-noraml text-neutral-400 text-sm">
+              <div className="font-normal text-neutral-400 text-sm">
                 {exp.currently_working === true
                   ? "Currently working here"
                   : `${
@@ -344,7 +344,7 @@ const EducationDetails = memo(
           No education information available.
         </p>
       )}
-      {candidate?.education?.map((edu: Education, index: number) => (
+      {(candidate?.education as Education[] | undefined)?.map((edu: Education, index: number) => (
         <div key={index} className="mb-4">
           <div className="flex items-center gap-4 mb-2">
             <div>

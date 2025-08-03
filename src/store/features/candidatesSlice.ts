@@ -5,11 +5,10 @@ import { Tables } from "@/types/supabase";
 const supabase = createClient();
 
 // Types from your existing code
-export type JobApplication = Tables<"job_applications">;
-export type CandidateProfile = Tables<"candidates_profiles">;
+export type CandidateProfile = Tables<"job_application_profiles">;
 export type Job = Tables<"jobs">;
-export type Education = Tables<"education">;
-export type Experience = Tables<"experience">;
+export type Education = Tables<"job_application_education">;
+export type Experience = Tables<"job_application_experience">;
 
 // First, define the type for the raw candidate data from the database function
 interface RawCandidateData {
