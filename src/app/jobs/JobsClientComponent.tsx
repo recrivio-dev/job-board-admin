@@ -5,7 +5,6 @@ import React, {
   useCallback,
   useMemo,
   useRef,
-  Suspense,
 } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import type { RootState } from "@/store/store";
@@ -35,7 +34,7 @@ import {
   JobCard,
 } from "@/components/Job-card&list-component";
 import { JobsClientComponentProps } from "@/types/custom";
-import { EmptyState, ErrorState, JobCardSkeleton, JobPageSkeleton } from "./job_utils";
+import { EmptyState, ErrorState, JobPageSkeleton } from "./job_utils";
 import Pagination from "@/components/pagination";
 import EnhancedFiltersModal from "@/components/enhanced-filters-modal";
 import Breadcrumb from "@/components/Breadcrumb";
