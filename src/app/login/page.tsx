@@ -46,7 +46,7 @@ const LoginForm = () => {
 
   const formMethods = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    mode: "onBlur",
+    mode: "onChange",
   });
 
   const {
