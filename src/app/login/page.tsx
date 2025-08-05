@@ -46,7 +46,7 @@ const LoginForm = () => {
 
   const formMethods = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    mode: "onChange",
+    mode: "onBlur",
   });
 
   const {
@@ -63,7 +63,7 @@ const LoginForm = () => {
     if (errors.root?.message) return errors.root.message;
     if (error) return error;
     return null;
-  }, [errors, error]);
+  }, [errors.email, errors.password, errors.root, error]);
 
   const togglePasswordVisibility = useCallback(() => {
     setShowPassword((prev) => !prev);
@@ -84,7 +84,7 @@ const LoginForm = () => {
           setError("root", { message: error });
         }
         // Reset the form state after a failed login attempt
-        formMethods.reset();
+        formMethods.resetField("password");
       }
     },
     [dispatch, error, setError, formMethods]
