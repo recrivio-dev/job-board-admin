@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useMemo,
   useRef,
+  Suspense,
 } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import type { RootState } from "@/store/store";
@@ -34,7 +35,7 @@ import {
   JobCard,
 } from "@/components/Job-card&list-component";
 import { JobsClientComponentProps } from "@/types/custom";
-import { EmptyState, ErrorState } from "./job_utils";
+import { EmptyState, ErrorState, JobCardSkeleton, JobPageSkeleton } from "./job_utils";
 import Pagination from "@/components/pagination";
 import EnhancedFiltersModal from "@/components/enhanced-filters-modal";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -96,12 +97,13 @@ export default function JobsClientComponent({
   const collapsed = useAppSelector(
     (state: RootState) => state.ui.sidebar.collapsed
   );
-  // const jobs = useAppSelector(selectJobs);
   const jobs = useAppSelector(selectJobs);
+  const jobsLoading = useAppSelector((state: RootState) => state.jobs.loading);
   const pagination = useAppSelector(selectJobPagination);
   const error = useAppSelector(selectJobsError);
   const viewMode = useAppSelector(selectJobViewMode);
   const filters = useAppSelector(selectJobFilters);
+  const filterLoading = useAppSelector((state: RootState) => state.jobs.filterOptions.loading);
 
   // New filter options selectors
   const filterOptions = useAppSelector(selectFilterOptions);
@@ -111,13 +113,6 @@ export default function JobsClientComponent({
     initialized: false,
     error: null,
   });
-
-  // const [filterDropdowns, setFilterDropdowns] = useState<FilterState>({
-  //   status: "",
-  //   location: "",
-  //   company: "",
-  //   isOpen: false,
-  // });
 
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>(filters.searchTerm || "");
@@ -216,13 +211,6 @@ export default function JobsClientComponent({
 
           // Update filters immediately without loading state
           dispatch(setFilters(newFilters));
-
-          // Update local dropdown state immediately
-          // setFilterDropdowns((prev) => ({
-          //   ...prev,
-          //   [filterType]: value,
-          //   isOpen: false,
-          // }));
 
           // Apply filters with server-side filtering
           await dispatch(
@@ -373,8 +361,6 @@ export default function JobsClientComponent({
     [dispatch, pagination.pageSize, filters, userRole, userId, organizationId]
   );
 
-  // Let's add comprehensive debugging to understand the exact flow
-
   const handlePageSizeChange = useCallback(
     async (pageSize: number) => {
       if (!isValidProps || !userRole || !userId || !organizationId) {
@@ -463,6 +449,19 @@ export default function JobsClientComponent({
         <div className="mt-4 px-2">
           <ErrorState error={initState.error} onRetry={handleRetry} />
         </div>
+      </div>
+    );
+  }
+
+  if(jobsLoading || filterLoading) {
+    return (
+      <div
+        className={`transition-all duration-300 h-full px-3 md:px-6 ${
+          collapsed ? "md:ml-20" : "md:ml-60"
+        } pt-18`}
+      >
+        {/* This can be improved by only using job card skeleton */}
+          <JobPageSkeleton />
       </div>
     );
   }
@@ -568,27 +567,6 @@ export default function JobsClientComponent({
 
           {/* Filters */}
           <div className="flex items-center gap-2 text-sm text-neutral-500">
-            {/* Sort dropdown */}
-            {/* <div className="hidden md:flex items-center gap-2">
-              <FilterDropdown
-                label="Sort By"
-                value={
-                  sortBy === "recent"
-                    ? "Most Recent"
-                    : sortBy === "az"
-                    ? "A-Z"
-                    : "Z-A"
-                }
-                options={["Most Recent", "A-Z", "Z-A"]}
-                onChange={(value) => {
-                  if (value === "Most Recent") setSortBy("recent");
-                  else if (value === "A-Z") setSortBy("az");
-                  else if (value === "Z-A") setSortBy("za");
-                }}
-                isOpen={sortDropdownOpen}
-                onToggle={() => setSortDropdownOpen(!sortDropdownOpen)}
-              />
-            </div> */}
             <div className="hidden md:flex items-center gap-2">
               <MultiSelectDropdown
                 key={filters.status ? (Array.isArray(filters.status) ? filters.status.join(",") : filters.status) : ""}
@@ -687,24 +665,23 @@ export default function JobsClientComponent({
               }))} />
             )}
 
-            {/* Pagination */}
-            {jobs.length > 0 && (
-              <Pagination
-                currentPage={pagination.currentPage}
-                totalPages={pagination.totalPages}
-                totalItems={pagination.totalCount}
-                itemsPerPage={pagination.pageSize}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handlePageSizeChange}
-                showItemsPerPage={true}
-                itemsPerPageOptions={[12, 24, 30, 60]}
-                className="mt-8"
-              />
-            )}
+        {/* Pagination */}
+        {jobs.length > 0 && (
+          <Pagination
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalCount}
+            itemsPerPage={pagination.pageSize}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handlePageSizeChange}
+            showItemsPerPage={true}
+            itemsPerPageOptions={[12, 24, 30, 60]}
+            className="mt-8"
+          />
+        )}
           </>
         )}
       </div>
-
       {/* Enhanced Filters Modal */}
       <EnhancedFiltersModal 
         show={showFiltersModal}

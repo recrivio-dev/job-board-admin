@@ -6,21 +6,44 @@ import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import { BiCheck } from 'react-icons/bi';
 
 // Loading skeleton component
-export const JobCardSkeleton: React.FC = () => (
-  <div className="bg-white rounded-2xl shadow-sm p-6 animate-pulse">
-    <div className="flex items-center mb-4">
-      <div className="w-14 h-14 bg-neutral-300 rounded-xl"></div>
-      <div className="flex-1 ml-4">
-        <div className="h-5 bg-neutral-300 rounded mb-2"></div>
-        <div className="h-4 bg-neutral-300 rounded w-3/4"></div>
+export const JobCardSkeleton = () => (
+  <div className="bg-white rounded-2xl p-3 shadow-xs hover:shadow-sm transition-all duration-200 cursor-pointer group h-full flex flex-col min-w-64">
+    {/* Header with logo and title/company */}
+    <div className="flex items-start space-x-4">
+      <div className="flex-shrink-0">
+        <SkeletonShimmer className="w-12 h-12 rounded-xl" />
+      </div>
+      <div className="flex-1 min-w-0">
+        {/* Job title - 2 lines */}
+        <SkeletonShimmer className="w-full h-5 mb-1" />
+        <SkeletonShimmer className="w-3/4 h-5 mb-2" />
+        {/* Company name */}
+        <SkeletonShimmer className="w-1/2 h-3" />
       </div>
     </div>
-    <div className="space-y-2">
-      <div className="h-8 bg-neutral-300 rounded-lg w-32"></div>
-      <div className="h-8 bg-neutral-300 rounded-lg w-24"></div>
-    </div>
-    <div className="mt-4">
-      <div className="h-6 bg-neutral-300 rounded w-24 ml-auto"></div>
+
+    {/* Content section */}
+    <div className="mt-3">
+      <div className="flex flex-col space-y-1">
+        {/* Salary row with icon */}
+        <div className="inline-flex items-center gap-1">
+          <SkeletonShimmer className="w-4 h-4 rounded" />
+          <SkeletonShimmer className="w-24 h-3" />
+        </div>
+        {/* Location row with icon */}
+        <div className="inline-flex items-center gap-1">
+          <SkeletonShimmer className="w-4 h-4 rounded" />
+          <SkeletonShimmer className="w-20 h-3" />
+        </div>
+      </div>
+
+      {/* View Details section */}
+      <div className="flex items-center justify-end mt-4">
+        <div className="flex items-center gap-1">
+          <SkeletonShimmer className="w-16 h-4" />
+          <SkeletonShimmer className="w-3 h-3" />
+        </div>
+      </div>
     </div>
   </div>
 );
@@ -371,3 +394,94 @@ useEffect(() => {
     </div>
   );
 };
+
+export const SkeletonShimmer = ({ className = "" }) => (
+  <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
+);
+
+export const FilterDropdownSkeleton = () => (
+  <SkeletonShimmer className="w-28 h-8 rounded-full" />
+);
+
+export const JobPageSkeleton = () => (
+  <div className="w-full mx-auto px-0 md:px-4 py-4 md:py-2">
+    {/* Breadcrumb skeleton */}
+    <div className="mb-4">
+      <SkeletonShimmer className="w-24 h-4" />
+    </div>
+
+    {/* Title section skeleton */}
+    <div className="mb-9.5">
+      <SkeletonShimmer className="w-48 h-7 mb-2" />
+      <SkeletonShimmer className="w-80 h-4" />
+    </div>
+
+    {/* Search bar and Add Job button skeleton */}
+    <div className="flex items-center justify-between mb-8">
+      <div className="w-full md:w-125">
+        <SkeletonShimmer className="w-full h-10 rounded-lg" />
+      </div>
+      <SkeletonShimmer className="w-24 h-10 rounded-lg ml-4" />
+    </div>
+
+    {/* View mode toggle and filters skeleton */}
+    <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+      {/* View mode toggle skeleton */}
+      <div className="flex items-center gap-2">
+        <SkeletonShimmer className="w-20 h-8 rounded-full" />
+        <SkeletonShimmer className="w-16 h-8 rounded-full" />
+      </div>
+
+      {/* Filters skeleton */}
+      <div className="flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-2">
+          <FilterDropdownSkeleton />
+          <FilterDropdownSkeleton />
+          <FilterDropdownSkeleton />
+        </div>
+        
+        {/* Separator */}
+        <div className="h-8 w-px bg-gray-200" />
+        
+        <SkeletonShimmer className="w-24 h-8 rounded-full" />
+      </div>
+    </div>
+
+
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      {Array.from({ length: 8 }).map((_, index) => (
+        <JobCardSkeleton key={index} />
+      ))}
+    </div>
+
+    {/* Pagination skeleton */}
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 mt-8">
+      {/* Items per page selector skeleton */}
+      <div className="flex items-center gap-2 text-sm">
+        <SkeletonShimmer className="w-20 h-4" />
+        <SkeletonShimmer className="w-16 h-8 rounded-md" />
+      </div>
+
+      {/* Items info skeleton */}
+      <SkeletonShimmer className="w-32 h-4" />
+
+      {/* Pagination controls skeleton */}
+      <div className="flex items-center gap-1">
+        {/* Previous button */}
+        <SkeletonShimmer className="w-9 h-9 rounded-md" />
+        
+        {/* Page numbers */}
+        <SkeletonShimmer className="w-9 h-9 rounded-md" />
+        <SkeletonShimmer className="w-9 h-9 rounded-md" />
+        <SkeletonShimmer className="w-9 h-9 rounded-md" />
+        <span className="flex items-center justify-center w-9 h-9 text-gray-300">
+          ...
+        </span>
+        <SkeletonShimmer className="w-9 h-9 rounded-md" />
+        
+        {/* Next button */}
+        <SkeletonShimmer className="w-9 h-9 rounded-md" />
+      </div>
+    </div>
+  </div>
+)

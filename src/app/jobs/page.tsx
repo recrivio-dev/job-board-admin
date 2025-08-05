@@ -1,18 +1,11 @@
 "use client";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef , Suspense} from "react";
 import Link from "next/link";
 import JobsClientComponent from "./JobsClientComponent";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { RootState } from "@/store/store";
 import { initializeAuth } from "@/store/features/userSlice";
-
-// Loading component for better UX
-const LoadingSpinner = ({ message = "Loading..." }: { message?: string }) => (
-  <div className="flex items-center justify-center min-h-[200px]">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-    <span className="ml-2 text-neutral-600">{message}</span>
-  </div>
-);
+import { ErrorState, JobPageSkeleton } from "./job_utils";
 
 // Error/Info message component
 const InfoMessage = ({
@@ -89,7 +82,7 @@ export default function JobsPage() {
       <div
         className={`transition-all duration-300 h-full px-3 md:px-6 ${
           collapsed ? "md:ml-20" : "md:ml-60"
-        } pt-4`}
+        } pt-18`}
       >
         <div className="max-w-8xl mx-auto px-2 py-4">
           <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -109,17 +102,15 @@ export default function JobsPage() {
     );
   }
 
-  // Show loading only during initial auth check
-  if (isLoading && !authInitialized.current) {
+  //show skelton while loading user data
+  if (isLoading) {
     return (
       <div
         className={`transition-all duration-300 h-full px-3 md:px-6 ${
           collapsed ? "md:ml-20" : "md:ml-60"
-        } pt-4`}
+        } pt-18`}
       >
-        <div className="max-w-8xl mx-auto px-2 py-4 mt-10">
-          <LoadingSpinner message="Loading user authentication..." />
-        </div>
+        <JobPageSkeleton />
       </div>
     );
   }
@@ -130,9 +121,9 @@ export default function JobsPage() {
       <div
         className={`transition-all duration-300 h-full px-3 md:px-6 ${
           collapsed ? "md:ml-20" : "md:ml-60"
-        } pt-4`}
+        } pt-18`}
       >
-        <div className="max-w-8xl mx-auto px-2 py-4 mt-10">
+        <div className="max-w-8xl mx-auto px-2 py-4">
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
             <h3 className="text-yellow-800 font-medium">
               Authentication Required
@@ -155,14 +146,14 @@ export default function JobsPage() {
   }
 
   // Handle missing organization
-  if (!organization) {
+  if (!organization || !organization.id) {
     return (
       <div
         className={`transition-all duration-300 h-full px-3 md:px-6 ${
           collapsed ? "md:ml-20" : "md:ml-60"
-        } pt-4`}
+        } pt-18`}
       >
-        <div className="w-full mx-auto px-0 md:px-4 py-4 md:py-2 mt-10">
+        <div className="w-full mx-auto px-0 md:px-4 py-4 md:py-2">
           <InfoMessage
             message="You are not part of any organization. Please contact your administrator."
             type="info"
@@ -178,9 +169,9 @@ export default function JobsPage() {
       <div
         className={`transition-all duration-300 h-full px-3 md:px-6 ${
           collapsed ? "md:ml-20" : "md:ml-60"
-        } pt-4`}
+        } pt-18`}
       >
-        <div className="w-full mx-auto px-0 md:px-4 py-4 md:py-2 mt-10">
+        <div className="w-full mx-auto px-0 md:px-4 py-4 md:py-2">
           <InfoMessage
             message="No role is assigned to you. Please contact your administrator to assign a role."
             type="info"
@@ -191,20 +182,22 @@ export default function JobsPage() {
   }
 
   // Get the primary role (first role) with fallback
-  const primaryRole = roles[0]?.role?.name || "Unknown";
+  const primaryRole = roles[0]?.role?.name || "";
 
   // Additional validation for required data
-  if (!user || !user.id || !organization.id) {
+  if (!user || !user.id || !organization?.id) {
     return (
       <div
         className={`transition-all duration-300 h-full px-3 md:px-6 ${
           collapsed ? "md:ml-20" : "md:ml-60"
-        } pt-4`}
+        } pt-18`}
       >
-        <div className="w-full mx-auto px-0 md:px-4 py-4 md:py-2 mt-10">
-          <InfoMessage
-            message="Invalid user or organization data. Please try refreshing the page."
-            type="error"
+        <div className="w-full mx-auto px-0 md:px-4 py-4 md:py-2">
+          <ErrorState
+            error="Invalid user or organization data. Please try refreshing the page."
+            onRetry={() => {
+              dispatch(initializeAuth());
+            }}
           />
         </div>
       </div>
@@ -213,11 +206,13 @@ export default function JobsPage() {
 
   return (
     <div className="max-w-8xl">
-      <JobsClientComponent
-        userId={user.id}
-        userRole={primaryRole}
-        organizationId={organization.id}
-      />
+      <Suspense fallback={<JobPageSkeleton />}>
+        <JobsClientComponent
+          userId={user.id}
+          userRole={primaryRole}
+          organizationId={organization.id}
+        />
+      </Suspense>
     </div>
   );
 }
