@@ -79,7 +79,7 @@ export const RoleProfile = ({
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
           <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
-            <Image src="/recrivio-profile.svg" alt={`${editingMember.name}'s avatar`} className="w-full h-full rounded-full" />
+            <Image src="/recrivio-profile.svg" alt={`${editingMember.name}'s avatar`} width={64} height={64} className="w-full h-full rounded-full" />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
