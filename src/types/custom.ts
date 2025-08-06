@@ -80,12 +80,18 @@ export interface FormErrors {
     companyLogo?: string;
     companyName?: string;
     jobTitle?: string;
+    status?: string;
     jobType?: string;
     jobLocationType?: string;
     jobLocation?: string;
     workingType?: string;
     experience?: string;
+    minExperience?: string;
+    maxExperience?: string;
     salary?: string;
+    minSalary?: string;
+    maxSalary?: string;
+    applicationDeadline?: string;
     jobDescription?: string;
     general?: string;
 }

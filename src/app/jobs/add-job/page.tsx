@@ -60,12 +60,6 @@ export default function AddJob() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Clear errors when form data changes
-  useEffect(() => {
-    if (Object.keys(errors).length > 0) {
-      setErrors({});
-    }
-  }, [formData, errors]);
 
   const validateStep = (currentStep: number): boolean => {
     const newErrors: FormErrors = {};
@@ -94,18 +88,18 @@ export default function AddJob() {
           newErrors.workingType = "Working type is required";
         }
         if (!formData.minExperience || !formData.maxExperience) {
-          newErrors.experience =
+          newErrors.minExperience =
             "Both minimum and maximum experience are required";
         } else if (
           Number(formData.minExperience) > Number(formData.maxExperience)
         ) {
-          newErrors.experience =
+          newErrors.minExperience =
             "Minimum experience cannot be greater than maximum";
         }
         if (!formData.minSalary || !formData.maxSalary) {
-          newErrors.salary = "Both minimum and maximum salary are required";
+          newErrors.minSalary = "Both minimum and maximum salary are required";
         } else if (Number(formData.minSalary) > Number(formData.maxSalary)) {
-          newErrors.salary = "Minimum salary cannot be greater than maximum";
+          newErrors.minSalary = "Minimum salary cannot be greater than maximum";
         }
         break;
 
@@ -125,6 +119,14 @@ export default function AddJob() {
       ...prev,
       [field]: value,
     }));
+
+    // Clear specific error when field changes
+    if (errors[field]) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: "",
+      }));
+    }
   };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -231,8 +233,7 @@ export default function AddJob() {
       // Upload company logo
       if (!formData.companyLogo) {
         logoUrl = process.env.NEXT_PUBLIC_DEFAULT_COMPANY_LOGO_URL || "";
-        return;
-      }else{
+      } else {
         const uploadResult = await handleUploadLogo(formData.companyLogo!);
         logoUrl = `https://${process.env.NEXT_PUBLIC_AWS_BUCKET_NAME}.s3.${process.env.NEXT_PUBLIC_AWS_BUCKET_REGION}.amazonaws.com/${uploadResult.key}`;
       }
@@ -566,7 +567,7 @@ export default function AddJob() {
                     <div className="flex gap-2">
                       <select
                         className={`w-full border text-sm rounded-lg px-3 py-4 ${
-                          errors.experience
+                          errors.minExperience
                             ? "border-red-300"
                             : "border-neutral-300"
                         }`}
@@ -584,7 +585,7 @@ export default function AddJob() {
                       </select>
                       <select
                         className={`w-full border text-sm rounded-lg px-3 py-4 ${
-                          errors.experience
+                          errors.maxExperience
                             ? "border-red-300"
                             : "border-neutral-300"
                         }`}
@@ -601,7 +602,7 @@ export default function AddJob() {
                         ))}
                       </select>
                     </div>
-                    {errors.experience && renderError(errors.experience)}
+                    {errors.minExperience && renderError(errors.minExperience)}
                   </div>
 
                   <div className="mt-4">
@@ -614,7 +615,7 @@ export default function AddJob() {
                     <div className="flex gap-2">
                       <select
                         className={`w-full border text-sm rounded-lg px-3 py-4 ${
-                          errors.salary
+                          errors.minSalary
                             ? "border-red-300"
                             : "border-neutral-300"
                         }`}
@@ -632,7 +633,7 @@ export default function AddJob() {
                       </select>
                       <select
                         className={`w-full border text-sm rounded-lg px-3 py-4 ${
-                          errors.salary
+                          errors.maxSalary
                             ? "border-red-300"
                             : "border-neutral-300"
                         }`}
@@ -649,7 +650,7 @@ export default function AddJob() {
                         ))}
                       </select>
                     </div>
-                    {errors.salary && renderError(errors.salary)}
+                    {errors.minSalary && renderError(errors.minSalary)}
                   </div>
                 </div>
               )}
