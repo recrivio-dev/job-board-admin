@@ -525,7 +525,6 @@ export default function UserManagement() {
         <Breadcrumb
           segments={[
             { label: "User Management", href: "/user-management" },
-            { label: "Role Profile", href: "/user-management/role-profile" },
           ]}
           className="mb-4"
         />

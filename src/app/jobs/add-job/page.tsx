@@ -72,9 +72,6 @@ export default function AddJob() {
 
     switch (currentStep) {
       case 0: // Company step
-        if (!formData.companyLogo) {
-          newErrors.companyLogo = "Company logo is required";
-        }
         if (!formData.companyName.trim()) {
           newErrors.companyName = "Company name is required";
         }
@@ -225,20 +222,21 @@ export default function AddJob() {
       });
       return;
     }
-    // //check role
-    // if (roles[0].role.name !== "admin" && roles[0].role.name !== "hr") {
-    //   setErrors({ general: "You do not have permission to create a job." });
-    //   return;
-    // }
 
     setIsSubmitting(true);
     setErrors({});
+    let logoUrl = "";
 
     try {
       // Upload company logo
-      const uploadResult = await handleUploadLogo(formData.companyLogo!);
-      const logoUrl = `https://${process.env.NEXT_PUBLIC_AWS_BUCKET_NAME}.s3.${process.env.NEXT_PUBLIC_AWS_BUCKET_REGION}.amazonaws.com/${uploadResult.key}`;
-
+      if (!formData.companyLogo) {
+        logoUrl = process.env.NEXT_PUBLIC_DEFAULT_COMPANY_LOGO_URL || "";
+        return;
+      }else{
+        const uploadResult = await handleUploadLogo(formData.companyLogo!);
+        logoUrl = `https://${process.env.NEXT_PUBLIC_AWS_BUCKET_NAME}.s3.${process.env.NEXT_PUBLIC_AWS_BUCKET_REGION}.amazonaws.com/${uploadResult.key}`;
+      }
+      
       // Prepare job data matching the database schema
       const jobData: Omit<RawJob, "id" | "created_at" | "updated_at"> = {
         organization_id: organization?.id || null,
@@ -327,7 +325,7 @@ export default function AddJob() {
               {steps.map((s, i) => (
                 <button
                   key={s}
-                  className={`px-3 sm:px-4 py-2 text-sm sm:text-base text-center font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                  className={`px-3 sm:px-4 py-2 text-sm sm:text-base text-center font-medium transition-colors whitespace-nowrap ${i > step ? "cursor-default" : "cursor-pointer"} ${
                     i === step
                       ? "border-b-4 border-blue-600"
                       : i < step
