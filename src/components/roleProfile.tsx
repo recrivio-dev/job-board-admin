@@ -90,7 +90,7 @@ export const RoleProfile = ({
         </div>
         <div className="flex space-x-3">
           <button
-            // onClick={handleTransferJob}
+            onClick={() => alert("Transfer Job functionality is not implemented yet.")}
             className="px-4 py-2 bg-gray-200 font-medium text-gray-800 cursor-pointer rounded-md hover:bg-gray-300 transition-colors"
           >
             Transfer Job

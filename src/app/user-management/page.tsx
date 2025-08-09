@@ -66,7 +66,7 @@ export default function UserManagement() {
   );
 
   const currentUserRole = useAppSelector(
-    (state: RootState) => state.user?.roles[0]?.role?.name || "Guest"
+    (state: RootState) => state.user?.roles[0]?.role?.name || ""
   );
 
   const isLoading = useAppSelector((state: RootState) => state.user.loading);
@@ -217,6 +217,13 @@ export default function UserManagement() {
         alert("Missing organization ID or user ID");
         return;
       }
+      // user must be admin or hr
+      console.log(currentUserRole);
+      if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+        alert("You do not have permission to revoke job access.");
+        return;
+      }
+
       if (!window.confirm(`Are you sure you want to remove this job access for ${member.name}?`)) {
         return; // User cancelled
       }
@@ -235,7 +242,7 @@ export default function UserManagement() {
         alert(`Error removing Job Access: ${error}`);
       }
     },
-    [currentOrgId, currentUser?.id, dispatch]
+    [currentOrgId, currentUser?.id, dispatch, currentUserRole]
   );
 
   const closeOverlay = useCallback(() => {
@@ -358,7 +365,11 @@ export default function UserManagement() {
         console.error("Missing organization ID or user ID");
         return;
       }
-      if (!window.confirm(`Are you sure you want to remove ${member.name}?`)) {
+      if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+        alert("You do not have permission to revoke job access.");
+        return;
+      }
+      if (!window.confirm(`Are you sure you want to remove this job access for ${member.name}?`)) {
         return; // User cancelled
       }
       // Logic to remove member from organization
@@ -375,7 +386,7 @@ export default function UserManagement() {
       // Optionally, you can also close the overlay if it's open
       setEditingMember(null);
     },
-    [currentOrgId, currentUser?.id, dispatch]
+    [currentOrgId, currentUser?.id, dispatch, currentUserRole]
   );
 
   //handle assigning company
