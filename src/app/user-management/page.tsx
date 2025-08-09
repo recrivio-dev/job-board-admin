@@ -366,15 +366,15 @@ export default function UserManagement() {
       }
       // Logic to remove member from organization
       console.log(`Removing member ${member.name} (${member.email})`);
-      dispatch(
-        removeMemberRole({
-          memberUUID: member.id,
-          organization_id: currentOrgId,
-          removed_by: currentUser.id,
-        })
-      ).unwrap();
-
-      alert(`Member ${member.name} removed successfully!`);
+      dispatch(removeMemberRole({
+        memberUUID: member.id,
+        organization_id: currentOrgId,
+        removed_by: currentUser.id
+      }))
+      .unwrap()
+      .then(() => {
+          alert("Member removed successfully");
+      })
       // Optionally, you can also close the overlay if it's open
       setEditingMember(null);
     },

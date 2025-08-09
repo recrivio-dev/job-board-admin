@@ -235,7 +235,7 @@ export const removeMemberRole = createAsyncThunk(
             organization_id: string;
             removed_by: string;
         },
-        { rejectWithValue, dispatch }
+        { rejectWithValue }
     ) => {
         try {
             // Validate inputs
@@ -243,17 +243,23 @@ export const removeMemberRole = createAsyncThunk(
                 throw new Error('All parameters are required');
             }
             // Call the RPC function to remove role
-            const { error: rpcError } = await supabase.rpc('remove_member_from_organization', {
+            const { data, error: rpcError } = await supabase.rpc('remove_member_from_organization', {
                 p_user_id: memberUUID,
                 p_organization_id: organization_id,
                 p_removed_by: removed_by
             });
+            if (
+                data &&
+                typeof data === 'object' &&
+                'success' in data &&
+                (data as { success?: boolean }).success === false
+            ) {
+                throw new Error((data as { error?: string }).error || 'Failed to remove member role');
+            }
+
             if (rpcError) {
                 throw new Error(`Failed to remove role: ${rpcError.message}`);
             }
-
-            // It can be optimised further by not fetching all members again
-            dispatch(fetchOrgMembers(organization_id));
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
             return rejectWithValue(message);
@@ -424,15 +430,20 @@ const organisationSlice = createSlice({
                 state.error = null;
             }
             )
-            .addCase(removeMemberRole.fulfilled, (state) => {
+            .addCase(removeMemberRole.fulfilled, (state, action) => {
                 state.loading = false;
+                state.members = state.members.filter(member => member.user_id !== action.meta.arg.memberUUID);
                 // The fetchOrgMembers will update the members list
             })
             .addCase(removeMemberRole.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload as string;
-            }
-            );
+                state.members = state.members.map(member => 
+                    member.user_id === action.meta.arg.memberUUID
+                        ? { ...member, is_active: true } // Reset is_active to true if removal failed
+                        : member    
+                );
+            });
     },
 });
 
