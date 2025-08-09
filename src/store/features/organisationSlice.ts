@@ -20,6 +20,25 @@ interface BaseJobAccess {
     status: string;
 }
 
+export interface JobAccessControl {
+    id: string;
+    job_id: string;
+    user_id: string;
+    access_type: "granted" | "revoked";
+    granted_by: string | null;
+    created_at: string;
+    user_profiles?: {
+        id: string;
+        full_name: string;
+        email: string;
+    } | null;
+    granted_by_profile?: {
+        id: string;
+        full_name: string;
+        email: string;
+    } | null;
+}
+
 // For admin and hr roles - all jobs access
 interface AllJobsAccess extends BaseJobAccess {
     access_type: 'all_jobs';
@@ -267,6 +286,51 @@ export const removeMemberRole = createAsyncThunk(
     }
 );
 
+export const revokeJobAccess = createAsyncThunk(
+    "jobs/revokeJobAccess",
+    async (
+        {
+            jobId,
+            userId,
+            revokedBy,
+        }: { jobId: string; userId: string; revokedBy: string },
+        { rejectWithValue }
+    ) => {
+        try {
+            const supabase = createClient();
+
+            const { data, error } = await supabase
+                .from("job_access_control")
+                .upsert(
+                    [
+                        {
+                            job_id: jobId,
+                            user_id: userId,
+                            access_type: "revoked",
+                            granted_by: revokedBy,
+                        },
+                    ],
+                    {
+                        onConflict: "job_id,user_id",
+                        ignoreDuplicates: false,
+                    }
+                )
+                .select()
+                .single();
+
+            if (error) {
+                return rejectWithValue(error.message);
+            }
+
+            return data as JobAccessControl;
+        } catch (error: unknown) {
+            const errorMessage =
+                error instanceof Error ? error.message : "Failed to revoke job access";
+            return rejectWithValue(errorMessage);
+        }
+    }
+);
+
 //assign jobs access with job title with the function grant_access_by_job_titles that accepts memberUUid, jobTitle[], grantedBy(uuid)]
 export const assignJobAccesswithJob_title = createAsyncThunk(
     'organisation/assignJobAccesswithJob_title',
@@ -438,11 +502,31 @@ const organisationSlice = createSlice({
             .addCase(removeMemberRole.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload as string;
-                state.members = state.members.map(member => 
+                state.members = state.members.map(member =>
                     member.user_id === action.meta.arg.memberUUID
                         ? { ...member, is_active: true } // Reset is_active to true if removal failed
-                        : member    
+                        : member
                 );
+            })
+            // Revoke job access
+            .addCase(revokeJobAccess.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            }
+            )
+            .addCase(revokeJobAccess.fulfilled, (state, action) => {
+                state.loading = false;
+                // Update the member's job access in the state
+                const memberIndex = state.members.findIndex(member => member.user_id === action.payload.user_id);
+                if (memberIndex !== -1) {
+                    const updatedMember = { ...state.members[memberIndex] };
+                    updatedMember.job_access = updatedMember.job_access.filter(job => job.job_id !== action.payload.job_id);
+                    state.members[memberIndex] = updatedMember;
+                }
+            })
+            .addCase(revokeJobAccess.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
             });
     },
 });

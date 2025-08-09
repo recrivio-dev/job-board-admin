@@ -18,7 +18,7 @@ import {
   assignJobAccessWithCompany,
   JobAccess,
 } from "@/store/features/organisationSlice";
-import { revokeJobAccess } from "@/store/features/jobSlice";
+import { revokeJobAccess } from "@/store/features/organisationSlice";
 import { initializeAuth } from "@/store/features/userSlice";
 import { RootState } from "@/store/store";
 import { RoleProfile } from "@/components/roleProfile";
@@ -214,14 +214,13 @@ export default function UserManagement() {
   const handleRevokeAccess = useCallback(
     async (member: TeamMember, job_id: string) => {
       if (!currentOrgId || !currentUser?.id) {
-        console.error("Missing organization ID or user ID");
+        alert("Missing organization ID or user ID");
         return;
       }
-      if (!window.confirm(`Are you sure you want to remove ${member.name}?`)) {
+      if (!window.confirm(`Are you sure you want to remove this job access for ${member.name}?`)) {
         return; // User cancelled
       }
       // Logic to remove member from organization
-      console.log(`Removing member ${member.name} (${member.email})`);
       try {
         await dispatch(
           revokeJobAccess({
@@ -230,12 +229,10 @@ export default function UserManagement() {
             revokedBy: currentUser.id,
           })
         ).unwrap();
-        await dispatch(fetchOrgMembers(currentOrgId));
-        // Show success message
-        alert(`Member ${member.name} removed successfully!`);
+        alert(`${job_id} access removed successfully for ${member.name}!`);
       } catch (error) {
-        console.error("Error removing member:", error);
-        alert(`Error removing member: ${error}`);
+        console.error("Error removing Job Access:", error);
+        alert(`Error removing Job Access: ${error}`);
       }
     },
     [currentOrgId, currentUser?.id, dispatch]
@@ -413,7 +410,7 @@ export default function UserManagement() {
       <div
         className={`transition-all duration-300 h-full px-3 md:px-0 ${
           collapsed ? "md:ml-20" : "md:ml-64"
-        } pt-4`}
+        } pt-18`}
       >
         <div className="max-w-8xl mx-auto px-2 py-4">
           <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -439,7 +436,7 @@ export default function UserManagement() {
       <div
         className={`transition-all duration-300 h-full px-3 md:px-0 ${
           collapsed ? "md:ml-20" : "md:ml-64"
-        } pt-4`}
+        } pt-18`}
       >
         <div className="max-w-8xl mx-auto px-2 py-4 flex justify-center items-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -455,7 +452,7 @@ export default function UserManagement() {
       <div
         className={`transition-all duration-300 h-full px-3 md:px-0 ${
           collapsed ? "md:ml-20" : "md:ml-64"
-        } pt-4`}
+        } pt-18`}
       >
         <div className="max-w-8xl mx-auto px-2 py-4">
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
