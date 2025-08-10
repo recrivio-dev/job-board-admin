@@ -238,7 +238,7 @@ export default function Settings() {
         setSavingChanges(false);
       }
     },
-    [editingMember, currentOrgId, currentUser, dispatch]
+    [editingMember, currentOrgId, currentUser, dispatch, currentUserRole]
   );
 
   // Handle role change in table (now only updates local state)
@@ -282,7 +282,7 @@ export default function Settings() {
         ];
       });
     },
-    []
+    [currentUserRole, currentUser?.email]
   );
 
   // Handle checkbox change for notifications
@@ -380,6 +380,8 @@ export default function Settings() {
     step,
     preferences,
     pendingRoleChanges,
+    editingMember?.email,
+    currentUserRole,
     currentOrgId,
     currentUser,
     dispatch,
@@ -413,7 +415,7 @@ export default function Settings() {
         })
       ).unwrap();
     },
-    [currentUser?.id, dispatch, currentOrgId]
+    [currentUser?.id, dispatch, currentOrgId, currentUserRole, currentUser?.email]
   );
 
   //handle assigning company
@@ -450,7 +452,7 @@ export default function Settings() {
         })
       ).unwrap();
     },
-    [currentUser?.id, dispatch, currentOrgId]
+    [currentUser?.id, dispatch, currentOrgId, currentUserRole, currentUser?.email]
   );
 
   // Check if there are unsaved changes
