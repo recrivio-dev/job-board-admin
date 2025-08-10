@@ -188,9 +188,17 @@ export default function Settings() {
         return;
       }
 
+       if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+        alert("You do not have permission to add members.");
+        return;
+      }
+
       try {
         setSavingChanges(true);
-
+        if (editingMember?.email === currentUser?.email) {
+          alert("You cannot update your own role and job assignments.");
+          return;
+        }
         if (editingMember) {
           // Update existing member role - use email for the thunk
           await dispatch(
@@ -240,6 +248,18 @@ export default function Settings() {
         return; // No change needed
       }
 
+      // Check if user has permission to change role
+      if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+        alert("You do not have permission to change member roles.");
+        return;
+      }
+
+      //cannot update own role
+      if (member.email === currentUser?.email) {
+        alert("You cannot update your own role.");
+        return;
+      }
+
       // Update local team members immediately for UI feedback
       setLocalTeamMembers((prev) =>
         prev.map((m) => (m.id === member.id ? { ...m, role: newRole } : m))
@@ -282,7 +302,6 @@ export default function Settings() {
       console.error("Missing organization ID or user ID");
       return;
     }
-
     try {
       setSavingChanges(true);
 
@@ -290,6 +309,18 @@ export default function Settings() {
         // Save role changes
         if (pendingRoleChanges.length > 0) {
           console.log("Applying role changes:", pendingRoleChanges);
+
+          // Check if user has permission to change roles
+          if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+            alert("You do not have permission to change member roles.");
+            return;
+          }
+
+          //cannot update own role
+          if (editingMember?.email === currentUser?.email) {
+            alert("You cannot update your own role and job assignments.");
+            return;
+          }
 
           // Process each role change
           for (const change of pendingRoleChanges) {
@@ -359,6 +390,19 @@ export default function Settings() {
     (member: TeamMember, jobTitles: string[]) => {
       // Logic to assign jobs to the member
       console.log(`Assigning jobs ${jobTitles.join(", ")} to ${member.name}`);
+
+      // Check if user has permission to assign jobs
+      if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+        alert("You do not have permission to assign jobs.");
+        return;
+      }
+
+      //cannot update own job assignments
+      if (member.email === currentUser?.email) {
+        alert("You cannot update your own job assignments.");
+        return;
+      }
+
       dispatch(
         assignJobAccesswithJob_title({
           jobTitles: jobTitles,
@@ -383,6 +427,19 @@ export default function Settings() {
         console.error("Missing organization ID or user ID");
         return;
       }
+
+      // Check if user has permission to assign companies
+      if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+        alert("You do not have permission to assign companies.");
+        return;
+      }
+
+      //cannot update own company assignments
+      if (member.email === currentUser?.email) {
+        alert("You cannot update your own company assignments.");
+        return;
+      }
+
       dispatch(
         assignJobAccessWithCompany({
           companies: companies,
@@ -442,7 +499,7 @@ export default function Settings() {
       <div
         className={`transition-all duration-300 h-full px-3 md:px-0 ${
           collapsed ? "md:ml-20" : "md:ml-64"
-        } pt-4`}
+        } pt-18`}
       >
         <div className="max-w-8xl mx-auto px-2 py-4">
           <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -468,7 +525,7 @@ export default function Settings() {
       <div
         className={`transition-all duration-300 h-full px-3 md:px-0 ${
           collapsed ? "md:ml-20" : "md:ml-64"
-        } pt-4`}
+        } pt-18`}
       >
         <div className="max-w-8xl mx-auto px-2 py-4 flex justify-center items-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -484,7 +541,7 @@ export default function Settings() {
       <div
         className={`transition-all duration-300 h-full px-3 md:px-0 ${
           collapsed ? "md:ml-20" : "md:ml-64"
-        } pt-4`}
+        } pt-18`}
       >
         <div className="max-w-8xl mx-auto px-2 py-4">
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
