@@ -138,7 +138,7 @@ export default function Settings() {
   // Fetch organization members when we have a valid org ID
   useEffect(() => {
     if (currentOrgId && currentUser) {
-      dispatch(fetchOrgMembers(currentOrgId));
+      dispatch(fetchOrgMembers({ orgId: currentOrgId, member_email: undefined }));
     }
   }, [dispatch, currentOrgId, currentUser]);
 
@@ -365,6 +365,7 @@ export default function Settings() {
           memberUuid: member.id,
           grantedBy: currentUser?.id || "",
           organization_id: currentOrgId || "",
+          member_email: member.email,
         })
       ).unwrap();
     },
@@ -388,6 +389,7 @@ export default function Settings() {
           memberUuid: member.id,
           grantedBy: currentUser.id,
           organization_id: currentOrgId,
+          member_email: member.email,
         })
       ).unwrap();
     },

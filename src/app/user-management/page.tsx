@@ -123,7 +123,7 @@ export default function UserManagement() {
   // Fetch organization members when we have a valid org ID
   useEffect(() => {
     if (currentOrgId && currentUser) {
-      dispatch(fetchOrgMembers(currentOrgId));
+      dispatch(fetchOrgMembers({ orgId: currentOrgId, member_email: undefined }));
     }
   }, [dispatch, currentOrgId, currentUser]);
 
@@ -165,12 +165,23 @@ export default function UserManagement() {
         console.error("Missing organization ID or user ID");
         return;
       }
+      //only allow admin or hr to add members
+      if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+        alert("You do not have permission to add members.");
+        return;
+      }
 
       try {
         setSavingChanges(true);
 
         if (editingMember) {
           // Update existing member role - use email for the thunk
+          // user can not update their own role
+          if (editingMember.email === currentUser.email) {
+            alert("You cannot update your own role and job assignments.");
+            return;
+          }
+
           await dispatch(
             updateMemberRole({
               memberEmailId: editingMember.email,
@@ -201,14 +212,11 @@ export default function UserManagement() {
         );
       } catch (error) {
         console.log("Error saving member:", error);
-        alert(
-          `Error ${editingMember ? "updating" : "adding"} member: ${error}`
-        );
       } finally {
         setSavingChanges(false);
       }
     },
-    [editingMember, currentOrgId, currentUser, dispatch]
+    [editingMember, currentOrgId, currentUser, dispatch, currentUserRole]
   );
 
   const handleRevokeAccess = useCallback(
@@ -218,9 +226,13 @@ export default function UserManagement() {
         return;
       }
       // user must be admin or hr
-      console.log(currentUserRole);
       if (currentUserRole !== "admin" && currentUserRole !== "hr") {
         alert("You do not have permission to revoke job access.");
+        return;
+      }
+      // cannot revoke access for self
+      if (member.email === currentUser.email) {
+        alert("You cannot revoke your own job access.");
         return;
       }
 
@@ -242,7 +254,7 @@ export default function UserManagement() {
         alert(`Error removing Job Access: ${error}`);
       }
     },
-    [currentOrgId, currentUser?.id, dispatch, currentUserRole]
+    [currentOrgId, currentUser?.id, dispatch, currentUserRole, currentUser?.email]
   );
 
   const closeOverlay = useCallback(() => {
@@ -254,6 +266,17 @@ export default function UserManagement() {
     (member: TeamMember, newRole: string) => {
       if (member.role === newRole) {
         return; // No change needed
+      }
+      // only allow admin or hr to change roles
+      if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+        alert("You do not have permission to change roles.");
+        return;
+      }
+
+      // user can not change their own role
+      if (member.email === currentUser?.email) {
+        alert("You cannot change your own role.");
+        return;
       }
 
       // Update local team members immediately for UI feedback
@@ -278,13 +301,26 @@ export default function UserManagement() {
         ];
       });
     },
-    []
+    [currentUser?.email, currentUserRole]
   );
 
   //handle assigning jobs
   const handleAssignJobsWithJobTitle = useCallback(
     (member: TeamMember, jobTitles: string[]) => {
       // Logic to assign jobs to the member
+      if (!currentOrgId || !currentUser?.id) {
+        console.error("Missing organization ID or user ID");
+        return;
+      }
+      // user must be admin or hr
+      if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+        alert("You do not have permission to assign job access.");
+        return;
+      }
+      if (member.email === currentUser.email) {
+        return;
+      }
+
       console.log(`Assigning jobs ${jobTitles.join(", ")} to ${member.name}`);
       dispatch(
         assignJobAccesswithJob_title({
@@ -292,15 +328,27 @@ export default function UserManagement() {
           memberUuid: member.id,
           grantedBy: currentUser?.id || "",
           organization_id: currentOrgId || "",
+          member_email: member.email,
         })
       ).unwrap();      
     },
-    [currentUser?.id, dispatch, currentOrgId]
+    [currentUser?.id, dispatch, currentOrgId, currentUserRole, currentUser?.email]
   );
 
   const handleSaveChanges = useCallback(async () => {
     if (!currentOrgId || !currentUser?.id) {
       console.error("Missing organization ID or user ID");
+      return;
+    }
+    // user must be admin or hr
+    if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+      alert("You do not have permission to save changes.");
+      return;
+    }
+
+    // cannot update own role 
+    if (pendingRoleChanges.some((change) => change.memberEmail === currentUser.email)) {
+      alert("You cannot update your own role.");
       return;
     }
 
@@ -357,7 +405,7 @@ export default function UserManagement() {
     } finally {
       setSavingChanges(false);
     }
-  }, [step, pendingRoleChanges, currentOrgId, currentUser, dispatch]);
+  }, [step, pendingRoleChanges, currentOrgId, currentUser, dispatch, currentUserRole]);
 
   const removeMember = useCallback(
     (member: TeamMember) => {
@@ -369,6 +417,12 @@ export default function UserManagement() {
         alert("You do not have permission to revoke job access.");
         return;
       }
+      // cannot remove self
+      if (member.email === currentUser.email) {
+        alert("You cannot remove yourself from the organization.");
+        return;
+      }
+
       if (!window.confirm(`Are you sure you want to remove this job access for ${member.name}?`)) {
         return; // User cancelled
       }
@@ -386,30 +440,38 @@ export default function UserManagement() {
       // Optionally, you can also close the overlay if it's open
       setEditingMember(null);
     },
-    [currentOrgId, currentUser?.id, dispatch, currentUserRole]
+    [currentOrgId, currentUser?.id, dispatch, currentUserRole, currentUser?.email]
   );
 
   //handle assigning company
   const handleAssignCompany = useCallback(
     (member: TeamMember, companies: string[]) => {
       // Logic to assign company to the member
-      console.log(
-        `Assigning company ${companies.join(", ")} to ${member.name}`
-      );
       if (!currentOrgId || !currentUser?.id) {
         console.error("Missing organization ID or user ID");
         return;
       }
+      // user must be admin or hr
+      if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+        alert("You do not have permission to assign company access.");
+        return;
+      }
+      // cannot assign company to self
+      if (member.email === currentUser.email) {
+        return;
+      }
+
       dispatch(
         assignJobAccessWithCompany({
           companies: companies,
           memberUuid: member.id,
           grantedBy: currentUser.id,
           organization_id: currentOrgId,
+          member_email: member.email,
         })
       ).unwrap();
     },
-    [currentUser?.id, dispatch, currentOrgId]
+    [currentUser?.id, dispatch, currentOrgId, currentUserRole, currentUser?.email]
   );
 
   // Check if there are unsaved changes
@@ -505,6 +567,13 @@ export default function UserManagement() {
           />
         )}
 
+         <Breadcrumb
+          segments={[
+            { label: "User Management", href: "/user-management" },
+          ]}
+          className="mb-4"
+        />
+
         {/* Error display */}
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
@@ -529,26 +598,6 @@ export default function UserManagement() {
             </div>
           </div>
         )}
-
-        <Breadcrumb
-          segments={[
-            { label: "User Management", href: "/user-management" },
-          ]}
-          className="mb-4"
-        />
-
-        {/* Main content area with title and description */}
-        <div className="flex items-center justify-between mt-6 mb-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-neutral-900">
-              Settings
-            </h1>
-            <p className="text-sm text-neutral-500 mt-2">
-              Customize your account, notifications, roles and recruitment
-              preferences to better suit your workflow.
-            </p>
-          </div>
-        </div>
 
         {/* Tabs navigation for different settings sections */}
         <div className="showOverlayflex gap-4 mb-6">

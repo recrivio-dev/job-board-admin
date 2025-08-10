@@ -138,7 +138,7 @@ const transformRpcResponseToMember = (rpcData: RpcMemberResponse): OrgMemberWith
 // Async thunks
 export const fetchOrgMembers = createAsyncThunk(
     'organisation/fetchMembers',
-    async (orgId: string, { rejectWithValue }) => {
+    async ({ orgId, member_email }: { orgId: string; member_email: string | undefined }, { rejectWithValue }) => {
         try {
             if (!orgId) {
                 throw new Error('Organization ID is required');
@@ -146,7 +146,8 @@ export const fetchOrgMembers = createAsyncThunk(
 
             const { data, error } = await supabase
                 .rpc('fetch_org_members_with_jobs', {
-                    org_id: orgId
+                    org_id: orgId,  
+                    member_email: member_email // Optional parameter
                 });
 
             if (error) {
@@ -199,9 +200,7 @@ export const addMemberRole = createAsyncThunk(
             if (rpcError) {
                 throw new Error(`Failed to assign role: ${rpcError.message}`);
             }
-            // It can be optimised further by not fetching all members again
-            dispatch(fetchOrgMembers(organization_id));
-
+            dispatch(fetchOrgMembers({ orgId: organization_id, member_email: memberEmailId }));
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
             return rejectWithValue(message);
@@ -238,7 +237,7 @@ export const updateMemberRole = createAsyncThunk(
             }
 
             // It can be optimised further by not fetching all members again
-            dispatch(fetchOrgMembers(organization_id));
+            dispatch(fetchOrgMembers({ orgId: organization_id, member_email: memberEmailId }));
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
             return rejectWithValue(message);
@@ -335,7 +334,7 @@ export const revokeJobAccess = createAsyncThunk(
 export const assignJobAccesswithJob_title = createAsyncThunk(
     'organisation/assignJobAccesswithJob_title',
     async (
-        { memberUuid, jobTitles, grantedBy, organization_id }: { memberUuid: string; jobTitles: string[]; grantedBy: string, organization_id: string },
+        { memberUuid, jobTitles, grantedBy, organization_id, member_email }: { memberUuid: string; jobTitles: string[]; grantedBy: string, organization_id: string, member_email: string },
         { rejectWithValue, dispatch }
     ) => {
         try {
@@ -356,7 +355,7 @@ export const assignJobAccesswithJob_title = createAsyncThunk(
             }
 
             // It can be optimised further by not fetching all members again
-            dispatch(fetchOrgMembers(organization_id));
+            dispatch(fetchOrgMembers({ orgId: organization_id, member_email }));
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
             return rejectWithValue(message);
@@ -367,7 +366,7 @@ export const assignJobAccesswithJob_title = createAsyncThunk(
 export const assignJobAccessWithCompany = createAsyncThunk(
     'organisation/assignJobAccessWithCompany',
     async (
-        { memberUuid, companies, grantedBy, organization_id }: { memberUuid: string; companies: string[]; grantedBy: string, organization_id: string },
+        { memberUuid, companies, grantedBy, organization_id, member_email }: { memberUuid: string; companies: string[]; grantedBy: string, organization_id: string, member_email: string },
         { rejectWithValue, dispatch }
     ) => {
         try {
@@ -388,7 +387,7 @@ export const assignJobAccessWithCompany = createAsyncThunk(
             }
 
             // It can be optimised further by not fetching all members again
-            dispatch(fetchOrgMembers(organization_id));
+            dispatch(fetchOrgMembers({ orgId: organization_id, member_email }));
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
             return rejectWithValue(message);
@@ -426,8 +425,22 @@ const organisationSlice = createSlice({
             })
             .addCase(fetchOrgMembers.fulfilled, (state, action) => {
                 state.loading = false;
-                state.members = action.payload.members;
-                state.lastFetchedOrgId = action.payload.orgId;
+                // if only one member is fetched using member_email, update just that member
+                if (action.payload.members.length === 1 && action.payload.members[0].email) {
+                    const fetchedMember = action.payload.members[0];
+                    const existingMemberIndex = state.members.findIndex(member => member.user_id === fetchedMember.user_id);
+                    if (existingMemberIndex !== -1) {
+                        // Update existing member
+                        state.members[existingMemberIndex] = fetchedMember;
+                    } else {
+                        // Add new member if not found
+                        state.members.push(fetchedMember);
+                    }
+                } else {
+                    // If fetching all members, replace the entire list
+                    state.members = action.payload.members;
+                    state.lastFetchedOrgId = action.payload.orgId;
+                }
             })
             .addCase(fetchOrgMembers.rejected, (state, action) => {
                 state.loading = false;

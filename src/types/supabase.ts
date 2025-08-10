@@ -747,7 +747,7 @@ export type Database = {
         Returns: Json
       }
       fetch_org_members_with_jobs: {
-        Args: { org_id: string }
+        Args: { org_id: string; member_email?: string }
         Returns: {
           user_id: string
           email: string

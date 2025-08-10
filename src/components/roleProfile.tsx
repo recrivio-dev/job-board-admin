@@ -52,6 +52,14 @@ export const RoleProfile = ({
     }
   }, [members, editingMember.id]);
 
+  //from members update the role of the editingMember
+  React.useEffect(() => {
+    const currentMember = members.find((m) => m.user_id === editingMember.id);
+    if (currentMember) {
+      editingMember.role = currentMember.role_name || editingMember.role; // Default to "member"
+    }
+  }, [members, editingMember]);
+
   return (
     <>
     {/* Overlay for modal */}
@@ -64,7 +72,7 @@ export const RoleProfile = ({
         handleAssignCompany={handleAssignCompany}
       />
     )}
-    <div className="bg-white rounded-lg shadow p-6 max-w-6xl">
+    <div className="bg-white rounded-lg shadow p-6 max-w-7xl">
       {/* Close Button */}
       <div className="flex justify-end mb-4">
         <button
