@@ -17,6 +17,7 @@ import {
   assignJobAccesswithJob_title,
   assignJobAccessWithCompany,
   JobAccess,
+  transferJobsTA
 } from "@/store/features/organisationSlice";
 import { revokeJobAccess } from "@/store/features/organisationSlice";
 import { initializeAuth } from "@/store/features/userSlice";
@@ -474,6 +475,55 @@ export default function UserManagement() {
     [currentUser?.id, dispatch, currentOrgId, currentUserRole, currentUser?.email]
   );
 
+  const handleTransferJobsTA = useCallback(
+    (transferredTo: TeamMember, transferredFrom: TeamMember) => {
+      if (!currentOrgId || !currentUser?.id) {
+        console.error("Missing organization ID or user ID");
+        return;
+      }
+      //add a contraint that transfermto member should be TA;
+      if (transferredTo.role !== "ta") {
+        alert("You can only transfer jobs to a Talent Acquisition (TA).");
+        return;
+      }
+
+      //add a contraint that transferredFrom member should be TA;
+      if (transferredFrom.role !== "ta") {
+        alert("You can only transfer jobs from a Talent Acquisition (TA).");
+        return;
+      }
+      // user must be admin or hr
+      if (currentUserRole !== "admin" && currentUserRole !== "hr") {
+        alert("You do not have permission to transfer job access.");
+        return;
+      }
+
+      if (transferredTo.email === currentUser.email) {
+        alert("You cannot transfer job access from yourself.");
+        return;
+      }
+
+      dispatch(
+        transferJobsTA({
+          from_user_id: transferredFrom.id,
+          to_user_id: transferredTo.id,
+          transferredBy: currentUser.id,
+          transferredBy_role: currentUserRole,
+          organization_id: currentOrgId,
+          to_user_email: transferredTo.email,
+        })
+      )
+      .unwrap()
+      .then(() => {
+        alert(`Jobs successfully transferred from ${transferredFrom.name} to ${transferredTo.name}!`);
+      })
+      .catch((error) => {
+        console.error("Error transferring jobs:", error);
+      });
+    },
+    [currentUser?.id, dispatch, currentOrgId, currentUserRole, currentUser?.email]
+  );
+
   // Check if there are unsaved changes
   const hasUnsavedChanges = pendingRoleChanges.length > 0;
 
@@ -656,6 +706,7 @@ export default function UserManagement() {
                   handleAssignJobsWithJobTitle={handleAssignJobsWithJobTitle}
                   handleAssignCompany={handleAssignCompany}
                   handleRevokeAccess={handleRevokeAccess}
+                  handleTransferJobsTA={handleTransferJobsTA}
                   onCloseOverlay={closeOverlay}
                 />
               ) : (

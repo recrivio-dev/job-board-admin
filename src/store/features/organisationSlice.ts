@@ -330,6 +330,43 @@ export const revokeJobAccess = createAsyncThunk(
     }
 );
 
+export const transferJobsTA = createAsyncThunk(
+    'organisation/transferJobs',
+    async (
+        { from_user_id, to_user_id, transferredBy, transferredBy_role, organization_id, to_user_email }: { from_user_id: string; to_user_id: string; transferredBy: string; transferredBy_role: string; organization_id: string; to_user_email: string },
+        { rejectWithValue, dispatch }
+    ) => {
+        try {
+            // Validate inputs
+            if (!from_user_id || !to_user_id || !transferredBy || !organization_id || !to_user_email) {
+                throw new Error('All parameters are required');
+            }
+            // only admin and hr can tranfer jobs
+            if (transferredBy_role !== 'admin' && transferredBy_role !== 'hr') {
+                throw new Error('Only admins and HR can transfer jobs');
+            }
+
+            // Call the RPC function to transfer jobs
+            const { error: rpcError } = await supabase.rpc('transfer_ta_jobs', {
+                p_from_user_id: from_user_id,
+                p_to_user_id: to_user_id,
+                p_transferred_by: transferredBy,
+                p_organization_id: organization_id,
+            });
+
+            if (rpcError) {
+                throw new Error(`Failed to transfer jobs: ${rpcError.message}`);
+            }
+
+            // It can be optimised further by not fetching all members again
+            dispatch(fetchOrgMembers({ orgId: organization_id, member_email: to_user_email }));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error occurred';
+            return rejectWithValue(message);
+        }
+    }
+);
+
 //assign jobs access with job title with the function grant_access_by_job_titles that accepts memberUUid, jobTitle[], grantedBy(uuid)]
 export const assignJobAccesswithJob_title = createAsyncThunk(
     'organisation/assignJobAccesswithJob_title',
@@ -540,7 +577,20 @@ const organisationSlice = createSlice({
             .addCase(revokeJobAccess.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload as string;
-            });
+            })
+
+            //transfer job
+            .addCase(transferJobsTA.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(transferJobsTA.fulfilled, (state) => {
+                state.loading = false;
+            })
+            .addCase(transferJobsTA.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
+            })
     },
 });
 

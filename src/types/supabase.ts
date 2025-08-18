@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -22,10 +22,10 @@ export type Database = {
     Functions: {
       graphql: {
         Args: {
+          extensions?: Json
           operationName?: string
           query?: string
           variables?: Json
-          extensions?: Json
         }
         Returns: Json
       }
@@ -694,85 +694,85 @@ export type Database = {
     Functions: {
       assign_user_role: {
         Args: {
+          assigner_user_id: string
           target_email_id: string
           target_organization_id: string
           target_role_name: string
-          assigner_user_id: string
         }
         Returns: boolean
       }
       delete_application_with_access: {
         Args: {
           p_application_id: string
+          p_organization_id?: string
           p_user_id: string
           p_user_role: string
-          p_organization_id?: string
         }
         Returns: Json
       }
       fetch_filter_options: {
         Args: {
+          p_organization_id?: string
           p_user_id: string
           p_user_role: string
-          p_organization_id?: string
         }
         Returns: Json
       }
       fetch_jobs_with_access: {
         Args: {
-          p_user_id: string
-          p_user_role: string
-          p_organization_id?: string
-          p_page?: number
-          p_limit?: number
-          p_status?: string
-          p_location?: string
           p_company?: string
-          p_job_type?: string
-          p_salary_min?: number
-          p_salary_max?: number
-          p_experience_min?: number
-          p_experience_max?: number
-          p_sort_by?: string
-          p_sort_order?: string
-          p_search_term?: string
-          p_status_filter?: string[]
-          p_location_filter?: string[]
           p_company_filter?: string[]
-          p_job_type_filter?: string[]
-          p_working_type_filter?: string[]
           p_date_from?: string
           p_date_to?: string
+          p_experience_max?: number
+          p_experience_min?: number
+          p_job_type?: string
+          p_job_type_filter?: string[]
+          p_limit?: number
+          p_location?: string
+          p_location_filter?: string[]
+          p_organization_id?: string
+          p_page?: number
+          p_salary_max?: number
+          p_salary_min?: number
+          p_search_term?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_status?: string
+          p_status_filter?: string[]
+          p_user_id: string
+          p_user_role: string
+          p_working_type_filter?: string[]
         }
         Returns: Json
       }
       fetch_org_members_with_jobs: {
-        Args: { org_id: string; member_email?: string }
+        Args: { member_email?: string; org_id: string }
         Returns: {
-          user_id: string
+          assigned_at: string
+          assigned_by: string
           email: string
           full_name: string
           is_active: boolean
+          job_access: Json
+          role_display_name: string
           role_id: string
           role_name: string
-          role_display_name: string
-          assigned_by: string
-          assigned_at: string
-          job_access: Json
+          user_id: string
         }[]
       }
       get_applications_over_time: {
         Args: {
-          user_uuid: string
-          org_uuid: string
-          weeks_back?: number
           company_name?: string
           job_title?: string
+          org_uuid: string
+          user_uuid: string
+          weeks_back?: number
         }
         Returns: Json
       }
       get_complete_dashboard_data: {
-        Args: { user_uuid: string; org_uuid: string }
+        Args: { org_uuid: string; user_uuid: string }
         Returns: Json
       }
       get_current_user_with_profile: {
@@ -780,40 +780,40 @@ export type Database = {
         Returns: Json
       }
       get_dashboard_stats: {
-        Args: { user_uuid: string; org_uuid: string }
+        Args: { org_uuid: string; user_uuid: string }
         Returns: Json
       }
       get_job_details: {
         Args: { job_id: string }
         Returns: {
-          id: string
-          organization_id: string
-          title: string
-          description: string
-          company_name: string
+          application_deadline: string
           company_logo_url: string
-          location: string
+          company_name: string
+          created_at: string
+          created_by: string
+          description: string
+          id: string
           job_location_type: string
           job_type: string
-          working_type: string
-          salary_min: number
-          salary_max: number
-          status: string
-          application_deadline: string
-          min_experience_needed: number
+          location: string
           max_experience_needed: number
-          created_by: string
-          created_at: string
-          updated_at: string
+          min_experience_needed: number
+          organization_id: string
+          salary_max: number
+          salary_min: number
+          status: string
+          title: string
           total_applicants: number
+          updated_at: string
+          working_type: string
         }[]
       }
       get_top_performers: {
         Args: {
-          user_uuid: string
-          org_uuid: string
-          metric_type?: string
           limit_count?: number
+          metric_type?: string
+          org_uuid: string
+          user_uuid: string
         }
         Returns: Json
       }
@@ -826,18 +826,18 @@ export type Database = {
         Returns: Json
       }
       get_user_role_in_org: {
-        Args: { user_uuid: string; org_uuid: string }
+        Args: { org_uuid: string; user_uuid: string }
         Returns: string
       }
       grant_access_by_companies: {
-        Args: { p_user_id: string; p_companies: string[]; p_granted_by: string }
+        Args: { p_companies: string[]; p_granted_by: string; p_user_id: string }
         Returns: boolean
       }
       grant_access_by_job_titles: {
         Args: {
-          p_user_id: string
-          p_job_titles: string[]
           p_granted_by: string
+          p_job_titles: string[]
+          p_user_id: string
         }
         Returns: boolean
       }
@@ -847,80 +847,89 @@ export type Database = {
       }
       new_fetch_candidates_with_access: {
         Args: {
-          p_user_id: string
-          p_user_role: string
-          p_organization_id?: string
-          p_page?: number
-          p_limit?: number
           p_application_status?: string[]
-          p_sort_by?: string
-          p_sort_order?: string
-          p_name_filter?: string
           p_company_filter?: string[]
-          p_job_title_filter?: string[]
-          p_min_experience?: number
-          p_max_experience?: number
           p_date_from?: string
           p_date_to?: string
           p_job_id?: string
+          p_job_title_filter?: string[]
+          p_limit?: number
+          p_max_experience?: number
+          p_min_experience?: number
+          p_name_filter?: string
+          p_organization_id?: string
+          p_page?: number
           p_search_term?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_user_id: string
+          p_user_role: string
         }
         Returns: Json
       }
       remove_member_from_organization: {
         Args: {
-          p_user_id: string
           p_organization_id: string
           p_removed_by?: string
+          p_user_id: string
         }
         Returns: Json
       }
       submit_job_application: {
         Args: {
-          p_job_id: string
-          p_candidate_email: string
-          p_name: string
-          p_auth_id?: string
-          p_mobile_number?: string
-          p_dob?: string
-          p_address?: string
-          p_linkedin_url?: string
-          p_portfolio_url?: string
-          p_gender?: string
-          p_disability?: string
-          p_current_ctc?: number
-          p_expected_ctc?: number
-          p_notice_period?: string
-          p_resume_link?: string
           p_additional_doc_link?: string
+          p_address?: string
+          p_auth_id?: string
+          p_candidate_email: string
+          p_current_ctc?: number
+          p_disability?: string
+          p_dob?: string
           p_education_data?: Json
+          p_expected_ctc?: number
           p_experience_data?: Json
+          p_gender?: string
+          p_job_id: string
+          p_linkedin_url?: string
+          p_mobile_number?: string
+          p_name: string
+          p_notice_period?: string
+          p_portfolio_url?: string
+          p_resume_link?: string
         }
         Returns: Json
+      }
+      transfer_ta_jobs: {
+        Args: {
+          p_from_user_id: string
+          p_organization_id: string
+          p_to_user_id: string
+          p_transferred_by: string
+        }
+        Returns: boolean
       }
       update_application_status_with_access: {
         Args: {
           p_application_id: string
+          p_organization_id?: string
           p_status: string
           p_user_id: string
           p_user_role: string
-          p_organization_id?: string
         }
         Returns: Json
       }
       update_user_role: {
         Args: {
-          target_email_id: string
           new_role_name: string
+          target_email_id: string
           updater_user_id: string
         }
         Returns: boolean
       }
       user_has_role: {
         Args: {
-          check_user_id: string
           check_organization_id: string
           check_role_name: string
+          check_user_id: string
         }
         Returns: boolean
       }
